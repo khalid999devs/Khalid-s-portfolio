@@ -34,7 +34,6 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
-
     techStack: {
       type: DataTypes.TEXT,
       defaultValue: '[]',

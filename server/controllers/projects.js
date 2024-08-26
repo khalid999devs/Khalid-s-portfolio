@@ -4,7 +4,7 @@ const deleteFile = require('../utils/deleteFile');
 
 const createProject = async (req, res) => {
   const { title, subtitle, overview, role, date, locationYear } = req.body;
-  if (!title || !subtitle || !overview || !role || !locationYear)
+  if (!title || !subtitle || !overview || !role || !locationYear || !date)
     throw new BadRequestError(
       'Data for all the necessary fields must be provided'
     );
