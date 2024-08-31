@@ -30,4 +30,22 @@ const editSettings = async (req, res) => {
   });
 };
 
-module.exports = { addSettings, editSettings };
+const getSettings = async (req, res) => {
+  let result = await settings.findAll();
+  let settingsRes = undefined;
+
+  if (result[0]) {
+    settingsRes = result[0];
+    settingsRes.dataValues.technologies = JSON.parse(
+      settingsRes.dataValues.technologies
+    );
+  }
+
+  res.json({
+    succeed: true,
+    result: settingsRes,
+    msg: 'Successfully fetched settings!',
+  });
+};
+
+module.exports = { addSettings, editSettings, getSettings };

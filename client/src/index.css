@@ -2,6 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'PP Neue Montreal Mono';
+  src: url('/Fonts/PPNeueMontrealMono-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'PP Eiko';
+  src: url('/Fonts/PPEiko-Thin.woff2') format('woff2');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'PP Neue Montreal';
+  src: url('/Fonts/PPNeueMontreal-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Neue Montreal';
+  src: url('/Fonts/NeueMontreal-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Roxborough CF';
+  src: url('/Fonts/RoxboroughCF-RegularItalic.woff2') format('woff2');
+  font-weight: normal;
+  font-style: italic;
+  font-display: swap;
+}
+
+.text-montreal-mono {
+  font-family: 'PP Neue Montreal Mono', sans-serif;
+  font-weight: 500;
+}
+.text-pp-eiko {
+  font-family: 'PP Eiko';
+}
+.text-montreal-medium {
+  font-family: 'PP Neue Montreal', sans-serif;
+}
+.text-montreal-regular {
+  font-family: 'Neue Montreal', sans-serif;
+}
+.text-rox-italic {
+  font-family: 'Roxborough CF';
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -10,10 +67,11 @@
 
 body {
   color: white;
-  width: 100dvw;
+  width: 100%;
   /* overflow-x: hidden; */
   height: 100%;
   background: #161616;
+  font-family: 'PP Neue Montreal', sans-serif;
 }
 
 canvas {
@@ -24,10 +82,17 @@ canvas {
   margin-inline-start: auto;
   margin-inline-end: auto;
   position: relative;
-  max-width: 1120px;
+  max-width: 1560px;
+}
+
+.box-big-shadow {
+  box-shadow: 2px 9px 15px -7px rgba(0, 0, 0, 0.3);
 }
 
 @layer utilities {
+  .sec-x-padding {
+    @apply px-[5px] sm:px-[10px] md:px-[20px] lg:px-[30px];
+  }
   .flex-center {
     @apply flex items-center justify-center;
   }
