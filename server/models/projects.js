@@ -17,8 +17,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
     role: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
+      defaultValue: '[]',
     },
     siteLink: {
       type: DataTypes.STRING,

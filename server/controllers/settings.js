@@ -20,9 +20,10 @@ const addSettings = async (req, res) => {
 
 const editSettings = async (req, res) => {
   let data = req.body;
+  const id = req.params.id;
   data.technologies = JSON.stringify(data.technologies);
 
-  await settings.update({ ...data });
+  await settings.update({ ...data }, { where: { id } });
 
   res.json({
     succeed: true,

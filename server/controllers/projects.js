@@ -9,7 +9,7 @@ const createProject = async (req, res) => {
       'Data for all the necessary fields must be provided'
     );
 
-  const initialInfos = await projects.create({
+  let initialInfos = await projects.create({
     title,
     value: title
       .split(' ')
@@ -17,10 +17,21 @@ const createProject = async (req, res) => {
       .join('-'),
     subtitle,
     overview,
-    role,
+    role: JSON.stringify(role),
     date,
     locationYear,
   });
+
+  initialInfos.dataValues.role = JSON.parse(initialInfos.dataValues.role);
+  initialInfos.dataValues.techStack = JSON.parse(
+    initialInfos.dataValues.techStack
+  );
+  initialInfos.dataValues.sliderContents = JSON.parse(
+    initialInfos.dataValues.sliderContents
+  );
+  initialInfos.dataValues.thumbnailContents = JSON.parse(
+    initialInfos.dataValues.thumbnailContents
+  );
 
   res.json({
     succeed: true,
@@ -72,17 +83,20 @@ const updateProjectContents = async (req, res) => {
     }
   }
 
+  if (data.techStack) data.techStack = JSON.stringify(data.techStack);
+
   await projects.update({ ...data }, { where: { id: projectId } });
 
-  data.techStack = JSON.parse(data.techStack);
-  data.videos = JSON.parse(data.videos);
-  data.sliderContents = JSON.parse(data.sliderContents);
+  if (data.techStack) data.techStack = JSON.parse(data.techStack);
+  if (data.videos) data.videos = JSON.parse(data.videos);
+  if (data.sliderContents)
+    data.sliderContents = JSON.parse(data.sliderContents);
 
   const result = { ...project, ...data };
 
   res.json({
     succeed: true,
-    msg: 'Successfullt updated project content!',
+    msg: 'Successfully updated project content!',
     result: result,
   });
 };
@@ -101,10 +115,12 @@ const editProjectInfos = async (req, res) => {
     );
 
   if (data.techStack) data.techStack = JSON.stringify(data.techStack);
+  if (data.role) data.role = JSON.stringify(data.role);
 
   await projects.update({ ...data }, { where: { id: projectId } });
 
-  data.techStack = JSON.parse(data.techStack);
+  if (data.techStack) data.techStack = JSON.parse(data.techStack);
+  if (data.role) data.role = JSON.parse(data.role);
 
   res.json({
     succeed: true,
@@ -201,15 +217,19 @@ const editProjectContents = async (req, res) => {
 
   await project.save();
 
-  // project.dataValues.videos = JSON.parse(project.dataValues.videos);
-  // project.dataValues.sliderContents = JSON.parse(
-  //   project.dataValues.sliderContents
-  // );
+  project.dataValues.videos = JSON.parse(project.dataValues.videos);
+  project.dataValues.sliderContents = JSON.parse(
+    project.dataValues.sliderContents
+  );
+  project.dataValues.thumbnailContents = JSON.parse(
+    project.dataValues.thumbnailContents
+  );
   // project.dataValues.techStack = JSON.parse(project.dataValues.techStack);
 
   res.json({
     succeed: true,
     msg: 'Successfully updated project contents!',
+    result: project,
   });
 };
 
@@ -224,7 +244,7 @@ const deleteProjectContents = async (req, res) => {
   if (!project)
     throw new BadRequestError('Please Enter the correct project Id!');
 
-  if (mode === '	bannerImg') {
+  if (mode === 'bannerImg') {
     if (project.bannerImg) deleteFile(project.bannerImg);
   } else if (mode === 'videos') {
     let dataVideos = JSON.parse(project.videos);

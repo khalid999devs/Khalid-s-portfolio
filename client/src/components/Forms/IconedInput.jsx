@@ -22,6 +22,7 @@ const IconedInput = ({
       onSubmit={(e) => {
         e.preventDefault();
         handleSubmit(e, name, value);
+        setValue('');
       }}
     >
       <input

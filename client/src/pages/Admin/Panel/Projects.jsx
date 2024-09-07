@@ -20,7 +20,7 @@ const Projects = () => {
     deleteProject(projectId, projectName, setLoading, setPopup)
       .then((data) => {
         setPopup({
-          text: res.data.msg,
+          text: data.msg,
           type: 'success',
           state: true,
         });
@@ -46,7 +46,7 @@ const Projects = () => {
       });
   }, []);
 
-  console.log(projects);
+  // console.log(projects);
 
   return (
     <div className='flex flex-row flex-wrap gap-5'>

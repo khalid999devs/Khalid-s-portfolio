@@ -26,10 +26,12 @@ const ProjectCard = ({
         <div className='absolute right-3 top-3 flex gap-2 items-center'>
           <RoundedIconBtn
             onClick={() => navigate(`/admin/edit-project/${value}`)}
+            classes={`hover:!bg-green-800`}
           />
           <RoundedIconBtn
             onClick={() => handleDeleteProject(id, title)}
             Icon={MdOutlineDelete}
+            classes={`hover:!bg-red-700`}
           />
         </div>
       </div>

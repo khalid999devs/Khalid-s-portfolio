@@ -10,6 +10,6 @@ const router = require('express').Router();
 router.get('/', adminValidate, getSettings);
 
 router.post('/add', adminValidate, addSettings);
-router.patch('/edit', adminValidate, editSettings);
+router.patch('/edit/:id', adminValidate, editSettings);
 
 module.exports = router;

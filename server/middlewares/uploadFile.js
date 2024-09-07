@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
 
     let destName = resolve(__dirname, `../uploads/${file.fieldname}`);
 
-    const titleStr = req.body.title
+    const titleStr = req.body?.title
       .split(' ')
       .map((word) => word.toLowerCase())
       .join('-');
@@ -76,7 +76,7 @@ const storage = multer.diskStorage({
       fileExt = type[type.length - 1];
     }
 
-    const titleStr = req.body.title
+    const titleStr = req.body?.title
       .split(' ')
       .map((word) => word.toLowerCase())
       .join('-');

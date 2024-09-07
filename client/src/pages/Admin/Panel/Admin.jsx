@@ -1,10 +1,27 @@
-import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import AdminBar from '../../../components/Navs/Admin/AdminBar';
 import AdminNav from '../../../components/Navs/Admin/AdminNav';
+import axios from 'axios';
+import { reqs } from '../../../axios/requests';
 
 const Admin = () => {
+  const navigate = useNavigate();
   const [pageTitle, setPageTitle] = useState('Dashboard');
+
+  useEffect(() => {
+    axios
+      .get(reqs.IS_ADMIN_VALID, {
+        withCredentials: true,
+      })
+      .then((res) => {
+        if (!res.data.succeed) navigate('/admin-login');
+      })
+      .catch((err) => {
+        navigate('/admin-login');
+      });
+  }, [pageTitle]);
+
   return (
     <div className='bg-body-main min-h-screen w-full'>
       <AdminBar title={pageTitle} />
