@@ -33,7 +33,7 @@ const ProjectTitles = ({
         locationYear: projectData?.locationYear,
       });
     }
-  }, [mode]);
+  }, [mode, projectData]);
 
   const handleInputSubmit = (e, name, value) => {
     setTitlesData((titlesData) => ({
@@ -123,7 +123,7 @@ const ProjectTitles = ({
       </div>
 
       <div className='flex w-full items-end justify-end'>
-        <div className='flex items-center justify-center'>
+        <div className='flex items-center gap-3 justify-center'>
           <PrimaryButton
             // state='small'
             text={mode === 'create' ? 'Create Project' : 'NEXT PAGE'}

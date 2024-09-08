@@ -25,7 +25,7 @@ const ProjectCard = ({
         />
         <div className='absolute right-3 top-3 flex gap-2 items-center'>
           <RoundedIconBtn
-            onClick={() => navigate(`/admin/edit-project/${value}`)}
+            onClick={() => navigate(`/admin/edit-project/${value}?id=${id}`)}
             classes={`hover:!bg-green-800`}
           />
           <RoundedIconBtn
@@ -47,7 +47,7 @@ const ProjectCard = ({
           <PrimaryButton
             classes={`!text-sm w-full !rounded-full`}
             text={'Details'}
-            onClick={() => navigate(`/admin/edit-project/${value}`)}
+            onClick={() => navigate(`/admin/edit-project/${value}?id=${id}`)}
           />
         </div>
       </div>

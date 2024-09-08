@@ -1,9 +1,12 @@
 import React from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
+import ProjectDetails from '../../../components/Admin/Projects/SingleProject/ProjectDetails';
 
 const EditProject = () => {
-  const { value } = useParams();
-  return <div>EditProject- {value}</div>;
+  const [searchParams] = useSearchParams();
+  const id = searchParams.get('id');
+
+  return <ProjectDetails mode='edit' projectId={id} />;
 };
 
 export default EditProject;

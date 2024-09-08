@@ -5,17 +5,20 @@ import ProgressAndDel from './ProgressAndDel';
 import axios from 'axios';
 import { reqs } from '../../../../axios/requests';
 import ProjectTitles from './ProjectTitles';
-import { newProjIllustration } from '../../../../assets';
+import { editProjIllustration, newProjIllustration } from '../../../../assets';
 import LinksAndTechs from '../ProjectContents/LinksAndTechs';
 import Banner from '../ProjectContents/Banner';
 import Videos from '../ProjectContents/Videos';
 import Thumbnails from '../ProjectContents/Thumbnails';
+import SliderContents from '../ProjectContents/SliderContents';
+import { useNavigate } from 'react-router-dom';
 
 const ProjectDetails = ({ mode = 'create', projectId }) => {
-  const [formMode, setFormMode] = useState('content'); //info||content
+  const navigate = useNavigate();
+  const [formMode, setFormMode] = useState('info'); //info||content
   const [projectData, setProjectData] = useState({
-    id: null,
-    title: '',
+    id: 4 || null,
+    title: 'anther new project',
     subtitle: '',
     overview: '',
     role: [],
@@ -28,6 +31,20 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
     state: false,
   });
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (formMode === 'content') {
+      const createdProjectInfo =
+        localStorage.getItem('project') &&
+        JSON.parse(localStorage.getItem('project'));
+      if (createdProjectInfo.value && createdProjectInfo.id) {
+        navigate(
+          `/admin/edit-project/${createdProjectInfo.value}?id=${createdProjectInfo.id}`,
+          { replace: true }
+        );
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (mode === 'edit') {
@@ -77,15 +94,20 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
         .then((res) => {
           setLoading(false);
           if (res.data.succeed) {
+            const initInfos = res.data.initialInfos;
             setProjectData((projectData) => ({
               ...projectData,
-              ...res.data.initialInfos,
+              ...initInfos,
             }));
             setPopup({
               text: res.data.msg,
               type: 'success',
               state: true,
             });
+            localStorage.setItem(
+              'project',
+              JSON.stringify({ id: initInfos.id, value: initInfos.value })
+            );
             setFormMode('content');
           }
         })
@@ -197,6 +219,10 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
         }
       }
 
+      // for (const entry of fd.entries()) {
+      //   console.log(entry);
+      // }
+
       setLoading(true);
       setPopup({
         text: 'Uploading...',
@@ -209,13 +235,15 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
         })
         .then((res) => {
           setLoading(false);
-          if (res.data.succeed) {
+          if (res?.data.succeed) {
             setPopup({
               text: res.data.msg,
               type: 'success',
               state: true,
             });
             const result = res.data.result;
+            console.log(result);
+
             setProjectData((projectData) => ({
               ...projectData,
               videos: result?.videos,
@@ -294,7 +322,9 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
           <div className='w-full hidden lg:flex pt-10 items-start justify-center h-full col-span-3'>
             <img
               className='w-full h-auto'
-              src={newProjIllustration}
+              src={
+                mode === 'create' ? newProjIllustration : editProjIllustration
+              }
               alt='project-create-img'
             />
           </div>
@@ -319,13 +349,19 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
           <Videos
             projectData={projectData}
             mode={mode}
-            handleDelete={handleDeleteProject}
+            handleDelete={handleDeleteProjectContents}
             handleSubmit={handleEditProjectContents}
           />
           <Thumbnails
             projectData={projectData}
             mode={mode}
-            handleDelete={handleDeleteProject}
+            handleDelete={handleDeleteProjectContents}
+            handleSubmit={handleEditProjectContents}
+          />
+          <SliderContents
+            projectData={projectData}
+            mode={mode}
+            handleDelete={handleDeleteProjectContents}
             handleSubmit={handleEditProjectContents}
           />
         </div>

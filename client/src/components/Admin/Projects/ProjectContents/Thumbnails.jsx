@@ -37,8 +37,6 @@ const Thumbnails = ({ projectData, mode, handleSubmit, handleDelete }) => {
     }
   };
 
-  console.log(thumbnails);
-
   return (
     <div className='box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8 pt-7 col-span-10 lg:col-span-5'>
       <div className='grid w-full h-full gap-8'>
@@ -49,7 +47,7 @@ const Thumbnails = ({ projectData, mode, handleSubmit, handleDelete }) => {
           <div className='flex w-full gap-5'>
             <div className='h-[160px] w-[230px]'>
               <ImgFileUploader
-                dragActiveText={'Drop Banner Image here!'}
+                dragActiveText={'Drop Thumbnail Image here!'}
                 fileImg={
                   uploadedThumbnails[uploadedThumbnails.length - 1] || null
                 }

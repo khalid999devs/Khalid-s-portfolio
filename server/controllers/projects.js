@@ -50,6 +50,7 @@ const updateProjectContents = async (req, res) => {
 
   if (req.files) {
     const uploadedFiles = req.files;
+
     if (uploadedFiles.bannerImg?.length > 0) {
       data.bannerImg = uploadedFiles.bannerImg[0].path;
     }
@@ -131,7 +132,8 @@ const editProjectInfos = async (req, res) => {
 
 const editProjectContents = async (req, res) => {
   const projectId = req.params.id;
-  const { mode, contentId, replaceItem } = req.body;
+  let { mode, contentId, replaceItem } = req.body;
+  replaceItem = JSON.parse(replaceItem);
 
   let project = await projects.findOne({ where: { id: projectId } });
   if (!project)
@@ -139,9 +141,10 @@ const editProjectContents = async (req, res) => {
 
   if (req.files) {
     const uploadedFiles = req.files;
+
     if (mode === 'bannerImg' && uploadedFiles.bannerImg?.length > 0) {
       if (project.img) deleteFile(project.img);
-      project.img = uploadedFiles.bannerImg[0].path;
+      project.bannerImg = uploadedFiles.bannerImg[0].path;
     } else if (mode === 'videos' && uploadedFiles.videos?.length > 0) {
       let dataVideos = JSON.parse(project.videos);
 
@@ -163,6 +166,7 @@ const editProjectContents = async (req, res) => {
           }
         });
       }
+
       project.videos = JSON.stringify(dataVideos);
     } else if (
       mode === 'sliderContents' &&
@@ -195,7 +199,7 @@ const editProjectContents = async (req, res) => {
       let dataThumbnailContents = JSON.parse(project.thumbnailContents);
 
       if (!replaceItem) {
-        uploadedFiles.thumbnailContents((item, index) => {
+        uploadedFiles.thumbnailContents.forEach((item, index) => {
           dataThumbnailContents.push({
             id: `${dataThumbnailContents?.length + 1}@${Date.now()}`,
             url: item.path,
@@ -238,41 +242,52 @@ const deleteProjectContents = async (req, res) => {
   const { mode, contentId } = req.body;
 
   let project = await projects.findOne({
-    attributes: ['id', 'bannerImg', 'sliderContents', 'videos'],
+    attributes: [
+      'id',
+      'bannerImg',
+      'sliderContents',
+      'videos',
+      'thumbnailContents',
+    ],
     where: { id: projectId },
   });
+
   if (!project)
     throw new BadRequestError('Please Enter the correct project Id!');
 
   if (mode === 'bannerImg') {
     if (project.bannerImg) deleteFile(project.bannerImg);
+    project.bannerImg = null;
   } else if (mode === 'videos') {
     let dataVideos = JSON.parse(project.videos);
+    let filteredVideos = [];
     dataVideos.forEach((item) => {
       if (item.id === contentId) {
         if (item.url) deleteFile(item.url);
         item.serverVid = {};
-      }
+      } else filteredVideos.push(item);
     });
-    project.videos = JSON.stringify(dataVideos);
+    project.videos = JSON.stringify(filteredVideos);
   } else if (mode === 'sliderContents') {
     let dataSliderContents = JSON.parse(project.sliderContents);
+    let filteredSliderContents = [];
     dataSliderContents.forEach((item) => {
       if (item.id === contentId) {
         if (item.url) deleteFile(item.url);
         item.serverContent = {};
-      }
+      } else filteredSliderContents.push(item);
     });
-    project.sliderContents = JSON.stringify(dataSliderContents);
+    project.sliderContents = JSON.stringify(filteredSliderContents);
   } else if (mode === 'thumbnailContents') {
     let dataThumbnailContents = JSON.parse(project.thumbnailContents);
+    let filteredThumbnailContents = [];
     dataThumbnailContents.forEach((item) => {
       if (item.id === contentId) {
         if (item.url) deleteFile(item.url);
         item.serverThumb = {};
-      }
+      } else filteredThumbnailContents.push(item);
     });
-    project.thumbnailContents = JSON.stringify(dataThumbnailContents);
+    project.thumbnailContents = JSON.stringify(filteredThumbnailContents);
   }
 
   await project.save();
@@ -345,6 +360,7 @@ const getProjects = async (req, res) => {
     result = await projects.findOne({ where: { id: projectId } });
 
     result.dataValues.techStack = JSON.parse(result.dataValues.techStack);
+    result.dataValues.role = JSON.parse(result.dataValues.role);
     result.dataValues.videos = JSON.parse(result.dataValues.videos);
     result.dataValues.thumbnailContents = JSON.parse(
       result.dataValues.thumbnailContents

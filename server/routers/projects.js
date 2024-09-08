@@ -41,6 +41,6 @@ router.patch(
 );
 router.patch('/delete-contents/:id', adminValidate, deleteProjectContents);
 
-router.delete('/delete', adminValidate, deleteProject);
+router.delete('/delete/:id', adminValidate, deleteProject);
 
 module.exports = router;

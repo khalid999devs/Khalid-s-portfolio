@@ -14,6 +14,7 @@ const storage = multer.diskStorage({
     if (!file.fieldname) {
       return cb(null, true);
     }
+
     const isFieldValid = validFields.test(file.fieldname);
 
     if (!isFieldValid) {
@@ -101,14 +102,14 @@ const upload = multer({
   storage: storage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const fileTypes = /jpeg|jpg|png|webp|mp4|wav/;
+    const fileTypes = /jpeg|jpg|png|webp|mp4|wav|mkv|x-matroska/;
 
     const mimeType = fileTypes.test(file.mimetype);
 
     if (mimeType) {
       return cb(null, true);
     } else {
-      cb(new Error('only jpg,png,jpeg,webp,mp4,wav is allowed!'));
+      cb(new Error('only jpg,png,jpeg,webp,mp4,wav,mkv is allowed!'));
     }
 
     cb(new Error('there was an unknown error'));

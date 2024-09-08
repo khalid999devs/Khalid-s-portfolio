@@ -20,7 +20,9 @@ export const deleteProject = (
       });
     return new Promise((resolve, reject) => {
       axios
-        .delete(`${reqs.DELETE_PROJECT}/${projectId}`)
+        .delete(`${reqs.DELETE_PROJECT}/${projectId}`, {
+          withCredentials: true,
+        })
         .then((res) => {
           setLoading(false);
           if (res.data.succeed) {

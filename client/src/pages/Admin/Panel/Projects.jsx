@@ -5,6 +5,7 @@ import { deleteProject } from '../../../axios/projects.js';
 import Popup from '../../../components/utils/Popup.jsx';
 import axios from 'axios';
 import { reqFileWrapper, reqs } from '../../../axios/requests.js';
+import { projectPlaceholder } from '../../../assets/index.js';
 
 const Projects = () => {
   const { setPageTitle } = useOutletContext();
@@ -24,6 +25,9 @@ const Projects = () => {
           type: 'success',
           state: true,
         });
+        setProjects((projects) =>
+          projects.filter((item) => item.id !== projectId)
+        );
       })
       .catch((error) => {
         setPopup({
@@ -46,21 +50,14 @@ const Projects = () => {
       });
   }, []);
 
-  // console.log(projects);
-
   return (
     <div className='flex flex-row flex-wrap gap-5'>
-      <ProjectCard handleDeleteProject={handleDeleteProject} />
-      <ProjectCard handleDeleteProject={handleDeleteProject} />
       {projects.map((item, key) => (
         <ProjectCard
           id={item.id}
           title={item.title}
           subtitle={item.subtitle}
-          img={
-            item.thumbnailContents ??
-            reqFileWrapper(item.thumbnailContents[0].url)
-          }
+          img={reqFileWrapper(item.thumbnailContents[0]?.url)}
           value={item.value}
           key={key}
           handleDeleteProject={handleDeleteProject}

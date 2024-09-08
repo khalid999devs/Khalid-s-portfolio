@@ -6,7 +6,7 @@ const FormIconLists = ({
   handleInputSubmit,
   handleRemoveItem,
   name,
-  items,
+  items = [],
   containerClasses,
   type = 'verticle',
 }) => {

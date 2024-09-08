@@ -114,7 +114,7 @@ const ImgFileUploader = ({
         <div className='absolute left-0 bottom-0 w-max'>
           <PrimaryButton
             type={'small'}
-            text={video ? 'Change video' : 'Change Image'}
+            text={video ? 'Add video' : 'Add Image'}
             Icon={RiImageAddLine}
             classes={'!py-1 !px-1.5 rounded-none text-xs text-body-main'}
             onClick={openFileSelector}
