@@ -3,8 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { reqs } from '../../../axios/requests';
 import Technologies from '../../../components/Admin/Settings/Technologies';
 import Popup from '../../../components/utils/Popup';
+import { useOutletContext } from 'react-router-dom';
 
 const Settings = () => {
+  const { setPageTitle } = useOutletContext();
   const [mode, setMode] = useState('edit'); //create|edit
   const [settings, setSettings] = useState({
     technologies: undefined,
@@ -17,6 +19,7 @@ const Settings = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    setPageTitle('Settings');
     axios
       .get(reqs.GET_SETTINGS, { withCredentials: true })
       .then((res) => {

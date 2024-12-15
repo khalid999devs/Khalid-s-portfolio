@@ -64,6 +64,9 @@
   padding: 0;
   box-sizing: border-box;
 }
+html {
+  scroll-behavior: smooth;
+}
 
 body {
   color: white;
@@ -85,6 +88,13 @@ canvas {
   max-width: 1560px;
 }
 
+.body-max-width {
+  margin-inline-start: auto;
+  margin-inline-end: auto;
+  position: relative;
+  max-width: 1360px;
+}
+
 .box-big-shadow {
   box-shadow: 2px 9px 15px -7px rgba(0, 0, 0, 0.3);
 }
@@ -92,6 +102,9 @@ canvas {
 @layer utilities {
   .sec-x-padding {
     @apply px-[5px] sm:px-[10px] md:px-[20px] lg:px-[30px];
+  }
+  .sec-inner-x-padding {
+    @apply px-[10px] sm:px-[15px] md:px-[35px] lg:px-[60px];
   }
   .flex-center {
     @apply flex items-center justify-center;

@@ -11,19 +11,28 @@ import Banner from '../ProjectContents/Banner';
 import Videos from '../ProjectContents/Videos';
 import Thumbnails from '../ProjectContents/Thumbnails';
 import SliderContents from '../ProjectContents/SliderContents';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const ProjectDetails = ({ mode = 'create', projectId }) => {
   const navigate = useNavigate();
-  const [formMode, setFormMode] = useState('info'); //info||content
+  const location = useLocation();
+  const locFormMode = location.state?.formMode;
+  const [formMode, setFormMode] = useState(locFormMode || 'info'); //info||content
   const [projectData, setProjectData] = useState({
-    id: 4 || null,
-    title: 'anther new project',
+    id: null,
+    title: '',
     subtitle: '',
     overview: '',
     role: [],
     date: '',
     locationYear: '',
+    videos: [],
+    thumbnailContents: [],
+    sliderContents: [],
+    bannerImg: null,
+    techStack: [],
+    siteLink: '',
+    codeLink: '',
   });
   const [popUp, setPopup] = useState({
     text: '',
@@ -33,14 +42,13 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (formMode === 'content') {
-      const createdProjectInfo =
-        localStorage.getItem('project') &&
-        JSON.parse(localStorage.getItem('project'));
+    if (localStorage.getItem('project')) {
+      const createdProjectInfo = JSON.parse(localStorage.getItem('project'));
       if (createdProjectInfo.value && createdProjectInfo.id) {
+        localStorage.removeItem('project');
         navigate(
           `/admin/edit-project/${createdProjectInfo.value}?id=${createdProjectInfo.id}`,
-          { replace: true }
+          { replace: true, state: { formMode: 'content' } }
         );
       }
     }
@@ -121,9 +129,8 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
         });
     }
   };
-
   const handleUpdateProjectInfos = (data) => {
-    if (data.title && data.subtitle && mode === 'edit') {
+    if (projectData.title && projectData.subtitle && mode === 'edit') {
       setLoading(true);
       setPopup({
         text: 'Updating...',
@@ -242,7 +249,6 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
               state: true,
             });
             const result = res.data.result;
-            console.log(result);
 
             setProjectData((projectData) => ({
               ...projectData,
@@ -307,8 +313,8 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
         mode={mode}
         formMode={formMode}
         setFormMode={setFormMode}
-        projectId={projectData?.projectId}
-        projectName={projectData?.projectName}
+        projectId={projectData?.id}
+        projectName={projectData?.title}
       />
       {formMode === 'info' ? (
         <div className='w-full h-full grid grid-cols-10 gap-6'>
@@ -334,11 +340,11 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
           <LinksAndTechs
             mode={mode}
             projectData={projectData}
-            handleSubmitData={
+            handleSubmitData={(data) => {
               mode === 'create'
-                ? handleUpdateProjectContents
-                : handleUpdateProjectInfos
-            }
+                ? handleUpdateProjectContents(data)
+                : handleUpdateProjectInfos(data);
+            }}
           />
           <Banner
             projectData={projectData}

@@ -29,7 +29,7 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
       // };
       // loadThumbnails();
 
-      setVideos(projectData?.videos);
+      setVideos(projectData.videos);
     }
   }, [projectData, mode]);
 
@@ -159,7 +159,7 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
 
         {videos.length > 0 && (
           <div className='flex items-center flex-wrap flex-row gap-3'>
-            {videos?.map((item, key) => (
+            {videos.map((item, key) => (
               <div
                 key={key}
                 className='w-[128px] h-[100px] bg-black rounded-lg relative overflow-hidden group'

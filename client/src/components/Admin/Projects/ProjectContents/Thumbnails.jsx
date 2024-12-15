@@ -44,8 +44,8 @@ const Thumbnails = ({ projectData, mode, handleSubmit, handleDelete }) => {
           <h3 className='text-primary-main font-medium opacity-90 text-sm'>
             Thumbnail Contents
           </h3>
-          <div className='flex w-full gap-5'>
-            <div className='h-[160px] w-[230px]'>
+          <div className='flex flex-col md:flex-row w-full gap-5'>
+            <div className='h-[160px] md:max-w-[185px] w-full'>
               <ImgFileUploader
                 dragActiveText={'Drop Thumbnail Image here!'}
                 fileImg={
@@ -61,12 +61,12 @@ const Thumbnails = ({ projectData, mode, handleSubmit, handleDelete }) => {
               />
             </div>
 
-            <div className='flex flex-wrap flex-row h-full gap-2.5'>
+            <div className='flex flex-wrap flex-row gap-2'>
               {thumbnails?.map((item, key) => {
                 return (
                   <div
                     key={key}
-                    className='w-[115px] h-[75px] rounded-md overflow-hidden bg-secondary-light relative'
+                    className='w-[112px] h-[90px] md:w-[100px] md:h-[75px] rounded-md overflow-hidden bg-secondary-light relative'
                   >
                     <img
                       src={

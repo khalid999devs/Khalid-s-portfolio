@@ -17,7 +17,6 @@ export default {
           light: '#919191',
           dark: '#8E8E8E',
         },
-
         body: {
           main: '#161616',
         },

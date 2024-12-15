@@ -16,8 +16,8 @@ const ProjectCard = ({
   const navigate = useNavigate();
 
   return (
-    <div className='h-[385px] max-w-[318px] w-full bg-primary-dark rounded-xl box-big-shadow px-2 pt-3 pb-3.5 grid gap-5'>
-      <div className='relative rounded-lg overflow-hidden w-full h-[200px] bg-white'>
+    <div className='h-[375px] max-w-[312px] w-full bg-primary-dark rounded-xl box-big-shadow px-2 pt-3 pb-3.5 grid gap-5'>
+      <div className='relative rounded-lg overflow-hidden w-full h-[190px] bg-white'>
         <img
           src={img || projectPlaceholder}
           className='w-full h-full object-cover'

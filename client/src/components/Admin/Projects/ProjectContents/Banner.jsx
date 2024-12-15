@@ -8,7 +8,7 @@ const Banner = ({ projectData, handleSubmit, mode, handleDelete }) => {
     if (projectData?.id && projectData?.bannerImg) {
       setBanner(projectData.bannerImg);
     }
-  }, [mode]);
+  }, [mode, projectData]);
 
   return (
     <div className='box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8 col-span-10 lg:col-span-4'>

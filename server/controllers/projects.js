@@ -32,6 +32,7 @@ const createProject = async (req, res) => {
   initialInfos.dataValues.thumbnailContents = JSON.parse(
     initialInfos.dataValues.thumbnailContents
   );
+  initialInfos.dataValues.videos = JSON.parse(initialInfos.dataValues.videos);
 
   res.json({
     succeed: true,

@@ -20,7 +20,7 @@ const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
         techStack: projectData?.techStack,
       });
     }
-  }, [mode]);
+  }, [mode, projectData]);
 
   const handleInputSubmit = (e, name, value) => {
     setData((data) => ({
@@ -42,7 +42,7 @@ const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
           <Input
             label={'Live Sitelink'}
             inputProps={{
-              value: data.siteLink,
+              value: data.siteLink || '',
               onChange: (e) => handleInputValChange(e, setData),
               name: 'siteLink',
             }}
@@ -50,7 +50,7 @@ const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
           <Input
             label={'GitHub Code Link'}
             inputProps={{
-              value: data.codeLink,
+              value: data.codeLink || '',
               onChange: (e) => handleInputValChange(e, setData),
               name: 'codeLink',
             }}

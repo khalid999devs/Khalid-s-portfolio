@@ -40,7 +40,7 @@ const SliderContents = ({ projectData, mode, handleSubmit, handleDelete }) => {
           <h3 className='text-primary-main font-medium opacity-90 text-sm min-w-max'>
             Slider Contents
           </h3>
-          <div className='flex w-full gap-5'>
+          <div className='flex flex-col md:flex-row w-full gap-5'>
             <div className='min-h-[160px] h-[195px] min-w-[260] max-w-[285px] w-full'>
               <ImgFileUploader
                 dragActiveText={'Drop Slider Contents here!'}
