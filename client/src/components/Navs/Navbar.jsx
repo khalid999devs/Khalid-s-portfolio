@@ -20,7 +20,7 @@ const Navbar = () => {
             }}
           />
         </div>
-        <div className='flex items-center justify-between gap-8 text-md'>
+        <div className='flex items-center justify-between gap-6 text-sm'>
           <Link to={'/projects'} className='transition-all hover:opacity-85'>
             Projects
           </Link>

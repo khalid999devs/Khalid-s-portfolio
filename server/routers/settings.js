@@ -7,7 +7,7 @@ const adminValidate = require('../middlewares/adminTokenVerify');
 
 const router = require('express').Router();
 
-router.get('/', adminValidate, getSettings);
+router.get('/', getSettings);
 
 router.post('/add', adminValidate, addSettings);
 router.patch('/edit/:id', adminValidate, editSettings);

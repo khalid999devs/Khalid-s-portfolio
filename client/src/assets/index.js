@@ -12,3 +12,6 @@ export { default as langGrpImg } from '/Images/Hero/lang-grps.png';
 export { default as GravityField } from '/Images/About/gravity-field.png';
 export { default as myPic } from '/Images/About/myPic.png';
 export { default as myPicGray } from '/Images/About/myPic-gray.png';
+
+//project sec
+export { default as ScrollMouseAnime } from '/Images/Project/scroll.gif';

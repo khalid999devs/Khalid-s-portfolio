@@ -1,12 +1,12 @@
 import React from 'react';
 import SectionLabel from '../utils/SectionLabel';
 import { GravityField, myPic } from '../../assets';
-import { OutlinedSmallButton } from '../Buttons/OutlinedButton';
+import { OutlinedBigIcon } from '../Buttons/OutlinedButton';
 import SkillsAndTechs from './SkillsAndTechs';
 
 const About = () => {
   return (
-    <div className='pt-16 min-h-[300px] mb-16 w-full'>
+    <div className='pt-16 min-h-[300px] w-full pb-16 body-max-width sec-inner-x-padding'>
       {/* about me */}
       <div className='w-full flex items-start justify-between flex-col md:flex-row gap-10 md:gap-28 lg:gap-36 '>
         <div className='pt-14'>
@@ -20,6 +20,7 @@ const About = () => {
               src={GravityField}
               alt='gravity-field'
               className='w-full h-auto z-0'
+              loading='lazy'
             />
             <img
               src={myPic}
@@ -29,7 +30,7 @@ const About = () => {
             />
           </div>
 
-          <div className='flex gap-[108px] pt-[60px] pl-16 flex-col w-full md:min-w-[120px] justify-between h-full max-w-[500px] 3xl:pt-16 3xl:gap-36'>
+          <div className='flex gap-[104px] pt-[60px] pl-16 flex-col w-full md:min-w-[120px] justify-between h-full max-w-[500px] 3xl:pt-16 3xl:gap-36'>
             <p
               className='text-secondary-main md:text-sm xl:text-base uppercase indent-14'
               style={{
@@ -42,7 +43,7 @@ const About = () => {
               impactful solutions.
             </p>
             <div className='inline-block'>
-              <OutlinedSmallButton text={'DOWNLOAD CV'} />
+              <OutlinedBigIcon text={'DOWNLOAD CV'} />
             </div>
           </div>
         </div>

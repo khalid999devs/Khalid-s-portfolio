@@ -342,6 +342,7 @@ const getProjects = async (req, res) => {
       attributes: [
         'id',
         'title',
+        'bannerImg',
         'subtitle',
         'role',
         'siteLink',

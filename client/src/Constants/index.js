@@ -53,21 +53,21 @@ export const socialLinks = [
   {
     title: 'Github',
     icon: FiGithub,
-    path: '',
+    path: 'https://github.com/khalid999devs',
   },
   {
     title: 'LinkedIn',
     icon: RiLinkedinLine,
-    path: '',
+    path: 'https://www.linkedin.com/in/khalid-ahammed',
   },
   {
     title: 'X',
     icon: RiTwitterXFill,
-    path: '',
+    path: 'https://x.com/khalid999devs',
   },
   {
     title: 'YouTube',
     icon: BsYoutube,
-    path: '',
+    path: 'https://www.youtube.com/@khalid999devs',
   },
 ];

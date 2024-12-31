@@ -4,7 +4,7 @@ import { socialLinks } from '../../Constants';
 
 const Hero = () => {
   return (
-    <div className='min-h-screen grid items-stretch gap-4 w-full pt-[160px] pb-2 border-b-[0.5px] border-opacity-40 border-b-secondary-main'>
+    <div className='min-h-screen body-max-width sec-inner-x-padding grid items-stretch gap-4 w-full pt-[160px] pb-2'>
       <div className='flex relative items-center justify-between mt- w-full'>
         <p className='text-xs text-montreal-mono text-secondary-light uppercase'>
           Based in Bangladesh
