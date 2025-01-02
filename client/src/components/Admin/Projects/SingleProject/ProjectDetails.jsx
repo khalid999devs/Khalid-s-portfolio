@@ -24,6 +24,7 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
     subtitle: '',
     overview: '',
     role: [],
+    category: '',
     date: '',
     locationYear: '',
     videos: [],
@@ -40,6 +41,7 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
     state: false,
   });
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     if (localStorage.getItem('project')) {
@@ -52,6 +54,26 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
         );
       }
     }
+    axios
+      .post(reqs.GET_PROJECT, { mode: 'cat' })
+      .then((res) => {
+        if (res.data.succeed) {
+          setCategories(res.data.result);
+        } else {
+          setPopup({
+            text: res.data.msg,
+            type: 'error',
+            state: true,
+          });
+        }
+      })
+      .catch((err) => {
+        setPopup({
+          text: err.response.data.msg,
+          type: 'error',
+          state: true,
+        });
+      });
   }, []);
 
   useEffect(() => {
@@ -321,6 +343,7 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
           <ProjectTitles
             handleCreateProject={handleCreateProject}
             mode={mode}
+            categories={categories}
             setFormMode={setFormMode}
             projectData={projectData}
             handleUpdateProjectInfos={handleUpdateProjectInfos}

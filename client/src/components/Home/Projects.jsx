@@ -14,8 +14,6 @@ const ProjectsShows = () => {
     setActiveSlide(projects[0]);
   }, [projects]);
 
-  console.log(projects);
-
   return (
     <div className='w-full body-max-width sec-inner-x-padding h-auto'>
       <div className='min-h-screen w-full'>

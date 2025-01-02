@@ -8,7 +8,7 @@ const SkillsAndTechs = () => {
   const { settings } = useAppContext();
 
   useEffect(() => {
-    let techs = settings.technologies;
+    let techs = settings?.technologies;
 
     if (techs) {
       setTechnologies([techs.Languages, techs.Frontend, techs.Backend]);
@@ -34,7 +34,7 @@ const SkillsAndTechs = () => {
         </div>
 
         <div className='w-full md:w-[73%] flex flex-col items-start justify-start gap-7 md:pl-3'>
-          {technologies.map((item, key) => {
+          {technologies?.map((item, key) => {
             return (
               <div key={key} className='flex flex-row flex-wrap gap-3'>
                 {item?.map((prop, i) => (

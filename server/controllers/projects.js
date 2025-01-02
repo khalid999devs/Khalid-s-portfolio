@@ -3,7 +3,8 @@ const { BadRequestError, UnauthorizedError } = require('../errors');
 const deleteFile = require('../utils/deleteFile');
 
 const createProject = async (req, res) => {
-  const { title, subtitle, overview, role, date, locationYear } = req.body;
+  const { title, subtitle, overview, role, date, category, locationYear } =
+    req.body;
   if (!title || !subtitle || !overview || !role || !locationYear || !date)
     throw new BadRequestError(
       'Data for all the necessary fields must be provided'
@@ -15,6 +16,7 @@ const createProject = async (req, res) => {
       .split(' ')
       .map((word) => word.toLowerCase())
       .join('-'),
+    category: category || 'all',
     subtitle,
     overview,
     role: JSON.stringify(role),
@@ -343,6 +345,7 @@ const getProjects = async (req, res) => {
         'id',
         'title',
         'bannerImg',
+        'category',
         'subtitle',
         'role',
         'siteLink',
@@ -370,6 +373,11 @@ const getProjects = async (req, res) => {
     result.dataValues.sliderContents = JSON.parse(
       result.dataValues.sliderContents
     );
+  } else if (mode === 'cat') {
+    result = await projects.findAll({
+      attributes: ['id', 'title', 'category'],
+    });
+    result = [...new Set(result.map((item) => item.dataValues.category))];
   }
 
   res.json({

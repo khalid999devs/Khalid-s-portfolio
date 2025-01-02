@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { IoArrowUp } from 'react-icons/io5';
 import Input from '../../../Forms/Input';
 import { handleInputValChange } from '../../../../utils/FormValidations/handleValueChange';
@@ -10,6 +10,7 @@ const ProjectTitles = ({
   mode,
   projectData,
   setFormMode,
+  categories,
   handleCreateProject,
   handleUpdateProjectInfos,
 }) => {
@@ -18,9 +19,13 @@ const ProjectTitles = ({
     subtitle: '',
     overview: '',
     role: [],
+    category: '',
     date: '',
     locationYear: '',
   });
+  const [filteredCategories, setFilteredCategories] = useState([]);
+  const [isSuggestion, setIsSuggestion] = useState(false);
+  const formRef = useRef(null);
 
   useEffect(() => {
     if (projectData?.id) {
@@ -29,11 +34,39 @@ const ProjectTitles = ({
         subtitle: projectData?.subtitle,
         overview: projectData?.overview,
         role: projectData?.role,
+        category: projectData?.category,
         date: projectData?.date,
         locationYear: projectData?.locationYear,
       });
     }
   }, [mode, projectData]);
+
+  useEffect(() => {
+    if (categories?.length > 0) setFilteredCategories(categories);
+  }, [categories]);
+
+  useEffect(() => {
+    if (titlesData.category) {
+      setFilteredCategories(
+        categories.filter((item) =>
+          item.toLowerCase().includes(titlesData.category.toLowerCase())
+        )
+      );
+    }
+  }, [titlesData.category]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (formRef.current && !formRef.current.contains(event.target)) {
+        setIsSuggestion(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleInputSubmit = (e, name, value) => {
     setTitlesData((titlesData) => ({
@@ -109,6 +142,74 @@ const ProjectTitles = ({
                   name: 'locationYear',
                 }}
               />
+              <form
+                className='relative'
+                ref={formRef}
+                onSubmit={(e) => {
+                  e.preventDefault();
+
+                  if (filteredCategories.length > 0) {
+                    setTitlesData((titlesData) => ({
+                      ...titlesData,
+                      category: filteredCategories[0],
+                    }));
+                    setIsSuggestion(false);
+                  }
+                }}
+              >
+                <Input
+                  label={'Category'}
+                  inputProps={{
+                    value: titlesData.category,
+                    name: 'category',
+                    autoComplete: 'off',
+                    placeholder: 'Website',
+                    onChange: (e) => {
+                      !isSuggestion && setIsSuggestion(true);
+                      e.target.value === '' && setIsSuggestion(false);
+                      if (
+                        e.target.value?.toLowerCase() ===
+                        filteredCategories[0]?.toLowerCase()
+                      ) {
+                        setTitlesData((titlesData) => ({
+                          ...titlesData,
+                          category: filteredCategories[0],
+                        }));
+                      } else handleInputValChange(e, setTitlesData);
+                    },
+                  }}
+                />
+                {isSuggestion && (
+                  <div
+                    id='tooltip'
+                    className='absolute top-[102%] left-0 w-full bg-secondary-main rounded-lg grid max-h-[150px] h-auto overflow-auto z-20'
+                  >
+                    {filteredCategories.map((item, key) => {
+                      return (
+                        <div
+                          key={key}
+                          className={`w-full py-3 px-3 ${
+                            key + 1 != filteredCategories.length
+                              ? 'border-b border-b-1 border-b-primary-main border-opacity-30'
+                              : ''
+                          } capitalize cursor-pointer transition-all duration-300 hover:bg-neutral-700 text-sm`}
+                          onClick={() =>
+                            setTitlesData((titlesData) => ({
+                              ...titlesData,
+                              category: item,
+                            }))
+                          }
+                        >
+                          {item}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </form>
+            </div>
+
+            <div className='grid gap-8 w-full md:grid-cols-2'>
               <Input
                 label={'Date'}
                 inputProps={{
