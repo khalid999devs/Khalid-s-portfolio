@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import { useAppContext } from '../../App';
 import { reqFileWrapper } from '../../axios/requests';
+import { useNavigate } from 'react-router-dom';
 
 const ProjectsShows = () => {
+  const navigate = useNavigate();
   const {
     appData: { projects },
   } = useAppContext();
@@ -62,6 +64,9 @@ const ProjectsShows = () => {
                 src={reqFileWrapper(item?.bannerImg)}
                 className='w-full h-full object-cover duration-1000 cursor-pointer hover:scale-110 filter contrast-100 brightness-100'
                 alt={`Image ${index + 1}`}
+                onClick={() => {
+                  navigate(`/singleProject/${item.value + '@' + item.id}`);
+                }}
               />
             </div>
           ))}

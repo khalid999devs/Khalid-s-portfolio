@@ -344,6 +344,7 @@ const getProjects = async (req, res) => {
       attributes: [
         'id',
         'title',
+        'value',
         'bannerImg',
         'category',
         'subtitle',
@@ -359,6 +360,7 @@ const getProjects = async (req, res) => {
       item.dataValues.thumbnailContents = JSON.parse(
         item.dataValues.thumbnailContents
       );
+      item.dataValues.role = JSON.parse(item.dataValues.role);
     });
   } else if (mode === 'single') {
     if (!projectId) throw new BadRequestError('Project Id must be provided!');
