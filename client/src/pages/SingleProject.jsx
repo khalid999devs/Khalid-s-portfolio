@@ -1,23 +1,50 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { reqFileWrapper, reqs } from '../axios/requests';
 import { loadingGif, projectPlaceholder } from '../assets';
 import { BsFillCaretRightFill } from 'react-icons/bs';
 import { FaGithub } from 'react-icons/fa';
-import { MdArrowOutward } from 'react-icons/md';
 
 import TextDividerHeading from '../components/project/TextDividerHeading';
 import LiveProjectButton from '../components/project/LiveProjectButton';
-import { OutlinedSmallButton } from '../components/Buttons/OutlinedButton';
+import {
+  OutlinedBigIcon,
+  OutlinedSmallButton,
+} from '../components/Buttons/OutlinedButton';
 import ProjectVideos from './Project/projectVideos';
+import { useAppContext } from '../App';
+import HRLine from '../components/utils/HRLine';
 
 const SingleProject = () => {
+  const navigate = useNavigate();
+  const {
+    appData: { projects },
+  } = useAppContext();
   const { value } = useParams();
   const [project, setProject] = useState({});
   const [projLoading, setProjLoading] = useState(false);
+  const [nextProject, setNextProject] = useState({});
 
   console.log(project);
+
+  const findProjectAndgetNext = () => {
+    const numberOfProjects = projects?.length;
+    if (numberOfProjects && numberOfProjects > 1 && project?.value) {
+      const currKey = projects.findIndex(
+        (item) => item.value === project.value
+      );
+      if (currKey + 1 >= numberOfProjects) {
+        setNextProject(projects[0]);
+      } else {
+        setNextProject(projects[currKey]);
+      }
+    }
+  };
+
+  useEffect(() => {
+    findProjectAndgetNext();
+  }, [project, projects]);
 
   useEffect(() => {
     const spArr = value.split('@');
@@ -35,10 +62,16 @@ const SingleProject = () => {
         console.log(err);
         setProjLoading(false);
       });
+
+    // window.scrollTo({
+    //   top: 0,
+    //   left: 0,
+    //   behavior: 'smooth',
+    // });
   }, [value]);
 
   return (
-    <div className='w-full pb-28 flex flex-col gap-24 min-h-screen screen-max-width pt-[160px]'>
+    <div className='w-full pb-28 flex flex-col gap-20 lg:gap-24 min-h-screen screen-max-width pt-[160px]'>
       {projLoading && (
         <div className='w-full min-h-[400px] flex items-center justify-center'>
           <img
@@ -135,6 +168,67 @@ const SingleProject = () => {
       )}
 
       {/* showcase-slider */}
+
+      {/* projects tabs */}
+      {projects?.length > 1 && nextProject?.value && (
+        <>
+          <HRLine />
+
+          <div className='relative w-full sec-project-x-padding flex flex-col gap-3.5 justify-center items-center'>
+            <div className='text-secondary-light text-sm'>Next Project</div>
+            <h2 className='text-4xl '>{nextProject.title}</h2>
+
+            <div className='w-full overflow-hidden h-auto border-b-[0.5] border-secondary-main border-b border-opacity-40'>
+              <div
+                className='bg-primary-dark mt-4 rounded-t-md max-h-[90px] max-w-[200px] w-full p-3 pb-0 overflow-hidden m-auto translate-y-2 transition-transform duration-300 cursor-pointer hover:translate-y-0'
+                onClick={() => {
+                  navigate(
+                    `/singleProject/${
+                      nextProject?.value + '@' + nextProject?.id
+                    }`
+                  );
+                }}
+              >
+                <div className='rounded-t-lg '>
+                  <img
+                    src={reqFileWrapper(
+                      nextProject?.thumbnailContents[0]?.url ||
+                        nextProject?.bannerImg
+                    )}
+                    alt='next project image'
+                    className='rounded-t-lg h-full'
+                  />
+                </div>
+              </div>
+              {/* <HRLine classes={`!my-0`} /> */}
+            </div>
+
+            <div className='mt-10'>
+              <OutlinedBigIcon
+                text={'All works'}
+                onClick={() => {
+                  navigate('/projects');
+                }}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* projects slider */}
+      <div className='w-full overflow-hidden sec-x-padding'>
+        <div className='flex w-full flex-row gap-2 ms:gap-3.5 lg:gap-4 overflow-x-hidden scroll-smooth'>
+          {project?.sliderContents?.map((item, key) => (
+            <div key={item.id} className='max-w-[80%] h-auto flex-shrink-0'>
+              <img
+                src={reqFileWrapper(item?.url)}
+                className='w-full h-auto rounded-[18px]'
+                alt={`Slide image ${key + 1}`}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
