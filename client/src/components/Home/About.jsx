@@ -8,13 +8,13 @@ const About = () => {
   return (
     <div className='pt-16 min-h-[300px] w-full pb-16 body-max-width sec-inner-x-padding'>
       {/* about me */}
-      <div className='w-full flex items-start justify-between flex-col md:flex-row gap-10 md:gap-28 lg:gap-36 '>
-        <div className='pt-14'>
+      <div className='w-full flex mb-20 md:mb-12 xl:mb-6 items-start justify-between flex-col lg:flex-row gap-6 md:gap-10 lg:gap-36 '>
+        <div className='pt-6 xl:pt-14'>
           <SectionLabel text='About' />
         </div>
 
         {/* Image and text */}
-        <div className='flex justify-between w-full md:w-[72%]'>
+        <div className='flex flex-col justify-center items-center md:items-start md:flex-row md:justify-between w-full lg:w-[72%]'>
           <div className='max-w-[400px] w-full relative'>
             <img
               src={GravityField}
@@ -25,14 +25,14 @@ const About = () => {
             <img
               src={myPic}
               alt='gravity-field'
-              className='md:w-[73%] xl:w-[65%] absolute top-[47%] left-[46%] h-auto z-10 object-cover saturate-[20%]'
+              className='w-[72%] md:w-[70%] lg:w-[75%] xl:w-[65%] absolute top-[47%] left-[46%] h-auto z-10 object-cover saturate-[20%]'
               style={{ transform: 'translate(-50%,-50%)' }}
             />
           </div>
 
-          <div className='flex gap-[104px] pt-[60px] pl-16 flex-col w-full md:min-w-[120px] justify-between h-full max-w-[500px] 3xl:pt-16 3xl:gap-36'>
+          <div className='flex gap-10 md:gap-20 mds:gap-[115px] mdl:gap-[190px] lg:gap-[85px] xl:gap-[104px] md:pt-10 lg:pt-[25px] xl:pt-[60px] md:pl-16 flex-col w-full md:min-w-[120px] justify-between h-full md:max-w-[400px] lg:max-w-[500px] 3xl:pt-16 3xl:gap-36 mt-4 md:mt-0'>
             <p
-              className='text-secondary-main md:text-sm xl:text-base uppercase indent-14'
+              className='text-secondary-main md:text-sm xl:text-base uppercase indent-10 md:indent-14'
               style={{
                 wordSpacing: '0.15rem',
               }}
@@ -42,7 +42,7 @@ const About = () => {
               through code and enjoy collaborating with diverse teams to create
               impactful solutions.
             </p>
-            <div className='inline-block'>
+            <div className='inline-block m-auto md:m-0'>
               <OutlinedBigIcon text={'DOWNLOAD CV'} />
             </div>
           </div>

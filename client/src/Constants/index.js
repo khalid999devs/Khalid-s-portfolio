@@ -71,3 +71,18 @@ export const socialLinks = [
     path: 'https://www.youtube.com/@khalid999devs',
   },
 ];
+
+export const workingFields = `Website Development—Web Application & Software Development—UI/UX—Mobile App Development`;
+
+export const education = [
+  {
+    degree: 'Computer Science and Engineering',
+    institute: 'Khulna University of Engineering & Technology, Bangladesh.',
+    date: '2023 — Present',
+  },
+  {
+    degree: 'Higher Secondary School Certificate ',
+    institute: 'Notre Dame College, Dhaka, Bangladesh',
+    date: '2020 — 2022',
+  },
+];

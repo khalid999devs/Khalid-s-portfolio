@@ -22,6 +22,8 @@ export default {
         },
       },
       screens: {
+        mds: '770px',
+        mdl: '860px',
         '2xl': '1380px',
         '3xl': '1520px',
       },

@@ -6,9 +6,9 @@ import { ScrollMouseAnime } from '../../assets';
 const ProjectBanner = () => {
   return (
     <div className='pt-16 min-h-screen w-full pb-16 flex items-center justify-center relative'>
-      <div className='flex flex-col -translate-y-3'>
-        <div className='flex items-center gap-5'>
-          <div className='flex flex-col gap-8 justify-between'>
+      <div className='flex flex-col w-full justify-center -translate-y-3'>
+        <div className='flex items-center justify-center gap-5'>
+          <div className='hidden sm:flex flex-col gap-3 md:gap-8 justify-between'>
             <p className='text-right text-onPrimary-dark text-xs 2xl:text-sm uppercase'>
               Some <br />
               Selected
@@ -20,11 +20,13 @@ const ProjectBanner = () => {
           </div>
 
           <div>
-            <h1 className='text-[105px] uppercase'>PROJECTS </h1>
+            <h1 className='text-[4rem] sm:text-[70px] md:text-[105px] uppercase'>
+              PROJECTS{' '}
+            </h1>
           </div>
 
-          <div className='flex flex-col gap-7 justify-between'>
-            <p className='text-left text-onPrimary-dark text-xs 2xl:text-sm uppercase'>
+          <div className='flex-col hidden sm:flex gap-3 md:gap-7 justify-between'>
+            <p className='text-left text-onPrimary-dark text-[10px] md:text-xs 2xl:text-sm uppercase'>
               WEBSITES & <br />
               WEB APPS
             </p>
@@ -34,7 +36,7 @@ const ProjectBanner = () => {
           </div>
         </div>
 
-        <div className='text-center'>
+        <div className='text-center translate-y-2 sm:translate-y-0'>
           <p className='text-primary-main text-sm -mt-1 opacity-80 uppercase'>
             CUSTOMER PROJECTS, PERSONAL PROJECTS <br /> & SOME RESEARCHES
           </p>

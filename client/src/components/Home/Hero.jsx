@@ -6,7 +6,7 @@ const Hero = () => {
   return (
     <div className='min-h-screen body-max-width sec-inner-x-padding grid items-stretch gap-4 w-full pt-[160px] pb-2'>
       <div className='flex relative items-center justify-between mt- w-full'>
-        <p className='text-xs text-montreal-mono text-secondary-light uppercase'>
+        <p className='hidden sm:inline sm:text-[10px] md:text-xs text-montreal-mono text-secondary-light uppercase'>
           Based in Bangladesh
         </p>
         <div
@@ -35,7 +35,7 @@ const Hero = () => {
             />
           </div>
         </div>
-        <p className='text-xs text-montreal-mono text-secondary-light uppercase'>
+        <p className='hidden sm:inline sm:text-[11px] text-xs text-montreal-mono text-secondary-light uppercase'>
           Passionate Programmer
         </p>
       </div>
@@ -43,26 +43,26 @@ const Hero = () => {
       {/* title and subtitle */}
       <div className='relative text-center mt-14'>
         <div>
-          <h1 className='text-[55px] md:text-[60px] lg:text-[75px] 2xl:text-[114px] 3xl:text-[105px] text-rox-italic uppercase md:mr-16'>
+          <h1 className='text-[3.2rem] sm:text-[55px] md:text-[60px] lg:text-[75px] 2xl:text-[114px] 3xl:text-[105px] text-rox-italic uppercase md:mr-16'>
             KHALID AHAMMED
           </h1>
         </div>
-        <div className='-mt-1'>
-          <h2 className='text-montreal-medium text-[38px] md:text-[40px] lg:text-[58px] 2xl:text-[75px] 3xl:text-[85px] uppercase md:ml-36'>
+        <div className='mt-6 sm:-mt-1'>
+          <h2 className='text-montreal-medium text-[1.6rem] sm:text-[38px] md:text-[40px] lg:text-[58px] 2xl:text-[75px] 3xl:text-[85px] uppercase md:ml-36'>
             {'<FULLSTACK DEVELOPER/>'}
           </h2>
         </div>
       </div>
 
       {/* social links */}
-      <div className='flex w-full items-center justify-center flex-row gap-3 md:gap-8 lg:gap-14'>
+      <div className='flex w-full items-center justify-center flex-row gap-6 sm:gap-8 lg:gap-14'>
         {socialLinks.map((link, index) => (
           <a
             key={index}
             href={link.path}
             target='_blank'
             rel='noreferrer'
-            className='transition-all duration-300 text-sm hover:opacity-75 hover:underline'
+            className='transition-all duration-300 text-xs sm:text-sm hover:opacity-75 hover:underline'
           >
             {link.title}
           </a>

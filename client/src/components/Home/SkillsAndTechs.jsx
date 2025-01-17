@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import SectionLabel from '../utils/SectionLabel';
 import { OutlinedSmallButton } from '../Buttons/OutlinedButton';
 import { useAppContext } from '../../App';
+import { workingFields } from '../../Constants';
 
 const SkillsAndTechs = () => {
   const [technologies, setTechnologies] = useState([]);
@@ -17,18 +18,17 @@ const SkillsAndTechs = () => {
 
   return (
     <div className='w-full mt-4'>
-      <div className='w-full mb-8 flex items-start justify-between flex-col md:flex-row gap-10 md:gap-28 lg:gap-36 '>
+      <div className='w-full mb-8 flex items-start justify-between flex-col md:flex-row gap-8 md:gap-28 lg:gap-36 '>
         <div className=''>
           <SectionLabel text='Skills' />
         </div>
 
         <div className='w-full md:w-[73%] text-pp-eiko text-2xl uppercase md:pl-3'>
-          Website Development—Web Application & Software
-          Development—UI/UX—Mobile App Development
+          {workingFields}
         </div>
       </div>
 
-      <div className='w-full mb-8 mt-24 flex items-start justify-between flex-col md:flex-row gap-10 md:gap-20 lg:gap-36 '>
+      <div className='w-full mb-8 mt-20 md:mt-24 flex items-start justify-between flex-col md:flex-row gap-8 md:gap-20 lg:gap-36 '>
         <div className=''>
           <SectionLabel text='Technologies' />
         </div>
