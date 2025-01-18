@@ -99,6 +99,32 @@ canvas {
   box-shadow: 2px 9px 15px -7px rgba(0, 0, 0, 0.3);
 }
 
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.secondary.main') theme('colors.body.main');
+  }
+
+  *::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: theme('colors.body.main');
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: theme('colors.secondary.main');
+    border-radius: 6px;
+    border: 3px solid theme('colors.body.main');
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: theme('colors.secondary.light');
+  }
+}
+
 @layer utilities {
   .sec-x-padding {
     @apply px-[5px] sm:px-[10px] md:px-[20px] lg:px-[30px];

@@ -22,9 +22,11 @@ const Projects = () => {
     <div className='w-full pb-28 min-h-screen screen-max-width pt-[160px] sec-x-padding'>
       <div className='flex flex-col gap-8 pl-8 md:pl-28'>
         <div className='flex w-full justify-center md:justify-start items-center gap-4'>
-          <h1 className='text-[3rem] md:text-[4rem] text-pp-eiko'>SELECTED</h1>
+          <h1 className='text-[2.2rem] sm:text-[3rem] md:text-[4rem] text-pp-eiko'>
+            SELECTED
+          </h1>
 
-          <h1 className='text-[3rem] md:text-[4rem]'>WORKS</h1>
+          <h1 className='text-[2.2rem] sm:text-[3rem] md:text-[4rem]'>WORKS</h1>
         </div>
 
         <div className='flex flex-row gap-3 items-center justify-center md:justify-start'>

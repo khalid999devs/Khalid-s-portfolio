@@ -20,10 +20,10 @@ export const pageNavLinks = [
     title: 'About',
     path: 'about',
   },
-  {
-    title: 'Coding Lab',
-    path: 'coding-lab',
-  },
+  // {
+  //   title: 'Coding Lab',
+  //   path: 'coding-lab',
+  // },
 ];
 
 export const adminNavLinks = [

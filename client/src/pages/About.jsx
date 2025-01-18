@@ -121,11 +121,11 @@ const About = () => {
           {workingFields}
         </div>
 
-        <div className='grid gap-3 mt-4'>
+        <div className='grid gap-6 mt-4'>
           <div className=''>
             <SectionLabel text='Technologies' />
           </div>
-          <div className='w-full flex flex-col items-start justify-start gap-7 md:pl-3'>
+          <div className='w-full flex flex-col items-start justify-start gap-7'>
             {technologies?.map((item, key) => {
               return (
                 <div key={key} className='flex flex-row flex-wrap gap-3'>

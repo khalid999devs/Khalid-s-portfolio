@@ -84,11 +84,11 @@ const SingleProject = () => {
 
       <div className='flex w-full flex-col gap-20 sec-project-x-padding'>
         <div className='flex flex-col w-full md:justify-start '>
-          <h4 className='text-sm text-montreal-mono text-onPrimary-main '>
+          <h4 className='text-[12px] sm:text-sm text-montreal-mono text-onPrimary-main '>
             {project.subtitle}
           </h4>
 
-          <h1 className='text-[3rem] md:text-[4rem] uppercase'>
+          <h1 className='text-[2.5rem] sm:text-[3rem] md:text-[4rem] uppercase break-words text-left'>
             {project.title}
           </h1>
         </div>

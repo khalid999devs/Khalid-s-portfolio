@@ -1,10 +1,20 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import NavLogo from './Admin/NavLogo';
 import { Link, useNavigate } from 'react-router-dom';
 import { OutlinedSmallButton } from '../Buttons/OutlinedButton';
+import PageNav from './PageNav';
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const [isPageMenu, setIsPageMenu] = useState(false);
+
+  useEffect(() => {
+    if (isPageMenu === true) {
+      document.body.style.overflow = 'hidden';
+    } else if (isPageMenu === false) {
+      document.body.style.overflow = 'auto';
+    }
+  }, [isPageMenu]);
 
   return (
     <div className='w-full fixed top-0 left-0 z-50'>
@@ -35,7 +45,13 @@ const Navbar = () => {
           </Link>
 
           {/* hamburger */}
-          <div className='w-8 grid gap-1.5 select-none cursor-pointer'>
+          <div
+            className='w-8 h-auto grid gap-1.5 select-none cursor-pointer'
+            onClick={() => {
+              setIsPageMenu(true);
+              // document.body.style.overflowY = 'hidden';
+            }}
+          >
             <span className='w-full h-[1px] bg-onPrimary-dark'></span>
             <span className='w-full h-[1px] bg-onPrimary-dark'></span>
             <span className='w-full h-[1px] bg-onPrimary-dark'></span>
@@ -44,6 +60,7 @@ const Navbar = () => {
       </div>
 
       {/* nav menu page */}
+      <PageNav isPageMenu={isPageMenu} setIsPageMenu={setIsPageMenu} />
     </div>
   );
 };
