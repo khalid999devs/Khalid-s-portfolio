@@ -78,7 +78,7 @@ export const education = [
   {
     degree: 'Computer Science and Engineering',
     institute: 'Khulna University of Engineering & Technology, Bangladesh.',
-    date: '2023 — Present',
+    date: '2023 — 2027',
   },
   {
     degree: 'Higher Secondary School Certificate ',

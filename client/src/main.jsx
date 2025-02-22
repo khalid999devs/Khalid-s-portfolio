@@ -22,6 +22,9 @@ import About from './pages/About.jsx';
 import SingleProject from './pages/SingleProject.jsx';
 import CodingLab from './pages/CodingLab.jsx';
 
+import { HelmetProvider } from 'react-helmet-async';
+import { LenisGSAP } from './animations/LenisGSAP.jsx';
+
 const router = createBrowserRouter([
   {
     path: '/',
@@ -85,5 +88,9 @@ const router = createBrowserRouter([
 ]);
 
 createRoot(document.getElementById('root')).render(
-  <RouterProvider router={router} />
+  <LenisGSAP>
+    <HelmetProvider>
+      <RouterProvider router={router} />
+    </HelmetProvider>
+  </LenisGSAP>
 );

@@ -1,8 +1,49 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { langGrpImg, MainRobotImg } from '../../assets';
 import { socialLinks } from '../../Constants';
+import gsap from 'gsap';
+import { textBlinkAnimation } from '../../animations/textBlinkAnimation';
 
 const Hero = () => {
+  const nameTitleRef = useRef(null);
+  const developerTitleRef = useRef(null);
+
+  // function textBlinkAnimation(element) {
+  //   const originalText = element.textContent;
+  //   element.textContent = '';
+
+  //   const letters = originalText.split('');
+  //   letters.forEach((letter) => {
+  //     const span = document.createElement('span');
+  //     span.textContent = letter;
+  //     span.style.display = 'inline-block';
+  //     span.style.opacity = '0';
+  //     element.appendChild(span);
+  //   });
+
+  //   gsap.to(element.querySelectorAll('span'), {
+  //     opacity: 1,
+  //     y: -20,
+  //     ease: 'back.out(1.7)',
+  //     stagger: 0.05,
+  //     duration: 0.5,
+  //     delay: 0.5,
+  //   });
+  // }
+
+  useEffect(() => {
+    if (nameTitleRef.current) {
+      textBlinkAnimation(nameTitleRef.current);
+    }
+    if (developerTitleRef.current) {
+      textBlinkAnimation(developerTitleRef.current);
+    }
+
+    return () => {
+      // clearBlinkAnimation();
+    };
+  }, []);
+
   return (
     <div className='min-h-screen body-max-width sec-inner-x-padding grid items-stretch gap-4 w-full pt-[160px] pb-2'>
       <div className='flex relative items-center justify-between mt- w-full'>
@@ -43,12 +84,18 @@ const Hero = () => {
       {/* title and subtitle */}
       <div className='relative text-center mt-14'>
         <div>
-          <h1 className='text-[3.2rem] sm:text-[55px] md:text-[60px] lg:text-[75px] 2xl:text-[114px] 3xl:text-[105px] text-rox-italic uppercase md:mr-16'>
+          <h1
+            ref={nameTitleRef}
+            className='text-[3.2rem] sm:text-[55px] md:text-[60px] lg:text-[75px] 2xl:text-[114px] 3xl:text-[100px] text-rox-italic uppercase md:mr-16'
+          >
             KHALID AHAMMED
           </h1>
         </div>
         <div className='mt-6 sm:-mt-1'>
-          <h2 className='text-montreal-medium text-[1.6rem] sm:text-[38px] md:text-[40px] lg:text-[58px] 2xl:text-[75px] 3xl:text-[85px] uppercase md:ml-36'>
+          <h2
+            ref={developerTitleRef}
+            className='text-montreal-medium text-[1.6rem] sm:text-[38px] md:text-[40px] lg:text-[58px] 2xl:text-[75px] 3xl:text-[80px] uppercase md:ml-36'
+          >
             {'<FULLSTACK DEVELOPER/>'}
           </h2>
         </div>
