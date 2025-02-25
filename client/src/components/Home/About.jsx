@@ -1,12 +1,34 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import SectionLabel from '../utils/SectionLabel';
 import { GravityField, myPic } from '../../assets';
 import { OutlinedBigIcon } from '../Buttons/OutlinedButton';
 import SkillsAndTechs from './SkillsAndTechs';
+import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
+import useIsGreaterOrEqualMd from '../../hooks/useIsGreaterOrEqualMd';
+import { useWordBlinkAnimation } from '../../animations/useWordBlinkAnimation';
 
 const About = () => {
+  const aboutTextRef = useRef(null);
+  const aboutParentRef = useRef(null);
+  const isGreaterOrEqualMd = useIsGreaterOrEqualMd();
+
+  // useWordBlinkAnimation(aboutTextRef, isGreaterOrEqualMd, aboutParentRef);
+
+  useEffect(() => {
+    if (aboutParentRef.current && aboutTextRef.current) {
+      wordBlinkAnimation(
+        aboutTextRef.current,
+        isGreaterOrEqualMd,
+        aboutParentRef.current
+      );
+    }
+  }, []);
+
   return (
-    <div className='pt-16 min-h-[300px] w-full pb-16 body-max-width sec-inner-x-padding'>
+    <div
+      ref={aboutParentRef}
+      className='pt-16 min-h-[300px] w-full pb-16 body-max-width sec-inner-x-padding'
+    >
       {/* about me */}
       <div className='w-full flex mb-20 md:mb-12 xl:mb-6 items-start justify-between flex-col lg:flex-row gap-6 md:gap-10 lg:gap-36 '>
         <div className='pt-6 xl:pt-14'>
@@ -32,7 +54,8 @@ const About = () => {
 
           <div className='flex gap-10 md:gap-20 mds:gap-[115px] mdl:gap-[190px] lg:gap-[85px] xl:gap-[104px] md:pt-10 lg:pt-[25px] xl:pt-[60px] md:pl-16 flex-col w-full md:min-w-[120px] justify-between h-full md:max-w-[400px] lg:max-w-[500px] 3xl:pt-16 3xl:gap-36 mt-4 md:mt-0'>
             <p
-              className='text-secondary-main md:text-sm xl:text-base uppercase indent-10 md:indent-14'
+              ref={aboutTextRef}
+              className='text-secondary-main md:text-sm xl:text-base uppercase'
               style={{
                 wordSpacing: '0.15rem',
               }}
