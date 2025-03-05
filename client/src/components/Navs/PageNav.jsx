@@ -57,7 +57,7 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
       </div>
 
       {/* menus */}
-      <div className='w-full h-full grid grid-cols-1 md:grid-cols-[1fr,1.25fr]'>
+      <div className='screen-max-width w-full h-full grid grid-cols-1 md:grid-cols-[1fr,1.25fr]'>
         <div className='pt-10 w-full flex flex-col gap-1 md:gap-8 text-montreal-mono'>
           {pageNavLinks.map((item, key) => (
             <NavLink
@@ -90,12 +90,11 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
 
           <div className='flex flex-col gap-9 md:gap-14 pb-8'>
             <div className='flex flex-col gap-4 md:gap-8'>
-              <div className='flex items-center md:justify-start gap-1 -translate-x-1'>
-                <MdOutlineArrowRightAlt className='text-white text-4xl' />
+              <div className='flex items-center md:justify-start gap-1 -translate-x-1 group'>
+                <MdOutlineArrowRightAlt className='text-white text-4xl transition-transform duration-1000 group-hover:translate-x-1' />
                 <a
                   href='mailto:khalidahammeduzzal@gmail.com'
-                  className='text-lg md:text-2xl text-pp-eiko uppercase transition-all duration-300 hover:underline opacity-70
-              '
+                  className='text-lg md:text-2xl text-pp-eiko uppercase text-flicker thick-underline'
                 >
                   SEND ME AN EMAIL
                 </a>

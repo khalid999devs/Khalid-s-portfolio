@@ -1,12 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import { langGrpImg, MainRobotImg } from '../../assets';
 import { socialLinks } from '../../Constants';
-import gsap from 'gsap';
 import { textBlinkAnimation } from '../../animations/textBlinkAnimation';
+import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 
 const Hero = () => {
   const nameTitleRef = useRef(null);
   const developerTitleRef = useRef(null);
+  const countryRef = useRef(null);
+  const passionRef = useRef(null);
+  const heroRef = useRef(null);
 
   // function textBlinkAnimation(element) {
   //   const originalText = element.textContent;
@@ -38,6 +41,14 @@ const Hero = () => {
     if (developerTitleRef.current) {
       textBlinkAnimation(developerTitleRef.current);
     }
+    if (heroRef.current) {
+      if (countryRef.current) {
+        wordBlinkAnimation(countryRef.current, null, heroRef.current, true);
+      }
+      if (passionRef.current) {
+        wordBlinkAnimation(passionRef.current, null, heroRef.current, true);
+      }
+    }
 
     return () => {
       // clearBlinkAnimation();
@@ -45,9 +56,15 @@ const Hero = () => {
   }, []);
 
   return (
-    <div className='min-h-screen body-max-width sec-inner-x-padding grid items-stretch gap-4 w-full pt-[160px] pb-2'>
+    <div
+      ref={heroRef}
+      className='min-h-screen body-max-width sec-inner-x-padding grid items-stretch gap-4 w-full pt-[160px] pb-2'
+    >
       <div className='flex relative items-center justify-between mt- w-full'>
-        <p className='hidden sm:inline sm:text-[10px] md:text-xs text-montreal-mono text-secondary-light uppercase'>
+        <p
+          ref={countryRef}
+          className='hidden sm:inline sm:text-[10px] md:text-xs text-montreal-mono text-secondary-light uppercase'
+        >
           Based in Bangladesh
         </p>
         <div
@@ -76,7 +93,10 @@ const Hero = () => {
             />
           </div>
         </div>
-        <p className='hidden sm:inline sm:text-[11px] text-xs text-montreal-mono text-secondary-light uppercase'>
+        <p
+          ref={passionRef}
+          className='hidden sm:inline sm:text-[11px] text-xs text-montreal-mono text-secondary-light uppercase'
+        >
           Passionate Programmer
         </p>
       </div>
@@ -109,7 +129,7 @@ const Hero = () => {
             href={link.path}
             target='_blank'
             rel='noreferrer'
-            className='transition-all duration-300 text-xs sm:text-sm hover:opacity-75 hover:underline'
+            className='transition-all duration-300 text-xs sm:text-sm text-flicker'
           >
             {link.title}
           </a>

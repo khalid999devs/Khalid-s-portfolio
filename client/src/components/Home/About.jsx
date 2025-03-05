@@ -5,7 +5,6 @@ import { OutlinedBigIcon } from '../Buttons/OutlinedButton';
 import SkillsAndTechs from './SkillsAndTechs';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 import useIsGreaterOrEqualMd from '../../hooks/useIsGreaterOrEqualMd';
-import { useWordBlinkAnimation } from '../../animations/useWordBlinkAnimation';
 
 const About = () => {
   const aboutTextRef = useRef(null);
@@ -19,7 +18,9 @@ const About = () => {
       wordBlinkAnimation(
         aboutTextRef.current,
         isGreaterOrEqualMd,
-        aboutParentRef.current
+        aboutParentRef.current,
+        false,
+        true
       );
     }
   }, []);

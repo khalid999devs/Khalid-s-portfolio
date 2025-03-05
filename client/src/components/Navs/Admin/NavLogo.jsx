@@ -1,8 +1,16 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { textBlinkAnimation } from '../../../animations/textBlinkAnimation';
 
 const NavLogo = ({ onClick }) => {
   const navigate = useNavigate();
+  const logoRef = useRef(null);
+
+  useEffect(() => {
+    if (logoRef.current) {
+      textBlinkAnimation(logoRef.current);
+    }
+  }, []);
 
   return (
     <div
@@ -13,7 +21,13 @@ const NavLogo = ({ onClick }) => {
       }}
     >
       <span className='w-5 h-[0.5px] bg-onPrimary-main'></span>
-      <h1 className='text-onPrimary-main text-pp-eiko uppercase text-md'>
+      <h1
+        ref={logoRef}
+        className='text-onPrimary-main !text-pp-eiko uppercase text-md'
+        style={{
+          fontFamily: 'PP Eiko',
+        }}
+      >
         KHALID AHAMMED
       </h1>
     </div>

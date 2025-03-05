@@ -4,6 +4,7 @@ import Navbar from './components/Navs/Navbar';
 import Footer from './components/Footer/Footer';
 import axios from 'axios';
 import { reqs } from './axios/requests';
+import { useMouseHoverAnimation } from './animations/useMouseHoverAnimation';
 
 const AppContext = createContext({});
 
@@ -11,6 +12,7 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState({});
   const [appData, setAppData] = useState({ projects: [] });
+  useMouseHoverAnimation();
 
   useEffect(() => {
     setLoading(true);

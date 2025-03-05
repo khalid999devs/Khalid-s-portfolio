@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import SectionLabel from '../utils/SectionLabel';
 import { OutlinedSmallButton } from '../Buttons/OutlinedButton';
 import { useAppContext } from '../../App';
 import { workingFields } from '../../Constants';
+import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 
 const SkillsAndTechs = () => {
   const [technologies, setTechnologies] = useState([]);
   const { settings } = useAppContext();
+  const skillParentRef = useRef(null);
+  const skillsRef = useRef(null);
 
   useEffect(() => {
     let techs = settings?.technologies;
@@ -16,14 +19,29 @@ const SkillsAndTechs = () => {
     }
   }, [settings]);
 
+  useEffect(() => {
+    if (skillParentRef.current && skillsRef.current) {
+      wordBlinkAnimation(
+        skillsRef.current,
+        null,
+        skillParentRef.current,
+        true,
+        false
+      );
+    }
+  }, []);
+
   return (
-    <div className='w-full mt-4'>
+    <div ref={skillParentRef} className='w-full mt-4'>
       <div className='w-full mb-8 flex items-start justify-between flex-col md:flex-row gap-8 md:gap-28 lg:gap-36 '>
         <div className=''>
           <SectionLabel text='Skills' />
         </div>
 
-        <div className='w-full md:w-[73%] text-pp-eiko text-2xl uppercase md:pl-3'>
+        <div
+          ref={skillsRef}
+          className='w-full md:w-[73%] text-pp-eiko text-2xl uppercase md:pl-3'
+        >
           {workingFields}
         </div>
       </div>

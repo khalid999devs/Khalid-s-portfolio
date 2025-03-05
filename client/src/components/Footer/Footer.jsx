@@ -32,14 +32,14 @@ const Footer = () => {
                 className='text-white text-[1.5rem] md:text-[3rem] max-w-[350px] w-full'
                 style={{ lineHeight: '125%' }}
               >
-                Let’s create something great together
+                Let's create something great together
               </h1>
 
-              <div className='flex items-center md:justify-end gap-1'>
-                <MdOutlineArrowRightAlt className='text-white text-4xl' />
+              <div className='flex items-center md:justify-end gap-1 group'>
+                <MdOutlineArrowRightAlt className='text-white text-4xl transition-transform duration-1000 group-hover:translate-x-1' />
                 <a
                   href='mailto:khalidahammeduzzal@gmail.com'
-                  className='text-lg md:text-3xl text-pp-eiko uppercase transition-all duration-300 hover:underline'
+                  className='text-lg md:text-3xl text-pp-eiko uppercase text-flicker thick-underline'
                 >
                   SEND ME AN EMAIL
                 </a>
@@ -72,7 +72,7 @@ const Footer = () => {
                   href={link.path}
                   target='_blank'
                   rel='noreferrer'
-                  className='transition-all duration-300 text-sm hover:opacity-75 hover:underline'
+                  className='transition-all duration-300 text-sm text-flicker'
                 >
                   {link.title}
                 </a>
