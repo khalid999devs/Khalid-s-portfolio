@@ -1,5 +1,5 @@
 import axios from 'axios';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { reqFileWrapper, reqs } from '../axios/requests';
 import { loadingGif, projectPlaceholder } from '../assets';
@@ -15,6 +15,11 @@ import {
 import ProjectVideos from './Project/projectVideos';
 import { useAppContext } from '../App';
 import HRLine from '../components/utils/HRLine';
+import useTextRevealAnimation from '../animations/useTextRevealAnimation';
+import Loader from '../components/utils/Loader';
+import { wordBlinkAnimation } from '../animations/wordBlinkAnimation';
+import PageTransition from '../animations/PageTransition';
+import ProjectSlider from '../components/project/ProjectSlider';
 
 const SingleProject = () => {
   const navigate = useNavigate();
@@ -25,8 +30,9 @@ const SingleProject = () => {
   const [project, setProject] = useState({});
   const [projLoading, setProjLoading] = useState(false);
   const [nextProject, setNextProject] = useState({});
-
-  console.log(project);
+  // useTextRevealAnimation('project-text-reveal');
+  const projectDescParent = useRef(null);
+  const projectDesc = useRef(null);
 
   const findProjectAndgetNext = () => {
     const numberOfProjects = projects?.length;
@@ -70,6 +76,23 @@ const SingleProject = () => {
     // });
   }, [value]);
 
+  useEffect(() => {
+    if (projectDescParent.current && projectDesc.current) {
+      wordBlinkAnimation(
+        projectDesc.current,
+        null,
+        projectDescParent.current,
+        true,
+        true,
+        6
+      );
+    }
+  }, [project]);
+
+  if (projLoading) {
+    return <Loader classes={'min-h-[250px]'} />;
+  }
+
   return (
     <div className='w-full pb-28 flex flex-col gap-20 lg:gap-24 min-h-screen screen-max-width pt-[160px]'>
       {projLoading && (
@@ -88,9 +111,11 @@ const SingleProject = () => {
             {project.subtitle}
           </h4>
 
-          <h1 className='text-[2.5rem] sm:text-[3rem] md:text-[4rem] uppercase break-words text-left'>
-            {project.title}
-          </h1>
+          {project.title && (
+            <h1 className='text-[2.5rem] sm:text-[3rem] md:text-[4rem] uppercase break-words text-left text-letter-reveal pointer-all'>
+              {project.title}
+            </h1>
+          )}
         </div>
 
         <div className='flex flex-row justify-start lg:justify-between items-start flex-wrap gap-10 sm:gap-14 lg:gap-6'>
@@ -137,14 +162,19 @@ const SingleProject = () => {
         />
       </div>
 
-      <div className='flex w-full flex-col md:flex-row justify-between items-start gap-16 md:gap-24 sec-project-x-padding'>
-        <div className='text-secondary-light flex-1 w-full indent-6'>
-          {project?.overview}
-        </div>
+      <div
+        ref={projectDescParent}
+        className='flex w-full flex-col md:flex-row justify-between items-start gap-16 md:gap-24 sec-project-x-padding pointer-all'
+      >
+        {project.overview && (
+          <div ref={projectDesc} className='text-secondary-light flex-1 w-full'>
+            {project?.overview}
+          </div>
+        )}
 
         <div className='flex-1 flex flex-col gap-3 w-full'>
           <div className='flex items-center gap-1 pt-1'>
-            <span className='text-xs sm:text-sm text-secondary-main opacity-80 uppercase'>
+            <span className='text-xs sm:text-sm text-secondary-main opacity-80 uppercase text-letter-reveal'>
               # TECH STACK
             </span>
             <BsFillCaretRightFill className='text-secondary-main text-xs' />
@@ -216,21 +246,27 @@ const SingleProject = () => {
       )}
 
       {/* projects slider */}
-      <div className='w-full overflow-hidden sec-x-padding'>
-        <div className='flex w-full flex-row gap-2 ms:gap-3.5 lg:gap-4 overflow-x-hidden scroll-smooth'>
+      {/* <div className='w-full overflow-hidden sec-x-padding min-h-screen mt-20'>
+        <div className='flex w-full flex-row gap-2 ms:gap-3.5 lg:gap-4 overflow-x-hidden scroll-smooth pointer-all'>
           {project?.sliderContents?.map((item, key) => (
-            <div key={item.id} className='max-w-[80%] h-auto flex-shrink-0'>
+            <div
+              key={item.id}
+              className='max-w-[98%] lg:max-w-[80%] h-auto flex-shrink-0 pointer-all'
+            >
               <img
                 src={reqFileWrapper(item?.url)}
-                className='w-full h-auto rounded-[18px]'
+                className='w-full h-auto rounded-[18px] max-h-[85vh]'
                 alt={`Slide image ${key + 1}`}
               />
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
+      {project.sliderContents && project.sliderContents.length ? (
+        <ProjectSlider sliderContents={project.sliderContents} />
+      ) : null}
     </div>
   );
 };
 
-export default SingleProject;
+export default PageTransition(SingleProject);

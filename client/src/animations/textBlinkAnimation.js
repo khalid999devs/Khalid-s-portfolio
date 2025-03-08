@@ -6,7 +6,7 @@ function getRandomCharacter() {
   return characters.charAt(Math.floor(Math.random() * characters.length));
 }
 
-function textBlinkAnimation(element) {
+function textBlinkAnimation(element, duration = 1) {
   const originalText = element.textContent;
   element.textContent = '';
 
@@ -23,14 +23,18 @@ function textBlinkAnimation(element) {
   spans.forEach((span, index) => {
     if (span.textContent === '\u00A0') return;
 
-    // Letter fades in first
-    tl.to(span, { opacity: 1, duration: 0.1 }, index * 0.1);
+    // Letter fades in first, speed controlled by duration
+    tl.to(
+      span,
+      { opacity: 1, duration: duration * 0.1 },
+      index * (duration * 0.1)
+    );
 
     // Immediately after appearing, show a random letter, then change to the original letter quickly
     tl.to(
       span,
       {
-        duration: 0.02,
+        duration: duration * 0.02,
         onStart: () => (span.textContent = getRandomCharacter()),
       },
       '+=0.01'
@@ -38,7 +42,7 @@ function textBlinkAnimation(element) {
     tl.to(
       span,
       {
-        duration: 0.02,
+        duration: duration * 0.02,
         onStart: () => (span.textContent = originalText[index]),
       },
       '+=0.02'

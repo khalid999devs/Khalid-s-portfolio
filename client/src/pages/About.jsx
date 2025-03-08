@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import HRLine from '../components/utils/HRLine';
 import SectionLabel from '../components/utils/SectionLabel';
 import {
@@ -8,10 +8,23 @@ import {
 import { GravityField, myPic } from '../assets';
 import { useAppContext } from '../App';
 import { education, workingFields } from '../Constants';
+import { textBlinkAnimation } from '../animations/textBlinkAnimation';
+import useTextRevealAnimation from '../animations/useTextRevealAnimation';
+import useIsGreaterOrEqualMd from '../hooks/useIsGreaterOrEqualMd';
+import { wordBlinkAnimation } from '../animations/wordBlinkAnimation';
+import PageTransition from '../animations/PageTransition';
 
 const About = () => {
   const [technologies, setTechnologies] = useState([]);
   const { settings } = useAppContext();
+  const aboutHeaderRef = useRef(null);
+  useTextRevealAnimation('animte-help-text-reveal', 0.05);
+
+  const aboutTextRef = useRef(null);
+  const aboutParentRef = useRef(null);
+  const skillParentRef = useRef(null);
+  const skillsRef = useRef(null);
+  const isGreaterOrEqualMd = useIsGreaterOrEqualMd();
 
   useEffect(() => {
     let techs = settings?.technologies;
@@ -21,10 +34,39 @@ const About = () => {
     }
   }, [settings]);
 
+  useEffect(() => {
+    if (aboutHeaderRef.current) {
+      textBlinkAnimation(aboutHeaderRef.current);
+    }
+    if (aboutParentRef.current && aboutTextRef.current) {
+      wordBlinkAnimation(
+        aboutTextRef.current,
+        isGreaterOrEqualMd,
+        aboutParentRef.current,
+        true,
+        true
+      );
+    }
+    if (skillParentRef.current && skillsRef.current) {
+      wordBlinkAnimation(
+        skillsRef.current,
+        null,
+        skillParentRef.current,
+        true,
+        false
+      );
+    }
+  }, []);
+
   return (
     <div className='w-full pb-28 flex flex-col gap-20 lg:gap-24 min-h-screen screen-max-width pt-[160px] sec-project-x-padding'>
       <div className='flex flex-col gap-8 w-full md:justify-start '>
-        <h1 className='text-[3rem] md:text-[4rem] uppercase'>About Myself</h1>
+        <h1
+          ref={aboutHeaderRef}
+          className='text-[3rem] md:text-[4rem] uppercase'
+        >
+          About Myself
+        </h1>
         <HRLine disablePadding={true} />
       </div>
 
@@ -33,9 +75,13 @@ const About = () => {
         <div className='flex flex-col-reverse md:flex-row gap-16 md:gap-20 justify-between w-full'>
           <div className=''>
             <SectionLabel text={'TALKS'} />
-            <div className='flex mt-8 gap-12 md:gap-[130px] lg:gap-[130px] xl:gap-[140px] flex-col w-full md:min-w-[120px] h-full md:max-w-[350px] lg:max-w-[540px] 3xl:pt-12 3xl:gap-32'>
+            <div
+              ref={aboutParentRef}
+              className='flex mt-8 gap-12 md:gap-[130px] lg:gap-[130px] xl:gap-[140px] flex-col w-full md:min-w-[120px] h-full md:max-w-[350px] lg:max-w-[540px] 3xl:pt-12 3xl:gap-32'
+            >
               <p
-                className='text-secondary-main md:text-md xl:text-lg uppercase indent-14'
+                ref={aboutTextRef}
+                className='text-secondary-main md:text-md xl:text-lg uppercase pointer-all'
                 style={{
                   wordSpacing: '0.15rem',
                 }}
@@ -111,13 +157,18 @@ const About = () => {
       </div> */}
 
       {/* skill sec */}
-      <div className='w-full flex flex-col gap-6'>
+      <div ref={skillParentRef} className='w-full flex flex-col gap-6'>
         <div className='flex flex-col gap-4 w-fit'>
-          <h1 className='text-lg md:text-3xl inline'>I can help you with...</h1>
+          <h1 className='text-lg md:text-3xl inline animte-help-text-reveal'>
+            I can help you with...
+          </h1>
           <HRLine disablePadding={true} />
         </div>
 
-        <div className='w-full leading-9 text-pp-eiko text-2xl uppercase'>
+        <div
+          ref={skillsRef}
+          className='w-full leading-9 text-pp-eiko text-2xl uppercase'
+        >
           {workingFields}
         </div>
 
@@ -170,4 +221,4 @@ const About = () => {
   );
 };
 
-export default About;
+export default PageTransition(About);

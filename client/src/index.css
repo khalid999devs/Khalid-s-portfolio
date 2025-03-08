@@ -166,6 +166,33 @@ canvas {
   .section-heading {
     @apply text-gray lg:text-6xl md:text-5xl text-3xl lg:mb-0 mb-5 font-medium opacity-0 translate-y-20;
   }
+
+  .pointer-none {
+    @apply pointer-events-none;
+  }
+
+  .pointer-all {
+    @apply pointer-events-auto;
+  }
+
+  .page-blocks-container {
+    @apply fixed top-0 left-0 w-[100vw] h-screen flex flex-col pointer-events-none z-50;
+  }
+
+  .row {
+    @apply flex-1 w-full flex;
+  }
+
+  .block-motion {
+    @apply relative flex-1 bg-onPrimary-main -m-[0.25px];
+  }
+
+  .transition-in .block-motion {
+    @apply origin-top;
+  }
+  .transition-out .block-motion {
+    @apply origin-bottom;
+  }
 }
 
 .text-flicker {
@@ -200,6 +227,7 @@ canvas {
 .text-flicker:hover {
   animation: flicker 0.2s ease-in-out 2.5 !important;
 }
+
 @keyframes flicker {
   0% {
     opacity: 1;
@@ -213,4 +241,16 @@ canvas {
     opacity: 1;
     transform: rotateX(360deg);
   }
+}
+
+/* cursor animation */
+.block {
+  width: 50px;
+  height: 50px;
+  border: 0.01px solid rgba(255, 255, 255, 0.005);
+  transition: border-color 0.3s ease;
+}
+
+.highlight {
+  border-color: rgba(255, 255, 255, 0.14);
 }

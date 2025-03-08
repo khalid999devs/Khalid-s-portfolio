@@ -8,7 +8,8 @@ export function wordBlinkAnimation(
   isGreaterOrEqualMd,
   parentElement,
   backAnimate = false,
-  indent = false
+  indent = false,
+  indentNum = null
 ) {
   if (!element || !parentElement) return;
 
@@ -25,7 +26,9 @@ export function wordBlinkAnimation(
     span.style.opacity = (Math.random() * 0.9).toFixed(2);
 
     if (index === 0 && indent) {
-      span.style.textIndent = isGreaterOrEqualMd ? '56px' : '40px';
+      if (!indentNum)
+        span.style.textIndent = isGreaterOrEqualMd ? '56px' : '40px';
+      else span.style.textIndent = `${indentNum * 4}px`;
     }
 
     wordSpans.push(span);

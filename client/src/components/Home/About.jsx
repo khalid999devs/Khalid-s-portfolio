@@ -11,8 +11,6 @@ const About = () => {
   const aboutParentRef = useRef(null);
   const isGreaterOrEqualMd = useIsGreaterOrEqualMd();
 
-  // useWordBlinkAnimation(aboutTextRef, isGreaterOrEqualMd, aboutParentRef);
-
   useEffect(() => {
     if (aboutParentRef.current && aboutTextRef.current) {
       wordBlinkAnimation(
@@ -56,7 +54,7 @@ const About = () => {
           <div className='flex gap-10 md:gap-20 mds:gap-[115px] mdl:gap-[190px] lg:gap-[85px] xl:gap-[104px] md:pt-10 lg:pt-[25px] xl:pt-[60px] md:pl-16 flex-col w-full md:min-w-[120px] justify-between h-full md:max-w-[400px] lg:max-w-[500px] 3xl:pt-16 3xl:gap-36 mt-4 md:mt-0'>
             <p
               ref={aboutTextRef}
-              className='text-secondary-main md:text-sm xl:text-base uppercase'
+              className='text-secondary-main md:text-sm xl:text-base uppercase pointer-all'
               style={{
                 wordSpacing: '0.15rem',
               }}

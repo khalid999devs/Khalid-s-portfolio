@@ -4,6 +4,7 @@ import About from '../components/Home/About';
 import ProjectsShows from '../components/Home/Projects';
 import HRLine from '../components/utils/HRLine';
 import ProjectBanner from '../components/Home/ProjectBanner';
+import PageTransition from '../animations/PageTransition';
 
 const Home = () => {
   return (
@@ -19,4 +20,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default PageTransition(Home);

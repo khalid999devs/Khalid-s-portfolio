@@ -26,7 +26,7 @@ const ProjectsShows = () => {
           <section className='relative min-h-screen w-full'>
             {/* Info Section */}
             <div className='absolute top-1/2 left-1/2 w-full flex justify-between items-center px-4 pl-0 text-white transform -translate-y-1/2 -translate-x-1/2 text-montreal-mono z-10 mix-blend-difference'>
-              <div className='flex-1 uppercase text-sm'>
+              <div className='flex-1 uppercase text-sm pointer-all'>
                 {activeSlide?.title || 'TITLE'}
               </div>
               <div
@@ -46,7 +46,7 @@ const ProjectsShows = () => {
               <div className='flex-1 flex justify-end'>
                 <a
                   href='#'
-                  className='uppercase text-sm text-white border border-white/25 rounded-md px-2 py-1 hover:bg-white text-pp-eiko hover:text-black transition duration-300'
+                  className='pointer-all uppercase text-sm text-white border border-white/25 rounded-md px-2 py-1 hover:bg-white text-pp-eiko hover:text-black transition duration-300'
                 >
                   Explore
                 </a>
@@ -62,7 +62,7 @@ const ProjectsShows = () => {
             {projects.map((item, index) => (
               <div
                 key={index}
-                className='absolute top-1/2 left-1/2 w-[35%] h-[50%] transform -translate-x-1/2 -translate-y-1/2 scale-125 z-[1] overflow-hidden clip-path-polygon-[0%_100%,100%_100%,100%_100%,0%_100%]'
+                className='absolute top-1/2 left-1/2 w-[35%] h-[50%] transform -translate-x-1/2 -translate-y-1/2 scale-125 z-[1] overflow-hidden clip-path-polygon-[0%_100%,100%_100%,100%_100%,0%_100%] pointer-all'
               >
                 <img
                   src={reqFileWrapper(item?.bannerImg)}
@@ -80,7 +80,7 @@ const ProjectsShows = () => {
             {projects?.map((item, key) => {
               return (
                 <div
-                  className='w-full grid border-b-[0.05px] border-opacity-30 border-secondary-light pb-3 gap-4 md:gap-6 group cursor-pointer'
+                  className='w-full grid border-b-[0.05px] border-opacity-30 border-secondary-light pb-3 gap-4 md:gap-6 group cursor-pointer pointer-all'
                   onClick={() => {
                     navigate(`/singleProject/${item.value + '@' + item.id}`);
                   }}

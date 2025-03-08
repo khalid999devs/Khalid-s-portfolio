@@ -24,6 +24,7 @@ import CodingLab from './pages/CodingLab.jsx';
 
 import { HelmetProvider } from 'react-helmet-async';
 import { LenisGSAP } from './animations/LenisGSAP.jsx';
+import { AnimatePresence } from 'framer-motion';
 
 const router = createBrowserRouter([
   {
@@ -90,7 +91,9 @@ const router = createBrowserRouter([
 createRoot(document.getElementById('root')).render(
   <LenisGSAP>
     <HelmetProvider>
+      {/* <AnimatePresence mode='wait'> */}
       <RouterProvider router={router} />
+      {/* </AnimatePresence> */}
     </HelmetProvider>
   </LenisGSAP>
 );

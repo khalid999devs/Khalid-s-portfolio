@@ -10,7 +10,7 @@ const ProjectVideos = ({ videos }) => {
         <video
           key={key}
           src={reqFileWrapper(video.url)}
-          className='w-full max-h-[500px] object-cover h-auto transition-transform duration-500 ease-out transform'
+          className='w-full max-h-[500px] object-cover h-auto transition-transform duration-500 ease-out transform pointer-all'
           autoPlay
           loop
           muted

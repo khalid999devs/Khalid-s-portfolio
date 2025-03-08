@@ -11,7 +11,7 @@ const TextDividerHeading = ({ role = 'ROLE/SERVICES', text }) => {
         <BsFillCaretRightFill className='text-secondary-main text-xs' />
       </div>
       <div className='h-[0.1px] opacity-60 bg-secondary-main w-full'></div>
-      <div className='text-sm leading-7'>{text}</div>
+      <div className='text-sm leading-7 pointer-all'>{text}</div>
     </div>
   );
 };

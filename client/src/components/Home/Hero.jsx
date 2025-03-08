@@ -63,7 +63,7 @@ const Hero = () => {
       <div className='flex relative items-center justify-between mt- w-full'>
         <p
           ref={countryRef}
-          className='hidden sm:inline sm:text-[10px] md:text-xs text-montreal-mono text-secondary-light uppercase'
+          className='hidden sm:inline sm:text-[10px] md:text-xs text-montreal-mono text-secondary-light uppercase pointer-all'
         >
           Based in Bangladesh
         </p>
@@ -95,7 +95,7 @@ const Hero = () => {
         </div>
         <p
           ref={passionRef}
-          className='hidden sm:inline sm:text-[11px] text-xs text-montreal-mono text-secondary-light uppercase'
+          className='hidden sm:inline sm:text-[11px] text-xs text-montreal-mono text-secondary-light uppercase pointer-all'
         >
           Passionate Programmer
         </p>
@@ -129,7 +129,7 @@ const Hero = () => {
             href={link.path}
             target='_blank'
             rel='noreferrer'
-            className='transition-all duration-300 text-xs sm:text-sm text-flicker'
+            className='transition-all duration-300 text-xs sm:text-sm text-flicker pointer-all'
           >
             {link.title}
           </a>
