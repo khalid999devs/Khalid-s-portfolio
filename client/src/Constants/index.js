@@ -14,11 +14,11 @@ export const pageNavLinks = [
   },
   {
     title: 'Projects',
-    path: 'projects',
+    path: '/projects',
   },
   {
     title: 'About',
-    path: 'about',
+    path: '/about-me',
   },
   // {
   //   title: 'Coding Lab',

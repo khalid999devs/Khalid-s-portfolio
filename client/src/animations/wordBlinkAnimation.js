@@ -1,7 +1,7 @@
 import gsap from 'gsap';
 import ScrollTrigger from 'gsap/ScrollTrigger';
 
-gsap.registerPlugin(ScrollTrigger);
+// gsap.registerPlugin(ScrollTrigger);
 
 export function wordBlinkAnimation(
   element,
@@ -42,15 +42,19 @@ export function wordBlinkAnimation(
 
   element.appendChild(fragment);
 
-  ScrollTrigger.create({
+  const scrollTriggerInstance = ScrollTrigger.create({
     trigger: parentElement,
-    start: 'top 80%',
-    end: 'bottom 20%',
+    start: 'top 95%',
+    // markers: true,
+    // end: 'bottom 20%',
     onEnter: () => animateWordSpans(wordSpans),
     onEnterBack: () => {
       backAnimate && animateWordSpans(wordSpans);
     },
   });
+
+  return scrollTriggerInstance;
+  // animateWordSpans(wordSpans);
 }
 
 export let flickerEase =

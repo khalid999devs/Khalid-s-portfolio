@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useLocation } from 'react-router-dom';
 
-gsap.registerPlugin(ScrollTrigger);
+// gsap.registerPlugin(ScrollTrigger);
 
 function getRandomCharacter() {
   const characters =
@@ -11,8 +12,13 @@ function getRandomCharacter() {
 }
 
 function useTextRevealAnimation(className, duration = 0.1) {
+  const loc = useLocation();
   useEffect(() => {
-    const scrollTriggers = [];
+    let scrollTriggers = [];
+
+    scrollTriggers.forEach((trigger) => trigger.kill());
+    scrollTriggers = [];
+    ScrollTrigger.refresh();
 
     const updateAnimations = () => {
       const elements = document.querySelectorAll(`.${className}`);
@@ -63,22 +69,29 @@ function useTextRevealAnimation(className, duration = 0.1) {
           onEnter: () => tl.play(),
           onLeaveBack: () => tl.seek(0).pause(),
           toggleActions: 'play none none none',
+          // markers: true,
         });
 
         scrollTriggers.push(scrollTriggerInstance);
       });
+      // setTimeout(() => ScrollTrigger.refresh(), 200);
+      // ScrollTrigger.refresh();
     };
 
     updateAnimations();
 
     const observer = new MutationObserver(updateAnimations);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
 
     return () => {
+      ScrollTrigger.refresh();
       observer.disconnect();
       scrollTriggers.forEach((trigger) => trigger.kill());
     };
-  }, [className, duration]);
+  }, [className, duration, loc.pathname]);
 }
 
 export default useTextRevealAnimation;

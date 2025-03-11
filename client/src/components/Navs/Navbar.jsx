@@ -56,13 +56,13 @@ const Navbar = () => {
           <div className='flex items-center justify-between gap-6 text-sm'>
             <Link
               to={'/projects'}
-              className='hidden sm:inline blink-animate-nav text-flicker'
+              className='blink-animate-nav text-flicker !hidden sm:!inline '
             >
               Projects
             </Link>
             <Link
               to={'mailto:khalidahammeduzzal@gmail.com'}
-              className='hidden sm:inline blink-animate-nav text-flicker'
+              className=' blink-animate-nav text-flicker !hidden sm:!inline'
             >
               Email Me
             </Link>

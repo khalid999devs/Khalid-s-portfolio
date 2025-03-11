@@ -1,0 +1,7 @@
+Project thumbnail main image: 2xl: 542 * 437 =1.24
+			      normal: 503 * 365 =1.37
+			      mobile: 410 * 256 / 589 * 350 = 1.6 / 1.68
+	Avg: 1.42 (aspect ratio)
+
+project banner: 1210 * 400 = 3.025
+			        

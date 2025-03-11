@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Navbar from './components/Navs/Navbar';
 import Footer from './components/Footer/Footer';
 import axios from 'axios';
@@ -13,8 +13,9 @@ import { reqs } from './axios/requests';
 import { useMouseHoverAnimation } from './animations/useMouseHoverAnimation';
 import useTextRevealAnimation from './animations/useTextRevealAnimation';
 import MouseMoveEffect from './animations/MouseMoveEffect';
-import { AnimatePresence } from 'framer-motion';
 import AnimatedOutlet from './animations/AnimatedOutlet';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { LenisGSAP } from './animations/LenisGSAP';
 
 const AppContext = createContext({});
 
@@ -22,7 +23,6 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState({});
   const [appData, setAppData] = useState({ projects: [] });
-  useTextRevealAnimation('text-letter-reveal');
 
   useEffect(() => {
     setLoading(true);
@@ -46,26 +46,30 @@ const App = () => {
       });
   }, []);
 
+  // const location = useLocation();
+
   return (
-    <AppContext.Provider
-      value={{
-        loading,
-        setLoading,
-        settings,
-        setSettings,
-        appData,
-      }}
-    >
-      <div className='bg-body-main min-h-screen w-full'>
-        <MouseMoveEffect />
-        <Navbar />
-        <div className='pointer-none'>
-          {/* <Outlet /> */}
-          <AnimatedOutlet />
+    <LenisGSAP>
+      <AppContext.Provider
+        value={{
+          loading,
+          setLoading,
+          settings,
+          setSettings,
+          appData,
+        }}
+      >
+        <div className='bg-body-main min-h-screen w-full'>
+          <MouseMoveEffect />
+          <Navbar />
+          <div className='pointer-none'>
+            {/* <Outlet /> */}
+            <AnimatedOutlet />
+          </div>
+          <Footer />
         </div>
-        <Footer />
-      </div>
-    </AppContext.Provider>
+      </AppContext.Provider>
+    </LenisGSAP>
   );
 };
 

@@ -41,7 +41,7 @@ const router = createBrowserRouter([
         element: <Projects />,
       },
       {
-        path: 'About',
+        path: 'about-me',
         element: <About />,
       },
       {
@@ -89,11 +89,9 @@ const router = createBrowserRouter([
 ]);
 
 createRoot(document.getElementById('root')).render(
-  <LenisGSAP>
-    <HelmetProvider>
-      {/* <AnimatePresence mode='wait'> */}
-      <RouterProvider router={router} />
-      {/* </AnimatePresence> */}
-    </HelmetProvider>
-  </LenisGSAP>
+  <HelmetProvider>
+    {/* <AnimatePresence mode='wait'> */}
+    <RouterProvider router={router} />
+    {/* </AnimatePresence> */}
+  </HelmetProvider>
 );

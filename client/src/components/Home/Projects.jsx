@@ -16,7 +16,7 @@ const ProjectsShows = () => {
   const isMidScreen = useIsGreaterOrEqualMd();
 
   useEffect(() => {
-    setActiveSlide(projects[0]);
+    if (projects && projects.length) setActiveSlide(projects[0]);
   }, [projects]);
 
   return (
@@ -62,11 +62,15 @@ const ProjectsShows = () => {
             {projects.map((item, index) => (
               <div
                 key={index}
-                className='absolute top-1/2 left-1/2 w-[35%] h-[50%] transform -translate-x-1/2 -translate-y-1/2 scale-125 z-[1] overflow-hidden clip-path-polygon-[0%_100%,100%_100%,100%_100%,0%_100%] pointer-all'
+                className='absolute top-1/2 left-1/2 w-[35%] h-[50%] max-h-[350px] transform -translate-x-1/2 -translate-y-1/2 scale-125 z-[1] overflow-hidden clip-path-polygon-[0%_100%,100%_100%,100%_100%,0%_100%] pointer-all'
               >
                 <img
-                  src={reqFileWrapper(item?.bannerImg)}
-                  className='w-full h-full object-cover duration-1000 cursor-pointer hover:scale-110 filter contrast-100 brightness-100'
+                  src={
+                    item.thumbnailContents && item.thumbnailContents.length
+                      ? reqFileWrapper(item.thumbnailContents[0].url)
+                      : reqFileWrapper(item?.bannerImg)
+                  }
+                  className='w-full h-full object-cover duration-1000 cursor-pointer hover:scale-[103%] filter contrast-100 brightness-100'
                   alt={`Image ${index + 1}`}
                   onClick={() => {
                     navigate(`/singleProject/${item.value + '@' + item.id}`);
@@ -88,7 +92,11 @@ const ProjectsShows = () => {
                 >
                   <div className='w-full h-full rounded-lg overflow-hidden '>
                     <img
-                      src={reqFileWrapper(item.bannerImg)}
+                      src={
+                        item.thumbnailContents && item.thumbnailContents.length
+                          ? reqFileWrapper(item.thumbnailContents[0].url)
+                          : reqFileWrapper(item?.bannerImg)
+                      }
                       alt={item.title}
                       className='w-full max-h-[300px] lg:max-h-[350px] 2xl:max-h-[300px] h-auto object-cover rounded-lg transition-all duration-1000 group-hover:scale-[102%]'
                       loading='lazy'

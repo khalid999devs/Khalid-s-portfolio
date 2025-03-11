@@ -13,50 +13,88 @@ import useTextRevealAnimation from '../animations/useTextRevealAnimation';
 import useIsGreaterOrEqualMd from '../hooks/useIsGreaterOrEqualMd';
 import { wordBlinkAnimation } from '../animations/wordBlinkAnimation';
 import PageTransition from '../animations/PageTransition';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useLocation } from 'react-router-dom';
 
 const About = () => {
   const [technologies, setTechnologies] = useState([]);
-  const { settings } = useAppContext();
+  const { settings, loading } = useAppContext();
   const aboutHeaderRef = useRef(null);
-  useTextRevealAnimation('animte-help-text-reveal', 0.05);
+  // useTextRevealAnimation('animte-help-text-reveal', 0.05);
 
-  const aboutTextRef = useRef(null);
-  const aboutParentRef = useRef(null);
-  const skillParentRef = useRef(null);
-  const skillsRef = useRef(null);
+  const aboutPageTextRef = useRef(null);
+  const aboutPageParentRef = useRef(null);
+  const aboutskillParentRef = useRef(null);
+  const aboutskillsRef = useRef(null);
   const isGreaterOrEqualMd = useIsGreaterOrEqualMd();
+  const [isClient, setIsClient] = useState(false);
+  const loc = useLocation();
 
   useEffect(() => {
     let techs = settings?.technologies;
 
     if (techs) {
       setTechnologies([techs.Languages, techs.Frontend, techs.Backend]);
+      ScrollTrigger.refresh(true);
     }
   }, [settings]);
 
   useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+    });
+  }, [loc.pathname]);
+
+  // useEffect(()=>{
+  //   setIsClient(true)
+  // },[])
+
+  useEffect(() => {
+    ScrollTrigger.refresh(true);
     if (aboutHeaderRef.current) {
       textBlinkAnimation(aboutHeaderRef.current);
     }
-    if (aboutParentRef.current && aboutTextRef.current) {
-      wordBlinkAnimation(
-        aboutTextRef.current,
-        isGreaterOrEqualMd,
-        aboutParentRef.current,
-        true,
-        true
-      );
-    }
-    if (skillParentRef.current && skillsRef.current) {
-      wordBlinkAnimation(
-        skillsRef.current,
-        null,
-        skillParentRef.current,
-        true,
-        false
-      );
-    }
+    let st1, st2;
+
+    let timeoutId = setTimeout(() => {
+      if (aboutPageParentRef.current && aboutPageTextRef.current) {
+        st1 = wordBlinkAnimation(
+          aboutPageTextRef.current,
+          isGreaterOrEqualMd,
+          aboutPageParentRef.current,
+          false,
+          true,
+          null
+        );
+      }
+      if (aboutskillParentRef.current && aboutskillsRef.current) {
+        st2 = wordBlinkAnimation(
+          aboutskillsRef.current,
+          null,
+          aboutskillParentRef.current,
+          false,
+          false,
+          null
+        );
+      }
+    }, 400);
+
+    return () => {
+      if (st1) {
+        st1.kill();
+      }
+      if (st2) {
+        st2.kill();
+      }
+      clearTimeout(timeoutId);
+      ScrollTrigger.refresh(true);
+    };
   }, []);
+
+  // if (loading) {
+  //   return <Loader classes={'min-h-[250px]'} />;
+  // }
 
   return (
     <div className='w-full pb-28 flex flex-col gap-20 lg:gap-24 min-h-screen screen-max-width pt-[160px] sec-project-x-padding'>
@@ -73,14 +111,14 @@ const About = () => {
       {/* About Description */}
       <div className='w-full'>
         <div className='flex flex-col-reverse md:flex-row gap-16 md:gap-20 justify-between w-full'>
-          <div className=''>
+          <div className='w-full h-auto'>
             <SectionLabel text={'TALKS'} />
             <div
-              ref={aboutParentRef}
+              ref={aboutPageParentRef}
               className='flex mt-8 gap-12 md:gap-[130px] lg:gap-[130px] xl:gap-[140px] flex-col w-full md:min-w-[120px] h-full md:max-w-[350px] lg:max-w-[540px] 3xl:pt-12 3xl:gap-32'
             >
               <p
-                ref={aboutTextRef}
+                ref={aboutPageTextRef}
                 className='text-secondary-main md:text-md xl:text-lg uppercase pointer-all'
                 style={{
                   wordSpacing: '0.15rem',
@@ -106,9 +144,10 @@ const About = () => {
             />
             <img
               src={myPic}
-              alt='gravity-field'
+              alt='my pic'
               className='w-[70%] md:w-[73%] xl:w-[65%] absolute top-[47%] left-[46%] h-auto z-10 object-cover saturate-[20%]'
               style={{ transform: 'translate(-50%,-50%)' }}
+              loading='eager'
             />
           </div>
         </div>
@@ -157,7 +196,7 @@ const About = () => {
       </div> */}
 
       {/* skill sec */}
-      <div ref={skillParentRef} className='w-full flex flex-col gap-6'>
+      <div ref={aboutskillParentRef} className='w-full flex flex-col gap-6'>
         <div className='flex flex-col gap-4 w-fit'>
           <h1 className='text-lg md:text-3xl inline animte-help-text-reveal'>
             I can help you with...
@@ -166,7 +205,7 @@ const About = () => {
         </div>
 
         <div
-          ref={skillsRef}
+          ref={aboutskillsRef}
           className='w-full leading-9 text-pp-eiko text-2xl uppercase'
         >
           {workingFields}

@@ -30,7 +30,7 @@ const SingleProject = () => {
   const [project, setProject] = useState({});
   const [projLoading, setProjLoading] = useState(false);
   const [nextProject, setNextProject] = useState({});
-  // useTextRevealAnimation('project-text-reveal');
+  useTextRevealAnimation('project-text-reveal');
   const projectDescParent = useRef(null);
   const projectDesc = useRef(null);
 
@@ -40,10 +40,11 @@ const SingleProject = () => {
       const currKey = projects.findIndex(
         (item) => item.value === project.value
       );
+
       if (currKey + 1 >= numberOfProjects) {
         setNextProject(projects[0]);
       } else {
-        setNextProject(projects[currKey]);
+        setNextProject(projects[currKey + 1]);
       }
     }
   };
@@ -51,6 +52,14 @@ const SingleProject = () => {
   useEffect(() => {
     findProjectAndgetNext();
   }, [project, projects]);
+
+  useEffect(() => {
+    window.scrollTo({
+      left: 0,
+      top: 0,
+      behavior: 'smooth',
+    });
+  }, [location.pathname]);
 
   useEffect(() => {
     const spArr = value.split('@');
@@ -157,7 +166,7 @@ const SingleProject = () => {
               ? reqFileWrapper(project.bannerImg)
               : projectPlaceholder
           }
-          className='w-full max-h-[350px] object-cover h-auto'
+          className='w-full min-h-[200px] max-h-[300px] md:max-h-[400px] object-cover h-auto pointer-all'
           alt='BannerImg'
         />
       </div>
@@ -197,7 +206,10 @@ const SingleProject = () => {
         <ProjectVideos videos={project?.videos} />
       )}
 
-      {/* showcase-slider */}
+      {/* projects slider */}
+      {project.sliderContents && project.sliderContents.length ? (
+        <ProjectSlider sliderContents={project.sliderContents} />
+      ) : null}
 
       {/* projects tabs */}
       {projects?.length > 1 && nextProject?.value && (
@@ -210,7 +222,7 @@ const SingleProject = () => {
 
             <div className='w-full overflow-hidden h-auto border-b-[0.5] border-secondary-main border-b border-opacity-40'>
               <div
-                className='bg-primary-dark mt-4 rounded-t-md max-h-[90px] max-w-[200px] w-full p-3 pb-0 overflow-hidden m-auto translate-y-2 transition-transform duration-300 cursor-pointer hover:translate-y-0'
+                className='bg-primary-dark mt-4 rounded-t-md max-h-[90px] max-w-[200px] w-full p-3 pb-0 overflow-hidden m-auto translate-y-2 transition-transform duration-300 cursor-pointer pointer-all hover:translate-y-0'
                 onClick={() => {
                   navigate(
                     `/singleProject/${
@@ -244,27 +256,6 @@ const SingleProject = () => {
           </div>
         </>
       )}
-
-      {/* projects slider */}
-      {/* <div className='w-full overflow-hidden sec-x-padding min-h-screen mt-20'>
-        <div className='flex w-full flex-row gap-2 ms:gap-3.5 lg:gap-4 overflow-x-hidden scroll-smooth pointer-all'>
-          {project?.sliderContents?.map((item, key) => (
-            <div
-              key={item.id}
-              className='max-w-[98%] lg:max-w-[80%] h-auto flex-shrink-0 pointer-all'
-            >
-              <img
-                src={reqFileWrapper(item?.url)}
-                className='w-full h-auto rounded-[18px] max-h-[85vh]'
-                alt={`Slide image ${key + 1}`}
-              />
-            </div>
-          ))}
-        </div>
-      </div> */}
-      {project.sliderContents && project.sliderContents.length ? (
-        <ProjectSlider sliderContents={project.sliderContents} />
-      ) : null}
     </div>
   );
 };

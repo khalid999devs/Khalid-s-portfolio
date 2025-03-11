@@ -355,6 +355,7 @@ const getProjects = async (req, res) => {
         'thumbnailContents',
         'createdAt',
       ],
+      order: [['id', 'ASC']],
     });
     result.forEach((item) => {
       item.dataValues.thumbnailContents = JSON.parse(
