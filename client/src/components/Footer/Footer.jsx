@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MdOutlineArrowRightAlt } from 'react-icons/md';
 import { BiSolidRightArrow } from 'react-icons/bi';
-import { socialLinks } from '../../Constants';
+import { socialLinks, upworkedSocialLinks } from '../../Constants';
+import { isUpwork } from '../../config';
 
 const Footer = () => {
   const timeRef = useRef(null);
@@ -35,15 +36,17 @@ const Footer = () => {
                 Let's create something great together
               </h1>
 
-              <div className='flex items-center md:justify-end gap-1 group'>
-                <MdOutlineArrowRightAlt className='text-white text-4xl transition-transform duration-1000 group-hover:translate-x-1' />
-                <a
-                  href='mailto:khalidahammeduzzal@gmail.com'
-                  className='text-lg md:text-3xl text-pp-eiko uppercase text-flicker thick-underline'
-                >
-                  SEND ME AN EMAIL
-                </a>
-              </div>
+              {!isUpwork && (
+                <div className='flex items-center md:justify-end gap-1 group'>
+                  <MdOutlineArrowRightAlt className='text-white text-4xl transition-transform duration-1000 group-hover:translate-x-1' />
+                  <a
+                    href='mailto:khalidahammeduzzal@gmail.com'
+                    className='text-lg md:text-3xl text-pp-eiko uppercase text-flicker thick-underline'
+                  >
+                    SEND ME AN EMAIL
+                  </a>
+                </div>
+              )}
             </div>
 
             <div className='mt-6 flex w-full flex-col text-secondary-light gap-3 md:flex-row md:justify-between md:items-center'>
@@ -63,25 +66,29 @@ const Footer = () => {
           </div>
 
           <div className='w-full pt-8 flex flex-col gap-7 md:gap-4 md:flex-row md:items-center md:justify-between'>
-            <div className='w-8 m-auto md:m-0 h-7 rounded-lg bg-white'></div>
+            <div className='w-8 m-auto md:m-0 h-7 rounded-lg text-onPrimary-main'>
+              <h2 className='text-pp-eiko text-lg font-semibold'>KA</h2>
+            </div>
             {/* social links */}
             <div className='flex w-full flex-wrap items-center justify-center flex-row gap-7 md:gap-8 lg:gap-14'>
-              {socialLinks.map((link, index) => (
-                <a
-                  key={index}
-                  href={link.path}
-                  target='_blank'
-                  rel='noreferrer'
-                  className='transition-all duration-300 text-sm text-flicker'
-                >
-                  {link.title}
-                </a>
-              ))}
+              {(isUpwork ? upworkedSocialLinks : socialLinks).map(
+                (link, index) => (
+                  <a
+                    key={index}
+                    href={link.path}
+                    target='_blank'
+                    rel='noreferrer'
+                    className='transition-all duration-300 text-sm text-flicker'
+                  >
+                    {link.title}
+                  </a>
+                )
+              )}
             </div>
 
             {/* Credit */}
             <div className='flex flex-col items-center justify-center md:justify-end md:items-end gap-0.5 text-secondary-light text-[0.7rem] text-right'>
-              <p> &copy; {new Date().getFullYear()} KhalidDevs </p>
+              <p> &copy; {new Date().getFullYear()} Khalid Ahammed </p>
               <p className='whitespace-nowrap'>
                 Made with 🤍 by Khalid Ahammed
               </p>

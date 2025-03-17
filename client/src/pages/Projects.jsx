@@ -3,11 +3,12 @@ import { OutlinedBigIcon } from '../components/Buttons/OutlinedButton';
 import { useAppContext } from '../App';
 import { reqFileWrapper } from '../axios/requests';
 import { FaArrowRightLong } from 'react-icons/fa6';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import PageTransition from '../animations/PageTransition';
 
 const Projects = () => {
   const navigate = useNavigate();
+  const loc = useLocation();
   const {
     appData: { projects },
   } = useAppContext();
@@ -15,11 +16,16 @@ const Projects = () => {
   const [targetCat, setTargetCat] = useState('all');
 
   useEffect(() => {
+    window.scrollTo({
+      left: 0,
+      top: 0,
+    });
+  }, [projects, loc.pathname]);
+
+  useEffect(() => {
     if (projects?.length > 0)
       setCategories(['all', ...new Set(projects.map((item) => item.category))]);
   }, [projects]);
-
-  console.log(projects);
 
   return (
     <div className='w-full pb-28 min-h-screen screen-max-width pt-[160px] sec-x-padding'>

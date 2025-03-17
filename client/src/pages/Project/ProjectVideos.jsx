@@ -17,12 +17,19 @@ const ProjectVideos = ({ videos }) => {
         scrollTrigger: {
           trigger: video,
           start: '-10% bottom',
-          toggleActions: 'play pause resume pause',
-          // markers: true,
-          onEnter: () => video.play(),
-          onLeave: () => video.pause(),
-          onEnterBack: () => video.play(),
-          onLeaveBack: () => video.pause(),
+          // toggleActions: 'play pause play pause',
+          onEnter: () => {
+            video.play();
+          },
+          onLeave: () => {
+            video.pause();
+          },
+          onEnterBack: () => {
+            video.play();
+          },
+          onLeaveBack: () => {
+            video.pause();
+          },
         },
       });
     });

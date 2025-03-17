@@ -7,7 +7,7 @@ import {
 } from '../components/Buttons/OutlinedButton';
 import { GravityField, myPic } from '../assets';
 import { useAppContext } from '../App';
-import { education, workingFields } from '../Constants';
+import { education, experience, workingFields } from '../Constants';
 import { textBlinkAnimation } from '../animations/textBlinkAnimation';
 import useTextRevealAnimation from '../animations/useTextRevealAnimation';
 import useIsGreaterOrEqualMd from '../hooks/useIsGreaterOrEqualMd';
@@ -15,6 +15,7 @@ import { wordBlinkAnimation } from '../animations/wordBlinkAnimation';
 import PageTransition from '../animations/PageTransition';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useLocation } from 'react-router-dom';
+import { downloadResume } from '../axios';
 
 const About = () => {
   const [technologies, setTechnologies] = useState([]);
@@ -27,7 +28,6 @@ const About = () => {
   const aboutskillParentRef = useRef(null);
   const aboutskillsRef = useRef(null);
   const isGreaterOrEqualMd = useIsGreaterOrEqualMd();
-  const [isClient, setIsClient] = useState(false);
   const loc = useLocation();
 
   useEffect(() => {
@@ -44,11 +44,7 @@ const About = () => {
       top: 0,
       left: 0,
     });
-  }, [loc.pathname]);
-
-  // useEffect(()=>{
-  //   setIsClient(true)
-  // },[])
+  }, [loc.pathname, settings]);
 
   useEffect(() => {
     ScrollTrigger.refresh(true);
@@ -112,7 +108,7 @@ const About = () => {
       <div className='w-full'>
         <div className='flex flex-col-reverse md:flex-row gap-16 md:gap-20 justify-between w-full'>
           <div className='w-full h-auto'>
-            <SectionLabel text={'TALKS'} />
+            <SectionLabel text={'TALKS'} noAnime={true} />
             <div
               ref={aboutPageParentRef}
               className='flex mt-8 gap-12 md:gap-[130px] lg:gap-[130px] xl:gap-[140px] flex-col w-full md:min-w-[120px] h-full md:max-w-[350px] lg:max-w-[540px] 3xl:pt-12 3xl:gap-32'
@@ -130,7 +126,10 @@ const About = () => {
                 to create impactful solutions.
               </p>
               <div className='w-full justify-start flex md:justify-end items-end pr-1'>
-                <OutlinedBigIcon text={'DOWNLOAD CV'} />
+                <OutlinedBigIcon
+                  text={'DOWNLOAD CV'}
+                  onClick={() => downloadResume()}
+                />
               </div>
             </div>
           </div>
@@ -145,7 +144,7 @@ const About = () => {
             <img
               src={myPic}
               alt='my pic'
-              className='w-[70%] md:w-[73%] xl:w-[65%] absolute top-[47%] left-[46%] h-auto z-10 object-cover saturate-[20%]'
+              className='w-[70%] md:w-[73%] xl:w-[65%] absolute top-[47%] left-[46%] h-auto z-10 object-cover saturate-[20%] transition-all duration-1000 hover:saturate-[100%] pointer-all'
               style={{ transform: 'translate(-50%,-50%)' }}
               loading='eager'
             />
@@ -213,7 +212,7 @@ const About = () => {
 
         <div className='grid gap-6 mt-4'>
           <div className=''>
-            <SectionLabel text='Technologies' />
+            <SectionLabel text='Technologies' noAnime={true} />
           </div>
           <div className='w-full flex flex-col items-start justify-start gap-7'>
             {technologies?.map((item, key) => {
@@ -234,9 +233,35 @@ const About = () => {
         </div>
       </div>
 
+      {/* experiences */}
+      <div className='w-full grid gap-6'>
+        <SectionLabel text={'EXPERIENCES'} noAnime={true} />
+        <HRLine disablePadding={true} />
+        {experience.map((item, key) => (
+          <React.Fragment key={key}>
+            <div
+              className='w-full grid gap-3 group cursor-pointer pointer-all'
+              onClick={() => window.open(item.link, '_blank')}
+            >
+              <div className='flex items-start gap-4 justify-between'>
+                <span className='text-secondary-light text-sm text-montreal-mono cursor-pointer pointer-all group-hover:underline'>
+                  {item.company}
+                </span>
+                <span className='text-xs text-onPrimary-dark'>{item.date}</span>
+              </div>
+
+              <h2 className='text-primary-main text-pp-eiko text-2xl'>
+                {item.designation}
+              </h2>
+            </div>
+            <HRLine disablePadding={true} />
+          </React.Fragment>
+        ))}
+      </div>
+
       {/* education */}
       <div className='w-full grid gap-6'>
-        <SectionLabel text={'EDUCATION'} />
+        <SectionLabel text={'EDUCATION'} noAnime={true} />
         <HRLine disablePadding={true} />
         {education.map((item, key) => (
           <React.Fragment key={key}>

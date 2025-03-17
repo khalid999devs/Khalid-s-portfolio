@@ -4,6 +4,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { OutlinedSmallButton } from '../Buttons/OutlinedButton';
 import PageNav from './PageNav';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
+import { isUpwork } from '../../config';
+import { upworkedSocialLinks } from '../../Constants';
+import { myResume } from '../../assets';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -49,7 +52,7 @@ const Navbar = () => {
             <OutlinedSmallButton
               text={'My Resume'}
               onClick={() => {
-                navigate('/');
+                window.open(myResume, '_blank');
               }}
             />
           </div>
@@ -60,12 +63,23 @@ const Navbar = () => {
             >
               Projects
             </Link>
-            <Link
-              to={'mailto:khalidahammeduzzal@gmail.com'}
-              className=' blink-animate-nav text-flicker !hidden sm:!inline'
-            >
-              Email Me
-            </Link>
+            {!isUpwork ? (
+              <Link
+                to={'mailto:khalidahammeduzzal@gmail.com'}
+                className=' blink-animate-nav text-flicker !hidden sm:!inline'
+              >
+                Email Me
+              </Link>
+            ) : (
+              <a
+                href={upworkedSocialLinks[0].path}
+                target='_blank'
+                rel='noreferrer'
+                className='transition-all blink-animate-nav duration-300 text-xs sm:text-sm text-flicker pointer-all'
+              >
+                {upworkedSocialLinks[0].title}
+              </a>
+            )}
 
             {/* hamburger */}
             <div

@@ -1,8 +1,7 @@
 import { motion } from 'framer-motion';
-import React from 'react';
-//block delay = 0.5
-//duration =1
+import React, { useState, useEffect } from 'react';
 
+// Function to calculate random block delay
 const calculateRandomBlockDelay = (rowIndex, totalRows) => {
   const blockDelay = Math.random() * 0.4;
   const rowDelay = (totalRows - rowIndex - 1) * 0.05;
@@ -11,9 +10,19 @@ const calculateRandomBlockDelay = (rowIndex, totalRows) => {
 
 const PageTransition = (Page) => {
   return function WrappedPage(props) {
+    // const [transitionComplete, setTransitionComplete] = useState(false);
+
+    // // Handle transition complete to show page content
+    // useEffect(() => {
+    //   const timer = setTimeout(() => {
+    //     setTransitionComplete(true); // Show content after transition
+    //   }, 100); // Duration of the transition (adjust as needed)
+
+    //   return () => clearTimeout(timer); // Cleanup on component unmount
+    // }, []);
+
     return (
       <>
-        <Page {...props} />
         <div className='page-blocks-container transition-in'>
           {Array.from({ length: 10 }).map((_, rowIndex) => (
             <div className='row' key={rowIndex}>
@@ -34,6 +43,11 @@ const PageTransition = (Page) => {
             </div>
           ))}
         </div>
+
+        {/* New page content only appears after transition */}
+        {/* {transitionComplete && <Page {...props} />}
+         */}
+        <Page {...props} />
 
         <div className='page-blocks-container transition-out'>
           {Array.from({ length: 10 }).map((_, rowIndex) => (

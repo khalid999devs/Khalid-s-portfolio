@@ -1,3 +1,5 @@
+import { serverOrigin } from '../axios/requests';
+
 export { default as avatarImg } from '/Images/avtarImg.png';
 export { default as projectPlaceholder } from '/Images/project-placeholder.jpg';
 export { default as loadingGif } from '/Images/loading.gif';
@@ -15,3 +17,8 @@ export { default as myPicGray } from '/Images/About/myPic-gray.png';
 
 //project sec
 export { default as ScrollMouseAnime } from '/Images/Project/scroll.gif';
+
+//michi bot
+export const michiBot = '/models/michibot/michi_bot.glb';
+export const myResume =
+  serverOrigin + '/uploads/assets/Resume_Khalid_Ahammed.pdf';

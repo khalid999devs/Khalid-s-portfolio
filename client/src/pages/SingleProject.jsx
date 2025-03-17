@@ -1,6 +1,6 @@
 import axios from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { reqFileWrapper, reqs } from '../axios/requests';
 import { loadingGif, projectPlaceholder } from '../assets';
 import { BsFillCaretRightFill } from 'react-icons/bs';
@@ -20,9 +20,11 @@ import Loader from '../components/utils/Loader';
 import { wordBlinkAnimation } from '../animations/wordBlinkAnimation';
 import PageTransition from '../animations/PageTransition';
 import ProjectSlider from '../components/project/ProjectSlider';
+import FloatingActionBtn from '../components/utils/FloatingActionBtn';
 
 const SingleProject = () => {
   const navigate = useNavigate();
+  const loc = useLocation();
   const {
     appData: { projects },
   } = useAppContext();
@@ -57,9 +59,8 @@ const SingleProject = () => {
     window.scrollTo({
       left: 0,
       top: 0,
-      behavior: 'smooth',
     });
-  }, [location.pathname]);
+  }, [loc.pathname, project]);
 
   useEffect(() => {
     const spArr = value.split('@');
@@ -112,6 +113,13 @@ const SingleProject = () => {
             className='max-w-[90px] h-auto'
           />
         </div>
+      )}
+
+      {(project?.siteLink || project?.designLink) && (
+        <FloatingActionBtn
+          siteLink={project.siteLink}
+          designLink={project.designLink}
+        />
       )}
 
       <div className='flex w-full flex-col gap-20 sec-project-x-padding'>

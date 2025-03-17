@@ -72,7 +72,30 @@ export const socialLinks = [
   },
 ];
 
+export const upworkedSocialLinks = [
+  {
+    title: 'Github',
+    icon: FiGithub,
+    path: 'https://github.com/khalid999devs',
+  },
+];
+
 export const workingFields = `Website Development—Web Application & Software Development—UI/UX—Mobile App Development`;
+
+export const experience = [
+  {
+    company: 'DevGenit',
+    designation: 'Chief Operating Officer',
+    date: '2023 — Present',
+    link: 'https://www.devgenit.com',
+  },
+  {
+    company: 'Notre Dame Information Technology Club',
+    designation: 'President, Department of Web & App Development',
+    date: '2021 — 2022',
+    link: 'https://nditc.net',
+  },
+];
 
 export const education = [
   {

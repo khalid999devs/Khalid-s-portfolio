@@ -4,9 +4,12 @@ import { MdOutlineArrowBackIos } from 'react-icons/md';
 import { ScrollMouseAnime } from '../../assets';
 import { useEffect, useRef } from 'react';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import useDocumentHeight from '../../hooks/useDocumentHeight';
 
 const ProjectBanner = () => {
   const projecsParentRef = useRef(null);
+  const documentHeight = useDocumentHeight();
 
   useEffect(() => {
     if (projecsParentRef.current) {
@@ -21,6 +24,23 @@ const ProjectBanner = () => {
       }
     }
   }, []);
+
+  useEffect(() => {
+    let projectParentScrollTInstance;
+    if (projecsParentRef.current) {
+      projectParentScrollTInstance = ScrollTrigger.create({
+        trigger: projecsParentRef.current,
+        pin: true,
+        pinSpacing: false,
+        scrub: 0.2,
+        start: 'top top',
+      });
+    }
+
+    return () => {
+      if (projectParentScrollTInstance) projectParentScrollTInstance.kill();
+    };
+  }, [documentHeight]);
 
   return (
     <div

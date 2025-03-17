@@ -1,11 +1,17 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import React, { useEffect, useRef, useState } from 'react';
 import NavLogo from './Admin/NavLogo';
-import { pageNavLinks, socialLinks } from '../../Constants';
+import {
+  pageNavLinks,
+  socialLinks,
+  upworkedSocialLinks,
+} from '../../Constants';
 import { NavLink } from 'react-router-dom';
 import { MdOutlineArrowRightAlt } from 'react-icons/md';
 import { BiSolidRightArrow } from 'react-icons/bi';
 import { OutlinedSmallButton } from '../Buttons/OutlinedButton';
+import { isUpwork } from '../../config';
+import gsap from 'gsap';
 
 const calculateRandomBlockDelay = (rowIndex, totalRows) => {
   const blockDelay = Math.random() * 0.5;
@@ -15,6 +21,7 @@ const calculateRandomBlockDelay = (rowIndex, totalRows) => {
 
 const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
   const timeRef = useRef(null);
+  const contactTitleRef = useRef(null);
   // const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
@@ -32,6 +39,42 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (contactTitleRef.current) {
+      gsap.fromTo(
+        contactTitleRef.current,
+        {
+          transform:
+            'scale(1,1.3) rotate(90deg) translateY(40%) translateX(-57%)',
+        },
+        {
+          transform:
+            'scale(1,1.3) rotate(90deg) translateY(-14%) translateX(-57%)',
+          duration: 0.8,
+          delay: 0.5,
+        }
+      );
+    }
+    const pageNavLinks = gsap.utils.toArray('.page-nav-links');
+    if (pageNavLinks.length) {
+      gsap.fromTo(
+        pageNavLinks,
+        {
+          translateX: '20%',
+          opacity: 0,
+        },
+        {
+          translateX: 0,
+          opacity: 1,
+          delay: 0.5,
+          stagger: 0.1,
+          duration: 0.8,
+          ease: 'back.in',
+        }
+      );
+    }
+  }, [isPageMenu]);
 
   const handleHamburgerClick = () => {
     // setIsExiting(true); // Trigger the exit transition
@@ -84,9 +127,9 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
               {pageNavLinks.map((item, key) => (
                 <NavLink
                   className={({ isActive }) =>
-                    `text-[2.6rem] md:text-5xl ${
+                    `page-nav-links text-[2.6rem] md:text-5xl ${
                       isActive ? 'opacity-100 underline' : 'opacity-55'
-                    } hover:opacity-100 transition-all duration-300 hover:underline underline-offset-4 uppercase select-none inline w-fit`
+                    } hover:opacity-100 transition-all duration-300 hover:underline underline-offset-4 uppercase select-none inline w-fit `
                   }
                   onClick={() => setIsPageMenu(false)} // Close menu on link click
                   to={item.path}
@@ -100,6 +143,8 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
             <div className='md:border-l-[1px] border-secondary-light overflow-hidden relative md:pl-28 flex flex-col justify-end items-start'>
               <h1
                 className='text-7xl uppercase text-primary-main opacity-90 tracking-wide absolute left-0 hidden md:inline-block select-none'
+                id={'contact-title'}
+                ref={contactTitleRef}
                 style={{
                   transform:
                     'scale(1,1.3) rotate(90deg) translateY(-12%) translateX(-57%)',
@@ -141,13 +186,15 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
                 </div>
 
                 <div className='flex flex-row items-end justify-start gap-3'>
-                  {socialLinks.map((item, key) => (
-                    <OutlinedSmallButton
-                      key={key}
-                      text={item.title}
-                      onClick={() => window.open(item.path, '_blank')}
-                    />
-                  ))}
+                  {(isUpwork ? upworkedSocialLinks : socialLinks).map(
+                    (item, key) => (
+                      <OutlinedSmallButton
+                        key={key}
+                        text={item.title}
+                        onClick={() => window.open(item.path, '_blank')}
+                      />
+                    )
+                  )}
                 </div>
               </div>
             </div>

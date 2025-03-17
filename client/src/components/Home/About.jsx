@@ -5,6 +5,7 @@ import { OutlinedBigIcon } from '../Buttons/OutlinedButton';
 import SkillsAndTechs from './SkillsAndTechs';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 import useIsGreaterOrEqualMd from '../../hooks/useIsGreaterOrEqualMd';
+import { downloadResume } from '../../axios';
 
 const About = () => {
   const aboutTextRef = useRef(null);
@@ -46,8 +47,9 @@ const About = () => {
             <img
               src={myPic}
               alt='gravity-field'
-              className='w-[72%] md:w-[70%] lg:w-[75%] xl:w-[65%] absolute top-[47%] left-[46%] h-auto z-10 object-cover saturate-[20%]'
+              className='w-[72%] md:w-[70%] lg:w-[75%] xl:w-[65%] absolute top-[47%] left-[46%] h-auto z-10 object-cover saturate-[20%] transition-all duration-1000 hover:saturate-[100%] pointer-all'
               style={{ transform: 'translate(-50%,-50%)' }}
+              loading='lazy'
             />
           </div>
 
@@ -65,7 +67,10 @@ const About = () => {
               impactful solutions.
             </p>
             <div className='inline-block m-auto md:m-0'>
-              <OutlinedBigIcon text={'DOWNLOAD CV'} />
+              <OutlinedBigIcon
+                text={'DOWNLOAD CV'}
+                onClick={() => downloadResume()}
+              />
             </div>
           </div>
         </div>

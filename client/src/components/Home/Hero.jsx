@@ -1,8 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { langGrpImg, MainRobotImg } from '../../assets';
-import { socialLinks } from '../../Constants';
+import { socialLinks, upworkedSocialLinks } from '../../Constants';
 import { textBlinkAnimation } from '../../animations/textBlinkAnimation';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
+import Scene from './bot/Scene';
+import { isUpwork } from '../../config';
+import { textBlinkAnimateByWord } from '../../animations/textBlinkAnimateByWord';
 
 const Hero = () => {
   const nameTitleRef = useRef(null);
@@ -36,7 +39,7 @@ const Hero = () => {
 
   useEffect(() => {
     if (nameTitleRef.current) {
-      textBlinkAnimation(nameTitleRef.current);
+      textBlinkAnimateByWord(nameTitleRef.current);
     }
     if (developerTitleRef.current) {
       textBlinkAnimation(developerTitleRef.current);
@@ -68,29 +71,17 @@ const Hero = () => {
           Based in Bangladesh
         </p>
         <div
-          className='flex absolute left-1/2 items-center justify-center flex-col gap-5'
+          className='flex absolute left-1/2 items-center justify-center flex-col gap-5 z-40'
           style={{ transform: 'translate(-50%,-20%) scale(0.7)' }}
         >
           <div className='flex items-center justify-center flex-row gap-2.5'>
             <span className='w-4 h-4 bg-white'></span>
             <p className='text-lg xl:text-xl capitalize'>Hi There</p>
           </div>
-          <div className='w-full flex mt-12 relative'>
-            <img
-              src={MainRobotImg}
-              className='absolute min-h-[100px] min-w-fit w-auto top-1/2 left-1/2 z-10 max-h-[120px] h-auto'
-              style={{ transform: 'translate(-50%,-50%)' }}
-              alt='main-robot'
-              loading='lazy'
-            />
-
-            <img
-              src={langGrpImg}
-              className='absolute min-w-fit top-1/2 left-[49%] w-auto -z-0 max-h-[120px] h-auto opacity-80'
-              style={{ transform: 'translate(-50%,-50%)' }}
-              alt='main-robot'
-              loading='lazy'
-            />
+          <div className='w-full min-h-[20px] flex mt-12 relative'>
+            <div className='absolute w-[350px] h-[300px] left-[100%] -translate-x-1/2'>
+              <Scene />
+            </div>
           </div>
         </div>
         <p
@@ -123,7 +114,7 @@ const Hero = () => {
 
       {/* social links */}
       <div className='flex w-full items-center justify-center flex-row gap-6 sm:gap-8 lg:gap-14'>
-        {socialLinks.map((link, index) => (
+        {(isUpwork ? upworkedSocialLinks : socialLinks).map((link, index) => (
           <a
             key={index}
             href={link.path}

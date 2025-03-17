@@ -28,6 +28,9 @@ module.exports = (sequelize, DataTypes) => {
     siteLink: {
       type: DataTypes.STRING,
     },
+    designLink: {
+      type: DataTypes.STRING,
+    },
     codeLink: {
       type: DataTypes.STRING,
     },

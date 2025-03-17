@@ -28,6 +28,7 @@ export const reqs = {
   GET_SETTINGS: '/api/settings', //get
   ADD_SETTINGS: '/api/settings/add', //post
   EDIT_SETTINGS: '/api/settings/edit', //patch
+  DOWNLOAD_RESUME: '/api/settings/download-resume', //get
 
   //projects
   GET_PROJECT: '/api/projects', //post

@@ -1,5 +1,6 @@
 const { settings } = require('../models');
-const { BadRequestError, UnauthorizedError } = require('../errors');
+const { BadRequestError } = require('../errors');
+const path = require('path');
 
 const addSettings = async (req, res) => {
   let data = req.body;
@@ -49,4 +50,16 @@ const getSettings = async (req, res) => {
   });
 };
 
-module.exports = { addSettings, editSettings, getSettings };
+const downloadResume = async (req, res) => {
+  const filePath = path.join(
+    __dirname,
+    '../uploads/assets/Resume_Khalid_Ahammed.pdf'
+  );
+  res.download(filePath, 'Resume_Khalid_Ahammed.pdf', (err) => {
+    if (err) {
+      throw new BadRequestError('Failed to download resume');
+    }
+  });
+};
+
+module.exports = { addSettings, editSettings, getSettings, downloadResume };

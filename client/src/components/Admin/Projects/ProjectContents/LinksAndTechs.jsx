@@ -8,6 +8,7 @@ import FormIconLists from '../../FormIconLists';
 const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
   const [data, setData] = useState({
     siteLink: '',
+    designLink: '',
     codeLink: '',
     techStack: [],
   });
@@ -16,6 +17,7 @@ const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
     if (projectData?.id) {
       setData({
         siteLink: projectData?.siteLink,
+        designLink: projectData?.designLink,
         codeLink: projectData?.codeLink,
         techStack: projectData?.techStack,
       });
@@ -53,6 +55,16 @@ const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
               value: data.codeLink || '',
               onChange: (e) => handleInputValChange(e, setData),
               name: 'codeLink',
+            }}
+          />
+        </div>
+        <div className='grid gap-8 w-full md:grid-cols-1'>
+          <Input
+            label={'Design Link'}
+            inputProps={{
+              value: data.designLink || '',
+              onChange: (e) => handleInputValChange(e, setData),
+              name: 'designLink',
             }}
           />
         </div>
