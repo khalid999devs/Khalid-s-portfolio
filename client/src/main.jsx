@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import './axios/global.js';
 import App from './App.jsx';
@@ -8,13 +8,15 @@ import ErrorPage from './pages/ErrorPage.jsx';
 import Home from './pages/Home.jsx';
 
 //admin
-import Login from './pages/Admin/Auth/Login.jsx';
-import Admin from './pages/Admin/Panel/Admin.jsx';
-import Dashboard from './pages/Admin/Panel/Dashboard.jsx';
-import { Projects as AdminProjects } from './pages/Admin/Panel/Projects.jsx';
-import EditProject from './pages/Admin/Panel/EditProject.jsx';
-import CreateProject from './pages/Admin/Panel/CreateProject.jsx';
-import Settings from './pages/Admin/Panel/Settings.jsx';
+const Login = lazy(() => import('./pages/Admin/Auth/Login.jsx'));
+const Admin = lazy(() => import('./pages/Admin/Panel/Admin.jsx'));
+const Dashboard = lazy(() => import('./pages/Admin/Panel/Dashboard.jsx'));
+const AdminProjects = lazy(() => import('./pages/Admin/Panel/Projects.jsx'));
+const EditProject = lazy(() => import('./pages/Admin/Panel/EditProject.jsx'));
+const CreateProject = lazy(() =>
+  import('./pages/Admin/Panel/CreateProject.jsx')
+);
+const Settings = lazy(() => import('./pages/Admin/Panel/Settings.jsx'));
 
 //client
 import Projects from './pages/Projects.jsx';
@@ -23,8 +25,7 @@ import SingleProject from './pages/SingleProject.jsx';
 import CodingLab from './pages/CodingLab.jsx';
 
 import { HelmetProvider } from 'react-helmet-async';
-import { LenisGSAP } from './animations/LenisGSAP.jsx';
-import { AnimatePresence } from 'framer-motion';
+import Loader from './components/utils/Loader.jsx';
 
 const router = createBrowserRouter([
   {
@@ -56,12 +57,20 @@ const router = createBrowserRouter([
   },
   {
     path: '/admin-login',
-    element: <Login />,
+    element: (
+      <Suspense fallback={<Loader classes={'z-40 !w-screen !h-screen'} />}>
+        <Login />
+      </Suspense>
+    ),
     errorElement: <ErrorPage />,
   },
   {
     path: '/admin',
-    element: <Admin />,
+    element: (
+      <Suspense fallback={<Loader classes={'z-40 !w-screen !h-screen'} />}>
+        <Admin />
+      </Suspense>
+    ),
     errorElement: <ErrorPage />,
     children: [
       {
@@ -86,12 +95,14 @@ const router = createBrowserRouter([
       },
     ],
   },
+  {
+    path: '/error',
+    element: <ErrorPage />,
+  },
 ]);
 
 createRoot(document.getElementById('root')).render(
   <HelmetProvider>
-    {/* <AnimatePresence mode='wait'> */}
     <RouterProvider router={router} />
-    {/* </AnimatePresence> */}
   </HelmetProvider>
 );

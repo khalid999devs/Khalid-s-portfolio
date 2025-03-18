@@ -97,6 +97,21 @@ export const experience = [
   },
 ];
 
+export const achievements = [
+  {
+    title: 'Regional Winner and Global Nominee',
+    from: 'NASA SPACE APP CHALLANGE HACKATHON 2024',
+    date: '2024',
+    link: 'https://www.spaceappschallenge.org/nasa-space-apps-2024/find-a-team/novaflare/?tab=details',
+  },
+  {
+    title: 'Champion in national Web Design Contest',
+    from: 'Notre Dame Science Club',
+    date: '2022',
+    link: 'https://www.facebook.com/photo/?fbid=5025775960821528&set=pcb.1113307382606258',
+  },
+];
+
 export const education = [
   {
     degree: 'Computer Science and Engineering',

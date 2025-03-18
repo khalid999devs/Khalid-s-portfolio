@@ -21,6 +21,7 @@ import { wordBlinkAnimation } from '../animations/wordBlinkAnimation';
 import PageTransition from '../animations/PageTransition';
 import ProjectSlider from '../components/project/ProjectSlider';
 import FloatingActionBtn from '../components/utils/FloatingActionBtn';
+import MetaCard from '../components/utils/MetaCard';
 
 const SingleProject = () => {
   const navigate = useNavigate();
@@ -75,15 +76,10 @@ const SingleProject = () => {
         setProjLoading(false);
       })
       .catch((err) => {
-        console.log(err);
+        // console.log(err);
         setProjLoading(false);
+        navigate('/error');
       });
-
-    // window.scrollTo({
-    //   top: 0,
-    //   left: 0,
-    //   behavior: 'smooth',
-    // });
   }, [value]);
 
   useEffect(() => {
@@ -105,6 +101,16 @@ const SingleProject = () => {
 
   return (
     <div className='w-full pb-28 flex flex-col gap-20 lg:gap-24 min-h-screen screen-max-width pt-[160px]'>
+      <MetaCard
+        title={project?.title}
+        description={project?.overview}
+        image={
+          project.thumbnailContents && project.thumbnailContents.length
+            ? reqFileWrapper(project.thumbnailContents[0].url)
+            : reqFileWrapper(project?.bannerImg)
+        }
+      />
+
       {projLoading && (
         <div className='w-full min-h-[400px] flex items-center justify-center'>
           <img

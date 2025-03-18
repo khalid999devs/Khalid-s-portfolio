@@ -1,4 +1,5 @@
 export const serverOrigin = 'http://localhost:8000';
+// export const serverOrigin = 'https://api.khalidahammed.com';
 
 export const reqFileWrapper = (src) => {
   if (!src) return null;

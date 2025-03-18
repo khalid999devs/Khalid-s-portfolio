@@ -7,7 +7,12 @@ import {
 } from '../components/Buttons/OutlinedButton';
 import { GravityField, myPic } from '../assets';
 import { useAppContext } from '../App';
-import { education, experience, workingFields } from '../Constants';
+import {
+  achievements,
+  education,
+  experience,
+  workingFields,
+} from '../Constants';
 import { textBlinkAnimation } from '../animations/textBlinkAnimation';
 import useTextRevealAnimation from '../animations/useTextRevealAnimation';
 import useIsGreaterOrEqualMd from '../hooks/useIsGreaterOrEqualMd';
@@ -16,6 +21,7 @@ import PageTransition from '../animations/PageTransition';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useLocation } from 'react-router-dom';
 import { downloadResume } from '../axios';
+import MetaCard from '../components/utils/MetaCard';
 
 const About = () => {
   const [technologies, setTechnologies] = useState([]);
@@ -94,6 +100,7 @@ const About = () => {
 
   return (
     <div className='w-full pb-28 flex flex-col gap-20 lg:gap-24 min-h-screen screen-max-width pt-[160px] sec-project-x-padding'>
+      <MetaCard title={'About Myself'} />
       <div className='flex flex-col gap-8 w-full md:justify-start '>
         <h1
           ref={aboutHeaderRef}
@@ -252,6 +259,32 @@ const About = () => {
 
               <h2 className='text-primary-main text-pp-eiko text-2xl'>
                 {item.designation}
+              </h2>
+            </div>
+            <HRLine disablePadding={true} />
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* achievements */}
+      <div className='w-full grid gap-6'>
+        <SectionLabel text={'ACHIEVEMENTS'} noAnime={true} />
+        <HRLine disablePadding={true} />
+        {achievements.map((item, key) => (
+          <React.Fragment key={key}>
+            <div
+              className='w-full grid gap-3 group cursor-pointer pointer-all'
+              onClick={() => window.open(item.link, '_blank')}
+            >
+              <div className='flex items-start gap-4 justify-between'>
+                <span className='text-secondary-light text-sm text-montreal-mono cursor-pointer pointer-all group-hover:underline'>
+                  {item.from}
+                </span>
+                <span className='text-xs text-onPrimary-dark'>{item.date}</span>
+              </div>
+
+              <h2 className='text-primary-main text-pp-eiko text-2xl'>
+                {item.title}
               </h2>
             </div>
             <HRLine disablePadding={true} />

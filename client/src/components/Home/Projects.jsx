@@ -8,6 +8,7 @@ import { FaArrowRightLong } from 'react-icons/fa6';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import useDocumentHeight from '../../hooks/useDocumentHeight';
+import { OutlinedBigIcon } from '../Buttons/OutlinedButton';
 
 function animateImageEntry(img) {
   gsap.fromTo(
@@ -73,6 +74,7 @@ const ProjectsShows = () => {
   const [activeSlide, setActiveSlide] = useState({});
   const isMidScreen = useIsGreaterOrEqualMd();
   const documentHeight = useDocumentHeight();
+  const maxShowed = 5;
 
   function updateInfoContent(index) {
     const infoItems = document.querySelectorAll('.info > div p');
@@ -136,7 +138,7 @@ const ProjectsShows = () => {
     mm.add('(min-width: 768px)', () => {
       const pinnedSection = sliderRef.current;
       const progressBar = progressBarRef.current;
-      const slideNum = projects.length;
+      const slideNum = Math.min(projects.length, maxShowed);
       const pinnedHeight = window.innerHeight * (slideNum * 2);
       const images = gsap.utils.toArray('.img');
 
@@ -275,7 +277,7 @@ const ProjectsShows = () => {
           </div>
 
           {/* Images */}
-          {projects.map((item, index) => (
+          {projects?.slice(0, maxShowed).map((item, index) => (
             <div
               key={index}
               className='absolute top-1/2 left-1/2 w-[40%] h-[50%] max-h-[350px] transform -translate-x-1/2 -translate-y-1/2 scale-125 -z-[1] overflow-hidden clip-path-polygon-[0%_100%,100%_100%,100%_100%,0%_100%] opacity-0 img'
@@ -295,10 +297,22 @@ const ProjectsShows = () => {
               />
             </div>
           ))}
+
+          {activeSlide?.id ===
+            projects[Math.min(projects.length, maxShowed) - 1]?.id && (
+            <div className='absolute left-1/2 bottom-3 -translate-x-1/2'>
+              <OutlinedBigIcon
+                text={'All works'}
+                onClick={() => {
+                  navigate('/projects');
+                }}
+              />
+            </div>
+          )}
         </section>
 
         <div className='md:hidden pt-24 mb-20 grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 items-start justify-start gap-8'>
-          {projects?.map((item, key) => {
+          {projects?.slice(0, maxShowed).map((item, key) => {
             return (
               <div
                 className='w-full grid border-b-[0.05px] border-opacity-30 border-secondary-light pb-3 gap-4 md:gap-6 group cursor-pointer pointer-all'
@@ -343,6 +357,14 @@ const ProjectsShows = () => {
               </div>
             );
           })}
+        </div>
+        <div className='md:hidden flex w-full items-center justify-center my-10'>
+          <OutlinedBigIcon
+            text={'All works'}
+            onClick={() => {
+              navigate('/projects');
+            }}
+          />
         </div>
       </div>
     </div>

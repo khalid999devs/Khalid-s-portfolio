@@ -14,6 +14,7 @@ import AnimatedOutlet from './animations/AnimatedOutlet';
 import { LenisGSAP } from './animations/LenisGSAP';
 import gsap from 'gsap';
 import CustomEase from 'gsap/CustomEase';
+import MetaCard from './components/utils/MetaCard';
 
 gsap.registerPlugin(CustomEase);
 const customEase = CustomEase.create('custom', '.87,0,.13,1');
@@ -157,6 +158,7 @@ const App = () => {
     <LenisGSAP>
       <AppContext.Provider value={{ loading, settings, setSettings, appData }}>
         <div className='bg-body-main min-h-screen w-full'>
+          <MetaCard />
           <MouseMoveEffect />
           <Navbar />
           <div className='pointer-none'>
