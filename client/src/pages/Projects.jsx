@@ -32,7 +32,7 @@ const Projects = () => {
     <div className='w-full pb-28 min-h-screen screen-max-width pt-[160px] sec-x-padding'>
       <MetaCard title={'Projects'} />
 
-      <div className='flex flex-col gap-8 pl-8 md:pl-28'>
+      <div className='flex flex-col gap-8 w-full md:pl-28'>
         <div className='flex w-full justify-center md:justify-start items-center gap-4'>
           <h1 className='text-[2.2rem] sm:text-[3rem] md:text-[4rem] text-pp-eiko text-letter-reveal'>
             SELECTED

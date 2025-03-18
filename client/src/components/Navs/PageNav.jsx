@@ -38,7 +38,7 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
         clearInterval(iid);
       }
     };
-  }, []);
+  }, [isPageMenu]);
 
   useEffect(() => {
     if (contactTitleRef.current) {
@@ -67,7 +67,7 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
         {
           translateX: 0,
           opacity: 1,
-          delay: 0.5,
+          delay: 0.2,
           stagger: 0.1,
           duration: 0.8,
           ease: 'back.in',
@@ -155,7 +155,7 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
                 Contact
               </h1>
 
-              <div className='flex flex-col gap-9 md:gap-14 pb-8'>
+              <div className='flex flex-col gap-9 md:gap-14 pb-8 mb-9 md:mb-0'>
                 <div className='flex flex-col gap-4 md:gap-8'>
                   <div className='flex items-center md:justify-start gap-1 -translate-x-1 group'>
                     <MdOutlineArrowRightAlt className='text-white text-4xl transition-transform duration-1000 group-hover:translate-x-1' />
