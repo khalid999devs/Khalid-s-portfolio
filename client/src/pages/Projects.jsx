@@ -44,7 +44,7 @@ const Projects = () => {
         </div>
 
         {categories?.length ? (
-          <div className='flex flex-row gap-3 items-center justify-center md:justify-start'>
+          <div className='flex flex-row flex-wrap gap-3 items-center justify-center md:justify-start'>
             {categories?.map((item, key) => (
               <OutlinedBigIcon
                 classes={`!border-[0.2px] border-opacity-50 !rounded-[3px] capitalize ${
