@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { socialLinks, upworkedSocialLinks } from '../../Constants';
 import { textBlinkAnimation } from '../../animations/textBlinkAnimation';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 import Scene from './bot/Scene';
 import { isUpwork } from '../../config';
 import { textBlinkAnimateByWord } from '../../animations/textBlinkAnimateByWord';
+import { useMichibotInteraction } from '../../hooks/useMichibotInteraction';
 
 const Hero = () => {
   const nameTitleRef = useRef(null);
@@ -12,6 +13,11 @@ const Hero = () => {
   const countryRef = useRef(null);
   const passionRef = useRef(null);
   const heroRef = useRef(null);
+  const botContainerRef = useRef(null);
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  const { isActive, isDesktop, isLoaded, setIsLoaded, handleClick } =
+    useMichibotInteraction(botContainerRef, heroRef);
 
   useEffect(() => {
     if (nameTitleRef.current) {
@@ -51,8 +57,26 @@ const Hero = () => {
             <p className='text-lg xl:text-xl capitalize'>Hi There</p>
           </div>
           <div className='w-full min-h-[20px] flex mt-12 relative'>
-            <div className='absolute w-[350px] h-[300px] left-[100%] -translate-x-1/2'>
-              <Scene />
+            <div
+              ref={botContainerRef}
+              className={`absolute w-[350px] h-[300px] left-[100%] -translate-x-1/2 transition-all duration-300 ${
+                isDesktop && isLoaded ? 'cursor-pointer' : ''
+              } ${isActive ? 'z-50 michibot-active' : 'z-40'}`}
+              onClick={handleClick}
+              onMouseEnter={() =>
+                isDesktop && isLoaded && !isActive && setShowTooltip(true)
+              }
+              onMouseLeave={() => setShowTooltip(false)}
+            >
+              {isDesktop && isLoaded && !isActive && (
+                <div
+                  className={`michibot-tooltip ${showTooltip ? 'show' : ''}`}
+                >
+                  <span className='highlight-text'>Click</span> me to see magic!
+                  ✨
+                </div>
+              )}
+              <Scene onLoad={() => setIsLoaded(true)} isActive={isActive} />
             </div>
           </div>
         </div>
