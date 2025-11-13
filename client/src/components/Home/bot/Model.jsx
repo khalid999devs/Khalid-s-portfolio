@@ -11,7 +11,8 @@ import { forwardRef, useEffect, useRef } from 'react';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import gsap from 'gsap';
 
-const Model = forwardRef((props) => {
+// eslint-disable-next-line no-unused-vars
+const Model = forwardRef((props, ref) => {
   const group = useRef();
   const { nodes, materials, animations } = useGLTF('/scene.glb');
   const { actions } = useAnimations(animations, group);

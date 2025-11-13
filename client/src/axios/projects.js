@@ -40,3 +40,26 @@ export const deleteProject = (
     alert('Please Enter the exact Project name to delete!');
   }
 };
+
+export const reorderProjects = (projectOrders) => {
+  return new Promise((resolve, reject) => {
+    axios
+      .patch(
+        reqs.REORDER_PROJECTS,
+        { projectOrders },
+        {
+          withCredentials: true,
+        }
+      )
+      .then((res) => {
+        if (res.data.succeed) {
+          resolve(res.data);
+        } else {
+          reject(res.data);
+        }
+      })
+      .catch((err) => {
+        reject(err.response?.data || { msg: 'Failed to reorder projects' });
+      });
+  });
+};

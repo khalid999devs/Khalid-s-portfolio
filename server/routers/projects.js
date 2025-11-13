@@ -6,6 +6,7 @@ const {
   editProjectContents,
   deleteProjectContents,
   deleteProject,
+  reorderProjects,
 } = require('../controllers/projects');
 const adminValidate = require('../middlewares/adminTokenVerify');
 const upload = require('../middlewares/uploadFile');
@@ -28,6 +29,7 @@ router.put(
 );
 
 router.patch('/edit-infos/:id', adminValidate, editProjectInfos);
+router.patch('/reorder', adminValidate, reorderProjects);
 router.patch(
   '/edit-contents/:id',
   adminValidate,

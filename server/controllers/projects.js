@@ -10,6 +10,15 @@ const createProject = async (req, res) => {
       'Data for all the necessary fields must be provided'
     );
 
+  // Get the highest displayOrder to set the new project at the end
+  const maxOrderProject = await projects.findOne({
+    order: [['displayOrder', 'DESC']],
+    attributes: ['displayOrder'],
+  });
+  const nextDisplayOrder = maxOrderProject
+    ? maxOrderProject.displayOrder + 1
+    : 0;
+
   let initialInfos = await projects.create({
     title,
     value: title
@@ -22,6 +31,7 @@ const createProject = async (req, res) => {
     role: JSON.stringify(role),
     date,
     locationYear,
+    displayOrder: nextDisplayOrder,
   });
 
   initialInfos.dataValues.role = JSON.parse(initialInfos.dataValues.role);
@@ -353,9 +363,10 @@ const getProjects = async (req, res) => {
         'codeLink',
         'date',
         'thumbnailContents',
+        'displayOrder',
         'createdAt',
       ],
-      order: [['id', 'ASC']],
+      order: [['displayOrder', 'ASC']],
     });
     result.forEach((item) => {
       item.dataValues.thumbnailContents = JSON.parse(
@@ -390,6 +401,29 @@ const getProjects = async (req, res) => {
   });
 };
 
+const reorderProjects = async (req, res) => {
+  const { projectOrders } = req.body;
+
+  if (!projectOrders || !Array.isArray(projectOrders)) {
+    throw new BadRequestError('Project orders must be provided as an array');
+  }
+
+  // Update each project's displayOrder in a transaction
+  const updatePromises = projectOrders.map((item) =>
+    projects.update(
+      { displayOrder: item.displayOrder },
+      { where: { id: item.id } }
+    )
+  );
+
+  await Promise.all(updatePromises);
+
+  res.json({
+    succeed: true,
+    msg: 'Successfully reordered projects!',
+  });
+};
+
 module.exports = {
   createProject,
   updateProjectContents,
@@ -398,4 +432,5 @@ module.exports = {
   deleteProjectContents,
   deleteProject,
   getProjects,
+  reorderProjects,
 };

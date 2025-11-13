@@ -61,6 +61,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.TEXT,
       defaultValue: '[]',
     },
+    displayOrder: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
   });
 
   return projects;

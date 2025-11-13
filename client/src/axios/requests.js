@@ -39,6 +39,7 @@ export const reqs = {
   EDIT_PROJECT_CONTENTS: '/api/projects/edit-contents', //patch
   DELETE_PROJECT_CONTENTS: '/api/projects/delete-contents', //patch
   DELETE_PROJECT: '/api/projects/delete', //delete
+  REORDER_PROJECTS: '/api/projects/reorder', //patch
 
   //contacts
   SEND_MESSAGE_FROM_CLIENT: '/api/contact/sendMessage', //post
