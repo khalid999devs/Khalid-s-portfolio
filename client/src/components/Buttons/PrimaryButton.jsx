@@ -1,4 +1,5 @@
 import { IoArrowForward } from 'react-icons/io5';
+import PropTypes from 'prop-types';
 
 const PrimaryButton = ({
   text,
@@ -38,6 +39,17 @@ const PrimaryButton = ({
       )}
     </button>
   );
+};
+
+
+PrimaryButton.propTypes = {
+  text: PropTypes.string,
+  onClick: PropTypes.func,
+  classes: PropTypes.string,
+  Icon: PropTypes.elementType,
+  type: PropTypes.string,
+  state: PropTypes.string,
+  btnState: PropTypes.string,
 };
 
 export default PrimaryButton;

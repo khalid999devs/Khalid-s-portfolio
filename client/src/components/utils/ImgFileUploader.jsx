@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { IoImageOutline } from 'react-icons/io5';
 import { RiImageAddLine } from 'react-icons/ri';
@@ -7,20 +7,18 @@ import { handleCompressImg } from '../../utils/FileProcessing/ImageCompression';
 import PrimaryButton from '../Buttons/PrimaryButton';
 import { validFileWrapper } from '../../axios/requests';
 import { FaVideo } from 'react-icons/fa';
+import PropTypes from 'prop-types';
 
 const ImgFileUploader = ({
-  mode,
   dragActiveText,
   fileImg,
   onLoad,
   type = 'multiple',
   compress = { state: false, maxSizeMb: 0.5, maxWidthOrHeight: 1920 },
   clearFileImg,
-  placeholderText,
   dropContainerClass,
   imageContainerClass,
   thumbnail = false,
-  textClasses,
   defaultImg,
   processText,
   PlaceholderImgIcon,
@@ -31,39 +29,51 @@ const ImgFileUploader = ({
 }) => {
   const fileInputRef = useRef();
   const [loading, setLoading] = useState(false);
+  const activeReadersRef = useRef([]); // Track active FileReaders
 
-  const onDrop = useCallback((acceptedFiles) => {
-    acceptedFiles.forEach(async (file) => {
-      setLoading(true);
-      const reader = new FileReader();
+  const onDrop = useCallback(
+    (acceptedFiles) => {
+      acceptedFiles.forEach(async (file) => {
+        setLoading(true);
+        const reader = new FileReader();
+        activeReadersRef.current.push(reader); // Track this reader
 
-      reader.onabort = () => console.log('file reading was aborted');
-      reader.onerror = () => console.log('file reading has failed');
-      // reader.onprogress = () => {
-      //   console.log('progressing the upload');
-      // };
-      reader.onload = async () => {
-        // const binaryStr = reader.result;
-        // console.log(binaryStr);
-        if (compress.state) {
-          const compressedImg = await handleCompressImg(
-            file,
-            compress.maxSizeMb,
-            compress.maxWidthOrHeight
-          );
-          if (thumbnail) {
-            onLoad(file, compressedImg);
-          } else {
-            onLoad(compressedImg);
+        reader.onabort = () => {};
+        reader.onerror = () => {};
+        reader.onload = async () => {
+          // Remove reader from active list when done
+          const index = activeReadersRef.current.indexOf(reader);
+          if (index > -1) {
+            activeReadersRef.current.splice(index, 1);
           }
-        } else {
-          onLoad(file);
-        }
-        setLoading(false);
-      };
-      reader.readAsArrayBuffer(file);
-    });
-  }, []);
+
+          if (compress.state) {
+            const compressedImg = await handleCompressImg(
+              file,
+              compress.maxSizeMb,
+              compress.maxWidthOrHeight
+            );
+            if (thumbnail) {
+              onLoad(file, compressedImg);
+            } else {
+              onLoad(compressedImg);
+            }
+          } else {
+            onLoad(file);
+          }
+          setLoading(false);
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    },
+    [
+      compress.state,
+      compress.maxSizeMb,
+      compress.maxWidthOrHeight,
+      thumbnail,
+      onLoad,
+    ]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -72,6 +82,19 @@ const ImgFileUploader = ({
     multiple: type === 'multiple' ? true : false,
     // accept: 'image/*',
   });
+
+  // Cleanup: Abort all active FileReaders on unmount
+  useEffect(() => {
+    const readers = activeReadersRef.current;
+    return () => {
+      readers.forEach((reader) => {
+        if (reader.readyState === 1) {
+          // LOADING state
+          reader.abort();
+        }
+      });
+    };
+  }, []);
 
   const openFileSelector = () => {
     if (fileInputRef.current) {
@@ -196,6 +219,32 @@ const ImgFileUploader = ({
       </div>
     );
   }
+};
+
+ImgFileUploader.propTypes = {
+  mode: PropTypes.string,
+  dragActiveText: PropTypes.string,
+  fileImg: PropTypes.object,
+  onLoad: PropTypes.func,
+  type: PropTypes.string,
+  compress: PropTypes.shape({
+    state: PropTypes.bool,
+    maxSizeMb: PropTypes.number,
+    maxWidthOrHeight: PropTypes.number,
+  }),
+  clearFileImg: PropTypes.func,
+  placeholderText: PropTypes.string,
+  dropContainerClass: PropTypes.string,
+  imageContainerClass: PropTypes.string,
+  thumbnail: PropTypes.bool,
+  textClasses: PropTypes.string,
+  defaultImg: PropTypes.string,
+  processText: PropTypes.string,
+  PlaceholderImgIcon: PropTypes.elementType,
+  dataURL: PropTypes.bool,
+  video: PropTypes.bool,
+  fileNumber: PropTypes.number,
+  plaecholderIconCls: PropTypes.string,
 };
 
 export default ImgFileUploader;

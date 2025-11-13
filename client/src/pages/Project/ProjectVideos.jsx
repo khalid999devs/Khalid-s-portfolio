@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { reqFileWrapper } from '../../axios/requests';
 import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import PropTypes from 'prop-types';
 
 // gsap.registerPlugin(ScrollTrigger);
 
@@ -58,6 +58,16 @@ const ProjectVideos = ({ videos }) => {
       ))}
     </div>
   );
+};
+
+
+ProjectVideos.propTypes = {
+  videos: PropTypes.arrayOf(
+    PropTypes.shape({
+      url: PropTypes.string,
+      alt: PropTypes.string,
+    })
+  ),
 };
 
 export default ProjectVideos;

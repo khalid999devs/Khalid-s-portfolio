@@ -1,5 +1,6 @@
 import { IoEye } from 'react-icons/io5';
 import { IoEyeOff } from 'react-icons/io5';
+import PropTypes from 'prop-types';
 
 const Input = ({
   inputProps,
@@ -81,6 +82,24 @@ const Input = ({
       )}
     </div>
   );
+};
+
+
+Input.propTypes = {
+  inputProps: PropTypes.object,
+  label: PropTypes.string,
+  alert: PropTypes.shape({
+    msg: PropTypes.string,
+    state: PropTypes.string,
+  }),
+  type: PropTypes.string,
+  show: PropTypes.bool,
+  onShowClick: PropTypes.func,
+  classes: PropTypes.string,
+  inputClasses: PropTypes.string,
+  textArea: PropTypes.bool,
+  size: PropTypes.string,
+  labelClass: PropTypes.string,
 };
 
 export default Input;

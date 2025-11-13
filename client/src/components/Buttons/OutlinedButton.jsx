@@ -1,3 +1,5 @@
+import PropTypes from 'prop-types';
+
 export const OutlinedSmallButton = ({
   text,
   onClick,
@@ -19,6 +21,14 @@ export const OutlinedSmallButton = ({
   );
 };
 
+OutlinedSmallButton.propTypes = {
+  text: PropTypes.string,
+  onClick: PropTypes.func,
+  classes: PropTypes.string,
+  textClasses: PropTypes.string,
+  disableHover: PropTypes.bool,
+};
+
 export const OutlinedBigIcon = ({ text, onClick, classes, textClasses }) => {
   return (
     <button
@@ -31,4 +41,11 @@ export const OutlinedBigIcon = ({ text, onClick, classes, textClasses }) => {
       <p className={'text-sm ' + textClasses}>{text || 'Button'}</p>
     </button>
   );
+};
+
+OutlinedBigIcon.propTypes = {
+  text: PropTypes.string,
+  onClick: PropTypes.func,
+  classes: PropTypes.string,
+  textClasses: PropTypes.string,
 };

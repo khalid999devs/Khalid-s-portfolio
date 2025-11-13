@@ -1,33 +1,41 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import PrimaryButton from '../Buttons/PrimaryButton';
 import { FaAngleDown, FaFigma } from 'react-icons/fa';
 import { FaAngleUp } from 'react-icons/fa';
 import { MdOutlineArrowOutward } from 'react-icons/md';
+import PropTypes from 'prop-types';
 
 const FloatingActionBtn = ({ siteLink, designLink }) => {
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
 
-  const setScrollOpen = () => {
+  const setScrollOpen = useCallback(() => {
     if (window.scrollY > 200 && count < 1) {
-      if (!open) {
-        setOpen(true);
-        setCount(count + 1);
-      }
+      setOpen((prevOpen) => {
+        if (!prevOpen) {
+          setCount((prevCount) => prevCount + 1);
+          return true;
+        }
+        return prevOpen;
+      });
     }
-  };
+  }, [count]);
+
   useEffect(() => {
     if (window.innerWidth < 768) {
-      if (!open) {
-        setOpen(true);
-        setCount(count + 1);
-      }
+      setOpen((prevOpen) => {
+        if (!prevOpen) {
+          setCount((prevCount) => prevCount + 1);
+          return true;
+        }
+        return prevOpen;
+      });
     }
     window.addEventListener('scroll', setScrollOpen);
     return () => {
       window.removeEventListener('scroll', setScrollOpen);
     };
-  }, [count]);
+  }, [setScrollOpen]);
 
   return (
     <div
@@ -63,7 +71,7 @@ const FloatingActionBtn = ({ siteLink, designLink }) => {
             !open ? 'bottom-[100%]' : 'bottom-[45%]'
           }`}
           onClick={() => {
-            setOpen(!open);
+            setOpen((prev) => !prev);
           }}
         >
           <p className='text-primary-main text-xl'>
@@ -73,6 +81,11 @@ const FloatingActionBtn = ({ siteLink, designLink }) => {
       </div>
     </div>
   );
+};
+
+FloatingActionBtn.propTypes = {
+  siteLink: PropTypes.string,
+  designLink: PropTypes.string,
 };
 
 export default FloatingActionBtn;

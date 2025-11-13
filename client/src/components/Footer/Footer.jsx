@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { MdOutlineArrowRightAlt } from 'react-icons/md';
 import { BiSolidRightArrow } from 'react-icons/bi';
 import { socialLinks, upworkedSocialLinks } from '../../Constants';
@@ -33,7 +33,7 @@ const Footer = () => {
                 className='text-white text-[1.5rem] md:text-[3rem] max-w-[350px] w-full'
                 style={{ lineHeight: '125%' }}
               >
-                Let's create something great together
+                Let&apos;s create something great together
               </h1>
 
               {!isUpwork && (

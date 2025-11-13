@@ -1,4 +1,5 @@
 import { Helmet } from 'react-helmet-async';
+import PropTypes from 'prop-types';
 
 function MetaCard({ title, description, image }) {
   return (
@@ -51,5 +52,12 @@ function MetaCard({ title, description, image }) {
     </Helmet>
   );
 }
+
+
+MetaCard.propTypes = {
+  title: PropTypes.string,
+  description: PropTypes.string,
+  image: PropTypes.string,
+};
 
 export default MetaCard;

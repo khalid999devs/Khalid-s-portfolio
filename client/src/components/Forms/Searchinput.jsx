@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { IoSearch } from 'react-icons/io5';
+import PropTypes from 'prop-types';
 
 const Searchinput = ({ onSubmit, onChange }) => {
   const [value, setValue] = useState('');
@@ -29,6 +30,12 @@ const Searchinput = ({ onSubmit, onChange }) => {
       </form>
     </div>
   );
+};
+
+
+Searchinput.propTypes = {
+  onSubmit: PropTypes.func,
+  onChange: PropTypes.func,
 };
 
 export default Searchinput;

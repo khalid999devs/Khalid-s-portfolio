@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { IoMdClose } from 'react-icons/io';
 import gsap from 'gsap';
 import PrimaryButton from '../Buttons/PrimaryButton';
 import { loadingGif } from '../../assets';
+import PropTypes from 'prop-types';
 
 const Popup = ({
   text,
-  icon,
   classes,
   textClasses,
   type = '',
@@ -121,6 +120,20 @@ const Popup = ({
     </div>
     // </div>
   );
+};
+
+Popup.propTypes = {
+  text: PropTypes.string,
+  icon: PropTypes.elementType,
+  classes: PropTypes.string,
+  textClasses: PropTypes.string,
+  type: PropTypes.string,
+  state: PropTypes.bool,
+  setPopup: PropTypes.func,
+  closeText: PropTypes.string,
+  customButtons: PropTypes.array,
+  loading: PropTypes.bool,
+  onClose: PropTypes.func,
 };
 
 export default Popup;

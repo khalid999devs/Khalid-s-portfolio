@@ -1,12 +1,12 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import ImgFileUploader from '../../../utils/ImgFileUploader';
 import PrimaryButton from '../../../Buttons/PrimaryButton';
 import { IoMdAdd } from 'react-icons/io';
 import { MdOutlineOndemandVideo } from 'react-icons/md';
 import { reqFileWrapper } from '../../../../axios/requests';
 import { FaPlay, FaPause } from 'react-icons/fa';
-import { FaVideo } from 'react-icons/fa';
 import { IoClose } from 'react-icons/io5';
+import PropTypes from 'prop-types';
 
 const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
   const [videos, setVideos] = useState([]);
@@ -15,20 +15,10 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
   const [playingVideo, setPlayingVideo] = useState(null);
 
   const canvasRef = useRef(null);
+  const videoURLsRef = useRef(new Map()); // Track created Object URLs
 
   useEffect(() => {
     if (projectData?.id && projectData?.videos) {
-      // const loadThumbnails = async () => {
-      //   const updatedVideos = await Promise.all(
-      //     projectData.videos.map(async (item) => {
-      //       const thumbnail = await getVideoThumbnail(reqFileWrapper(item.url));
-      //       return { ...item, thumbnail };
-      //     })
-      //   );
-      //   setVideos(updatedVideos);
-      // };
-      // loadThumbnails();
-
       setVideos(projectData.videos);
     }
   }, [projectData, mode]);
@@ -38,30 +28,49 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
       if (!file) return resolve(null);
 
       const video = document.createElement('video');
-      video.src = URL.createObjectURL(file);
+      const objectURL = URL.createObjectURL(file);
+      video.src = objectURL;
       video.muted = true;
       video.playsInline = true;
       video.autoplay = true;
 
-      video.addEventListener('loadeddata', () => {
-        video.currentTime = 2;
-      });
+      const cleanup = () => {
+        video.removeEventListener('loadeddata', handleLoadedData);
+        video.removeEventListener('seeked', handleSeeked);
+        video.removeEventListener('error', handleError);
+        URL.revokeObjectURL(objectURL);
+        video.src = '';
+      };
 
-      video.addEventListener('seeked', () => {
+      const handleLoadedData = () => {
+        video.currentTime = 2;
+      };
+
+      const handleSeeked = () => {
         const canvas = canvasRef.current;
+        if (!canvas) {
+          cleanup();
+          reject(new Error('Canvas not available'));
+          return;
+        }
         const context = canvas.getContext('2d');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
 
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const thumbnailDataURL = canvas.toDataURL('image/png');
+        cleanup();
         resolve(thumbnailDataURL);
-        URL.revokeObjectURL(video.src);
-      });
+      };
 
-      video.addEventListener('error', (err) => {
+      const handleError = (err) => {
+        cleanup();
         reject(err);
-      });
+      };
+
+      video.addEventListener('loadeddata', handleLoadedData);
+      video.addEventListener('seeked', handleSeeked);
+      video.addEventListener('error', handleError);
     });
   };
 
@@ -85,7 +94,6 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
       alert('Please Add a video first!');
       return;
     }
-    // setVideos((prevVideos) => [...prevVideos, ...uploadedVideos]);
     handleSubmit({ videos: uploadedVideos }, 'videos');
     setUploadedVideos([]);
     setVideoThumbnail(null);
@@ -116,6 +124,17 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
       setPlayingVideo(key);
     }
   };
+
+  // Cleanup all Object URLs on unmount
+  useEffect(() => {
+    const urlMap = videoURLsRef.current;
+    return () => {
+      urlMap.forEach((url) => {
+        URL.revokeObjectURL(url);
+      });
+      urlMap.clear();
+    };
+  }, []);
 
   return (
     <div className='box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8 col-span-10 lg:col-span-5'>
@@ -169,7 +188,14 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
                   id={`video-${key}`}
                   src={
                     !item.url
-                      ? URL.createObjectURL(item)
+                      ? (() => {
+                          const videoKey = `video-${key}`;
+                          if (!videoURLsRef.current.has(videoKey)) {
+                            const url = URL.createObjectURL(item);
+                            videoURLsRef.current.set(videoKey, url);
+                          }
+                          return videoURLsRef.current.get(videoKey);
+                        })()
                       : reqFileWrapper(item.url)
                   }
                   playsInline
@@ -200,6 +226,16 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
       <canvas ref={canvasRef} style={{ display: 'none' }}></canvas>
     </div>
   );
+};
+
+Videos.propTypes = {
+  projectData: PropTypes.shape({
+    id: PropTypes.number,
+    videos: PropTypes.array,
+  }),
+  handleSubmit: PropTypes.func,
+  mode: PropTypes.string,
+  handleDelete: PropTypes.func,
 };
 
 export default Videos;

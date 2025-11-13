@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import SectionLabel from '../utils/SectionLabel';
 import { OutlinedSmallButton } from '../Buttons/OutlinedButton';
 import { useAppContext } from '../../App';

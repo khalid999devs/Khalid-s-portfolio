@@ -1,4 +1,5 @@
 import { MdClose } from 'react-icons/md';
+import PropTypes from 'prop-types';
 
 const IconedText = ({ text, Icon, onIconClick }) => {
   return (
@@ -12,6 +13,13 @@ const IconedText = ({ text, Icon, onIconClick }) => {
       </button>
     </div>
   );
+};
+
+
+IconedText.propTypes = {
+  text: PropTypes.string,
+  Icon: PropTypes.elementType,
+  onIconClick: PropTypes.func,
 };
 
 export default IconedText;

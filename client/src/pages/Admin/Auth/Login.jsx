@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Input from '../../../components/Forms/Input';
 import AdminBar from '../../../components/Navs/Admin/AdminBar';
 import { handleInputValChange } from '../../../utils/FormValidations/handleValueChange';
@@ -29,8 +29,8 @@ const Login = () => {
 
         if (res.data.succeed) navigate('/admin');
       })
-      .catch((err) => {});
-  }, []);
+      .catch(() => {});
+  }, [navigate]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -45,7 +45,10 @@ const Login = () => {
         else setError((error) => ({ ...error, password: res.data.msg }));
       })
       .catch((err) => {
-        setError((error) => ({ ...error, password: err.response.data.msg }));
+        setError((error) => ({
+          ...error,
+          password: err.response?.data?.msg || 'Login failed',
+        }));
       });
   };
 

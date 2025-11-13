@@ -5,6 +5,7 @@ import { handleInputValChange } from '../../../../utils/FormValidations/handleVa
 import PrimaryButton from '../../../Buttons/PrimaryButton';
 import { MdDone } from 'react-icons/md';
 import FormIconLists from '../../FormIconLists';
+import PropTypes from 'prop-types';
 
 const ProjectTitles = ({
   mode,
@@ -53,7 +54,7 @@ const ProjectTitles = ({
         )
       );
     }
-  }, [titlesData.category]);
+  }, [titlesData.category, categories]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -78,7 +79,7 @@ const ProjectTitles = ({
   const handleRemoveItem = (e, name, value) => {
     setTitlesData((titlesData) => ({
       ...titlesData,
-      [name]: [...titlesData[name]?.filter((item) => item !== value)],
+      [name]: (titlesData[name] || []).filter((item) => item !== value),
     }));
   };
 
@@ -249,6 +250,31 @@ const ProjectTitles = ({
       </div>
     </div>
   );
+};
+
+ProjectTitles.propTypes = {
+  mode: PropTypes.string,
+  projectData: PropTypes.shape({
+    id: PropTypes.number,
+    title: PropTypes.string,
+    subtitle: PropTypes.string,
+    overview: PropTypes.string,
+    role: PropTypes.string,
+    category: PropTypes.string,
+    date: PropTypes.string,
+    locationYear: PropTypes.string,
+  }),
+  setFormMode: PropTypes.func,
+  categories: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.number,
+      name: PropTypes.string,
+      length: PropTypes.number,
+      filter: PropTypes.func,
+    })
+  ),
+  handleCreateProject: PropTypes.func,
+  handleUpdateProjectInfos: PropTypes.func,
 };
 
 export default ProjectTitles;

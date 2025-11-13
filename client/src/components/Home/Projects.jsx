@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 import { useAppContext } from '../../App';
 import { reqFileWrapper } from '../../axios/requests';
@@ -76,23 +76,52 @@ const ProjectsShows = () => {
   const documentHeight = useDocumentHeight();
   const maxShowed = 5;
 
-  function updateInfoContent(index) {
-    const infoItems = document.querySelectorAll('.info > div p');
-    const link = document.querySelector('.info .link a');
+  const updateInfoContent = useCallback(
+    (index) => {
+      const infoItems = document.querySelectorAll('.info > div p');
+      const link = document.querySelector('.info .link a');
 
-    infoItems.forEach((item) => (item.innerHTML = ''));
+      infoItems.forEach((item) => {
+        // Clear content safely
+        while (item.firstChild) {
+          item.removeChild(item.firstChild);
+        }
+      });
 
-    const item = projects[index];
-    const contentArray = [item.title, item.subtitle, item.date];
+      const item = projects[index];
+      const contentArray = [item.title, item.subtitle, item.date];
 
-    infoItems.forEach((element, i) => {
-      if (i < 4) {
-        const letters = contentArray[i].split('');
-        letters.forEach((letter, index) => {
+      infoItems.forEach((element, i) => {
+        if (i < 4) {
+          const letters = contentArray[i].split('');
+          letters.forEach((letter) => {
+            const span = document.createElement('span');
+            span.textContent = letter;
+            span.style.opacity = 0;
+            element.appendChild(span);
+
+            gsap.to(span, {
+              opacity: 1,
+              duration: 0.01,
+              ease: 'power1.inOut',
+              delay: 0.03 * index,
+            });
+          });
+        }
+      });
+      if (link) {
+        setActiveSlide(projects[index]);
+
+        const linkText = link.textContent;
+        // Clear link content safely
+        while (link.firstChild) {
+          link.removeChild(link.firstChild);
+        }
+        linkText.split('').forEach((letter) => {
           const span = document.createElement('span');
           span.textContent = letter;
           span.style.opacity = 0;
-          element.appendChild(span);
+          link.appendChild(span);
 
           gsap.to(span, {
             opacity: 1,
@@ -102,28 +131,9 @@ const ProjectsShows = () => {
           });
         });
       }
-    });
-    if (link) {
-      // link.setAttribute('href', `/singleProject/${item.value + '@' + item.id}`);
-      setActiveSlide(projects[index]);
-
-      const linkText = link.textContent;
-      link.innerHTML = '';
-      linkText.split('').forEach((letter, index) => {
-        const span = document.createElement('span');
-        span.textContent = letter;
-        span.style.opacity = 0;
-        link.appendChild(span);
-
-        gsap.to(span, {
-          opacity: 1,
-          duration: 0.01,
-          ease: 'power1.inOut',
-          delay: 0.03 * index,
-        });
-      });
-    }
-  }
+    },
+    [projects, setActiveSlide]
+  );
 
   useEffect(() => {
     if (projects && projects.length) setActiveSlide(projects[0]);
@@ -227,7 +237,7 @@ const ProjectsShows = () => {
     return () => {
       mm.revert();
     };
-  }, [projects, isMidScreen, documentHeight]);
+  }, [projects, isMidScreen, documentHeight, updateInfoContent]);
 
   return (
     <div className='w-full body-max-width sec-inner-x-padding h-auto bg-body-main'>
@@ -239,7 +249,7 @@ const ProjectsShows = () => {
           {/* Info Section */}
           <div className='absolute top-1/2 left-1/2 w-full flex justify-between items-center px-4 pl-0 text-white transform -translate-y-1/2 -translate-x-1/2 text-montreal-mono z-10 mix-blend-difference info '>
             <div className='flex-1 uppercase text-sm pointer-all'>
-              <p>{activeSlide?.title || 'TITLE'}</p>
+              <p className='w-[75%]'>{activeSlide?.title || 'TITLE'}</p>
             </div>
             <div
               className='flex-1 uppercase text-sm'

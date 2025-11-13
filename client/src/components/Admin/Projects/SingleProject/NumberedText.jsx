@@ -1,4 +1,4 @@
-import React from 'react';
+import PropTypes from 'prop-types';
 
 const NumberedText = ({ number, text, onClick, state = 'active' }) => {
   return (
@@ -28,6 +28,13 @@ const NumberedText = ({ number, text, onClick, state = 'active' }) => {
       </h2>
     </div>
   );
+};
+
+NumberedText.propTypes = {
+  number: PropTypes.number,
+  text: PropTypes.string,
+  onClick: PropTypes.func,
+  state: PropTypes.bool,
 };
 
 export default NumberedText;

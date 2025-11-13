@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import React, { useState, useEffect } from 'react';
 
 // Function to calculate random block delay
 const calculateRandomBlockDelay = (rowIndex, totalRows) => {
@@ -9,7 +8,7 @@ const calculateRandomBlockDelay = (rowIndex, totalRows) => {
 };
 
 const PageTransition = (Page) => {
-  return function WrappedPage(props) {
+  const WrappedPage = function (props) {
     // const [transitionComplete, setTransitionComplete] = useState(false);
 
     // // Handle transition complete to show page content
@@ -72,6 +71,11 @@ const PageTransition = (Page) => {
       </>
     );
   };
+
+  WrappedPage.displayName = `PageTransition(${
+    Page.displayName || Page.name || 'Component'
+  })`;
+  return WrappedPage;
 };
 
 export default PageTransition;

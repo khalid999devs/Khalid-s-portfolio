@@ -1,9 +1,11 @@
 import CustomEase from 'gsap/CustomEase';
+import gsap from 'gsap';
 import { useEffect } from 'react';
+import PropTypes from 'prop-types';
 
 const customEase = CustomEase.create('custom', '.87,0,.13,1');
 
-const PageLoader = ({ progress }) => {
+const PageLoader = () => {
   useEffect(() => {
     gsap.to('.progress-bar', {
       width: '100vw',
@@ -24,6 +26,10 @@ const PageLoader = ({ progress }) => {
       </div>
     </div>
   );
+};
+
+PageLoader.propTypes = {
+  progress: PropTypes.number,
 };
 
 export default PageLoader;

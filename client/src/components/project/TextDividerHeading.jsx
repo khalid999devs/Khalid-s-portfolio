@@ -1,5 +1,5 @@
-import React from 'react';
 import { BsFillCaretRightFill } from 'react-icons/bs';
+import PropTypes from 'prop-types';
 
 const TextDividerHeading = ({ role = 'ROLE/SERVICES', text }) => {
   return (
@@ -14,6 +14,12 @@ const TextDividerHeading = ({ role = 'ROLE/SERVICES', text }) => {
       <div className='text-sm leading-7 pointer-all'>{text}</div>
     </div>
   );
+};
+
+
+TextDividerHeading.propTypes = {
+  role: PropTypes.string,
+  text: PropTypes.string,
 };
 
 export default TextDividerHeading;

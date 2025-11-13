@@ -1,19 +1,14 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useRef,
-} from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
+import PropTypes from 'prop-types';
+import axios from 'axios';
+import gsap from 'gsap';
+import CustomEase from 'gsap/CustomEase';
 import Navbar from './components/Navs/Navbar';
 import Footer from './components/Footer/Footer';
-import axios from 'axios';
 import { reqs } from './axios/requests';
 import MouseMoveEffect from './animations/MouseMoveEffect';
 import AnimatedOutlet from './animations/AnimatedOutlet';
 import { LenisGSAP } from './animations/LenisGSAP';
-import gsap from 'gsap';
-import CustomEase from 'gsap/CustomEase';
 import MetaCard from './components/utils/MetaCard';
 
 gsap.registerPlugin(CustomEase);
@@ -61,6 +56,11 @@ const PageLoader = ({ progress, onComplete }) => {
   );
 };
 
+PageLoader.propTypes = {
+  progress: PropTypes.number.isRequired,
+  onComplete: PropTypes.func.isRequired,
+};
+
 const App = () => {
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
@@ -77,16 +77,6 @@ const App = () => {
   };
 
   useEffect(() => {
-    let progressValue = 0;
-
-    const simulateLoading = () => {
-      if (progressValue < 95) {
-        progressValue += 1;
-        updateProgress(progressValue);
-        requestAnimationFrame(simulateLoading);
-      }
-    };
-
     const onResourceLoad = async () => {
       await document.fonts.ready;
       updateProgress(100);
@@ -172,4 +162,6 @@ const App = () => {
 };
 
 export default App;
+// Exporting context hook alongside component is acceptable
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAppContext = () => useContext(AppContext);

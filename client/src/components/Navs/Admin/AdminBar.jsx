@@ -1,8 +1,8 @@
-import React from 'react';
 import NavLogo from './NavLogo';
 import IconButton from '../../Buttons/IconButton';
 import Avatar from './Avatar';
 import Searchinput from '../../Forms/Searchinput';
+import PropTypes from 'prop-types';
 
 const AdminBar = ({ title, loginState = false }) => {
   return (
@@ -26,6 +26,12 @@ const AdminBar = ({ title, loginState = false }) => {
       </div>
     </div>
   );
+};
+
+
+AdminBar.propTypes = {
+  title: PropTypes.string,
+  loginState: PropTypes.bool,
 };
 
 export default AdminBar;

@@ -1,4 +1,5 @@
 import { MdNotificationsNone } from 'react-icons/md';
+import PropTypes from 'prop-types';
 
 const IconButton = ({ classes, onClick, Icon = MdNotificationsNone }) => {
   return (
@@ -14,6 +15,13 @@ const IconButton = ({ classes, onClick, Icon = MdNotificationsNone }) => {
       }
     </div>
   );
+};
+
+
+IconButton.propTypes = {
+  classes: PropTypes.string,
+  onClick: PropTypes.func,
+  Icon: PropTypes.elementType,
 };
 
 export default IconButton;

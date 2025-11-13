@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useEffect, useRef, useState } from 'react';
 import HRLine from '../components/utils/HRLine';
 import SectionLabel from '../components/utils/SectionLabel';
@@ -14,7 +15,6 @@ import {
   workingFields,
 } from '../Constants';
 import { textBlinkAnimation } from '../animations/textBlinkAnimation';
-import useTextRevealAnimation from '../animations/useTextRevealAnimation';
 import useIsGreaterOrEqualMd from '../hooks/useIsGreaterOrEqualMd';
 import { wordBlinkAnimation } from '../animations/wordBlinkAnimation';
 import PageTransition from '../animations/PageTransition';
@@ -25,9 +25,8 @@ import MetaCard from '../components/utils/MetaCard';
 
 const About = () => {
   const [technologies, setTechnologies] = useState([]);
-  const { settings, loading } = useAppContext();
+  const { settings } = useAppContext();
   const aboutHeaderRef = useRef(null);
-  // useTextRevealAnimation('animte-help-text-reveal', 0.05);
 
   const aboutPageTextRef = useRef(null);
   const aboutPageParentRef = useRef(null);
@@ -41,7 +40,6 @@ const About = () => {
 
     if (techs) {
       setTechnologies([techs.Languages, techs.Frontend, techs.Backend]);
-      ScrollTrigger.refresh(true);
     }
   }, [settings]);
 
@@ -53,7 +51,6 @@ const About = () => {
   }, [loc.pathname, settings]);
 
   useEffect(() => {
-    ScrollTrigger.refresh(true);
     if (aboutHeaderRef.current) {
       textBlinkAnimation(aboutHeaderRef.current);
     }
@@ -80,6 +77,8 @@ const About = () => {
           null
         );
       }
+      // Refresh ScrollTrigger once after animations are set up
+      ScrollTrigger.refresh(true);
     }, 400);
 
     return () => {
@@ -90,13 +89,9 @@ const About = () => {
         st2.kill();
       }
       clearTimeout(timeoutId);
-      ScrollTrigger.refresh(true);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // if (loading) {
-  //   return <Loader classes={'min-h-[250px]'} />;
-  // }
 
   return (
     <div className='w-full pb-28 flex flex-col gap-20 lg:gap-24 min-h-screen screen-max-width pt-[160px] sec-project-x-padding'>

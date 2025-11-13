@@ -73,5 +73,5 @@ export function useWordBlinkAnimation(
       tweenRefs.current.forEach((tween) => tween?.kill());
       scrollTrigger?.kill();
     };
-  }, []);
+  }, [elementRef, isGreaterOrEqualMd, parentElementRef]);
 }

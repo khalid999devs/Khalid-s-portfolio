@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { deleteProject } from '../../../../axios/projects';
 import Popup from '../../../utils/Popup';
 import ProgressAndDel from './ProgressAndDel';
@@ -12,10 +12,11 @@ import Videos from '../ProjectContents/Videos';
 import Thumbnails from '../ProjectContents/Thumbnails';
 import SliderContents from '../ProjectContents/SliderContents';
 import { useLocation, useNavigate } from 'react-router-dom';
+import PropTypes from 'prop-types';
 
 const ProjectDetails = ({ mode = 'create', projectId }) => {
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
   const locFormMode = location.state?.formMode;
   const [formMode, setFormMode] = useState(locFormMode || 'info'); //info||content
   const [projectData, setProjectData] = useState({
@@ -69,11 +70,13 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
       })
       .catch((err) => {
         setPopup({
-          text: err.response.data.msg,
+          text: err.response?.data?.msg || 'An error occurred',
           type: 'error',
           state: true,
         });
       });
+    // navigate is stable from useNavigate and doesn't need to be in deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -86,10 +89,14 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
           }
         })
         .catch((err) => {
-          setPopup({ text: err.response.data.msg, type: 'error', state: true });
+          setPopup({
+            text: err.response?.data?.msg || 'An error occurred',
+            type: 'error',
+            state: true,
+          });
         });
     }
-  }, [mode]);
+  }, [mode, projectId]);
 
   const handleDeleteProject = (projectId, projectName) => {
     if (mode === 'edit') {
@@ -144,7 +151,7 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
         .catch((err) => {
           setLoading(false);
           setPopup({
-            text: err.response.data.msg,
+            text: err.response?.data?.msg || 'An error occurred',
             type: 'error',
             state: true,
           });
@@ -180,7 +187,7 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
         .catch((err) => {
           setLoading(false);
           setPopup({
-            text: err.response.data.msg,
+            text: err.response?.data?.msg || 'An error occurred',
             type: 'error',
             state: true,
           });
@@ -217,7 +224,7 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
         .catch((err) => {
           setLoading(false);
           setPopup({
-            text: err.response.data.msg || 'Something wrong happened!',
+            text: err.response?.data?.msg || 'Something wrong happened!',
             type: 'error',
             state: true,
           });
@@ -283,7 +290,7 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
         .catch((err) => {
           setLoading(false);
           setPopup({
-            text: err.response.data.msg || 'Something wrong happened!',
+            text: err.response?.data?.msg || 'Something wrong happened!',
             type: 'error',
             state: true,
           });
@@ -320,7 +327,7 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
         .catch((err) => {
           setLoading(false);
           setPopup({
-            text: err.response.data.msg || 'Something wrong happened!',
+            text: err.response?.data?.msg || 'Something wrong happened!',
             type: 'error',
             state: true,
           });
@@ -405,6 +412,11 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
       />
     </div>
   );
+};
+
+ProjectDetails.propTypes = {
+  mode: PropTypes.string,
+  projectId: PropTypes.number,
 };
 
 export default ProjectDetails;

@@ -18,7 +18,7 @@ function textBlinkAnimateByWord(element, duration = 1) {
       wordSpan.style.display = 'inline-block';
       wordSpan.style.whiteSpace = 'nowrap';
 
-      const letterSpans = word.split('').map((letter) => {
+      const letterSpans = word.split('').map(() => {
         const span = document.createElement('span');
         span.textContent = getRandomCharacter();
         span.style.display = 'inline-block';

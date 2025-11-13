@@ -1,5 +1,6 @@
+/* eslint-disable react-refresh/only-export-components */
 import axios from 'axios';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { reqFileWrapper, reqs } from '../axios/requests';
 import { loadingGif, projectPlaceholder } from '../assets';
@@ -54,6 +55,7 @@ const SingleProject = () => {
 
   useEffect(() => {
     findProjectAndgetNext();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project, projects]);
 
   useEffect(() => {
@@ -75,11 +77,13 @@ const SingleProject = () => {
         }
         setProjLoading(false);
       })
-      .catch((err) => {
+      .catch(() => {
         // console.log(err);
         setProjLoading(false);
         navigate('/error');
       });
+    // navigate is stable from useNavigate
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   useEffect(() => {

@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import IconedInput from '../../Forms/IconedInput';
-import IconedText from '../../utils/IconedText';
+import { useEffect, useState } from 'react';
 import FormIconLists from '../FormIconLists';
 import PrimaryButton from '../../Buttons/PrimaryButton';
 import { MdDone } from 'react-icons/md';
+import PropTypes from 'prop-types';
 
 const Technologies = ({
   mode,
@@ -77,6 +76,16 @@ const Technologies = ({
       </div>
     </div>
   );
+};
+
+
+Technologies.propTypes = {
+  mode: PropTypes.string,
+  settings: PropTypes.shape({
+    technologies: PropTypes.array,
+  }),
+  handleCreateSettings: PropTypes.func,
+  handleEditSettings: PropTypes.func,
 };
 
 export default Technologies;

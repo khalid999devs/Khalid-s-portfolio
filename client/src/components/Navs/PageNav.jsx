@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import NavLogo from './Admin/NavLogo';
 import {
   pageNavLinks,
@@ -12,6 +12,7 @@ import { BiSolidRightArrow } from 'react-icons/bi';
 import { OutlinedSmallButton } from '../Buttons/OutlinedButton';
 import { isUpwork } from '../../config';
 import gsap from 'gsap';
+import PropTypes from 'prop-types';
 
 const calculateRandomBlockDelay = (rowIndex, totalRows) => {
   const blockDelay = Math.random() * 0.5;
@@ -22,7 +23,6 @@ const calculateRandomBlockDelay = (rowIndex, totalRows) => {
 const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
   const timeRef = useRef(null);
   const contactTitleRef = useRef(null);
-  // const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
     let iid;
@@ -41,8 +41,10 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
   }, [isPageMenu]);
 
   useEffect(() => {
+    const animations = [];
+
     if (contactTitleRef.current) {
-      gsap.fromTo(
+      const anim = gsap.fromTo(
         contactTitleRef.current,
         {
           transform:
@@ -55,10 +57,12 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
           delay: 0.5,
         }
       );
+      animations.push(anim);
     }
+
     const pageNavLinks = gsap.utils.toArray('.page-nav-links');
     if (pageNavLinks.length) {
-      gsap.fromTo(
+      const anim = gsap.fromTo(
         pageNavLinks,
         {
           translateX: '20%',
@@ -73,14 +77,20 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
           ease: 'back.in',
         }
       );
+      animations.push(anim);
     }
+
+    // Cleanup function to kill all animations
+    return () => {
+      animations.forEach((anim) => {
+        if (anim && anim.kill) {
+          anim.kill();
+        }
+      });
+    };
   }, [isPageMenu]);
 
   const handleHamburgerClick = () => {
-    // setIsExiting(true); // Trigger the exit transition
-    // setTimeout(() => {
-    //   setIsPageMenu(false); // Close the menu after the animation
-    // }, 100); // Match the animation duration
     setIsPageMenu(false);
   };
 
@@ -227,6 +237,12 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
       )}
     </AnimatePresence>
   );
+};
+
+PageNav.propTypes = {
+  isPageMenu: PropTypes.bool,
+  setIsPageMenu: PropTypes.func,
+  classes: PropTypes.string,
 };
 
 export default PageNav;

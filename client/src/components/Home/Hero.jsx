@@ -1,5 +1,4 @@
-import React, { useEffect, useRef } from 'react';
-import { langGrpImg, MainRobotImg } from '../../assets';
+import { useEffect, useRef } from 'react';
 import { socialLinks, upworkedSocialLinks } from '../../Constants';
 import { textBlinkAnimation } from '../../animations/textBlinkAnimation';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
@@ -13,29 +12,6 @@ const Hero = () => {
   const countryRef = useRef(null);
   const passionRef = useRef(null);
   const heroRef = useRef(null);
-
-  // function textBlinkAnimation(element) {
-  //   const originalText = element.textContent;
-  //   element.textContent = '';
-
-  //   const letters = originalText.split('');
-  //   letters.forEach((letter) => {
-  //     const span = document.createElement('span');
-  //     span.textContent = letter;
-  //     span.style.display = 'inline-block';
-  //     span.style.opacity = '0';
-  //     element.appendChild(span);
-  //   });
-
-  //   gsap.to(element.querySelectorAll('span'), {
-  //     opacity: 1,
-  //     y: -20,
-  //     ease: 'back.out(1.7)',
-  //     stagger: 0.05,
-  //     duration: 0.5,
-  //     delay: 0.5,
-  //   });
-  // }
 
   useEffect(() => {
     if (nameTitleRef.current) {
@@ -52,10 +28,6 @@ const Hero = () => {
         wordBlinkAnimation(passionRef.current, null, heroRef.current, true);
       }
     }
-
-    return () => {
-      // clearBlinkAnimation();
-    };
   }, []);
 
   return (
@@ -97,7 +69,7 @@ const Hero = () => {
         <div>
           <h1
             ref={nameTitleRef}
-            className='text-[3.2rem] sm:text-[55px] md:text-[60px] lg:text-[75px] 2xl:text-[114px] 3xl:text-[100px] text-rox-italic uppercase md:mr-16'
+            className='text-[3.2rem] sm:text-[55px] md:text-[60px] lg:text-[75px] 2xl:text-[100px] text-rox-italic uppercase md:mr-16'
           >
             KHALID AHAMMED
           </h1>

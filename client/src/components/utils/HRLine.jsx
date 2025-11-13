@@ -1,4 +1,4 @@
-import React from 'react';
+import PropTypes from 'prop-types';
 
 const HRLine = ({ heightInPx = 0.5, classes, disablePadding = false }) => {
   return (
@@ -12,6 +12,12 @@ const HRLine = ({ heightInPx = 0.5, classes, disablePadding = false }) => {
       ></div>
     </div>
   );
+};
+
+HRLine.propTypes = {
+  heightInPx: PropTypes.number,
+  classes: PropTypes.string,
+  disablePadding: PropTypes.bool,
 };
 
 export default HRLine;

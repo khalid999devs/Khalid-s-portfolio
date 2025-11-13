@@ -1,6 +1,6 @@
-import React from 'react';
 import IconedInput from '../Forms/IconedInput';
 import IconedText from '../utils/IconedText';
+import PropTypes from 'prop-types';
 
 const FormIconLists = ({
   handleInputSubmit,
@@ -32,6 +32,16 @@ const FormIconLists = ({
       </div>
     </div>
   );
+};
+
+
+FormIconLists.propTypes = {
+  handleInputSubmit: PropTypes.func,
+  handleRemoveItem: PropTypes.func,
+  name: PropTypes.string,
+  items: PropTypes.array,
+  containerClasses: PropTypes.string,
+  type: PropTypes.string,
 };
 
 export default FormIconLists;

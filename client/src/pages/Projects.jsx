@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { useEffect, useState } from 'react';
 import { OutlinedBigIcon } from '../components/Buttons/OutlinedButton';
 import { useAppContext } from '../App';
 import { reqFileWrapper } from '../axios/requests';
@@ -8,8 +9,8 @@ import PageTransition from '../animations/PageTransition';
 import MetaCard from '../components/utils/MetaCard';
 
 const Projects = () => {
-  const navigate = useNavigate();
   const loc = useLocation();
+  const navigate = useNavigate();
   const {
     appData: { projects },
   } = useAppContext();
@@ -103,7 +104,7 @@ const Projects = () => {
                     </div>
 
                     <div className='w-full flex justify-between items-center flex-wrap gap-4 mt-3'>
-                      <h2 className='text-white text-base sm:text-xl md:text-2xl'>
+                      <h2 className='text-white text-base sm:text-xl md:text-2xl line-clamp-1 max-w-[85%]'>
                         {item.title}
                       </h2>
 

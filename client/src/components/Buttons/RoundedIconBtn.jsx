@@ -1,4 +1,5 @@
 import { MdEdit } from 'react-icons/md';
+import PropTypes from 'prop-types';
 
 const RoundedIconBtn = ({ Icon, classes, onClick }) => {
   return (
@@ -12,6 +13,13 @@ const RoundedIconBtn = ({ Icon, classes, onClick }) => {
       {Icon ? <Icon /> : <MdEdit />}
     </button>
   );
+};
+
+
+RoundedIconBtn.propTypes = {
+  Icon: PropTypes.elementType,
+  classes: PropTypes.string,
+  onClick: PropTypes.func,
 };
 
 export default RoundedIconBtn;

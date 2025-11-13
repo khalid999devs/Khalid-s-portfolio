@@ -1,7 +1,7 @@
-import React from 'react';
 import NumberedText from './NumberedText';
 import PrimaryButton from '../../../Buttons/PrimaryButton';
 import { MdOutlineDelete } from 'react-icons/md';
+import PropTypes from 'prop-types';
 
 const ProgressAndDel = ({
   formMode = 'info',
@@ -53,6 +53,16 @@ const ProgressAndDel = ({
       )}
     </div>
   );
+};
+
+
+ProgressAndDel.propTypes = {
+  formMode: PropTypes.string,
+  mode: PropTypes.string,
+  setFormMode: PropTypes.func,
+  handleDelete: PropTypes.func,
+  projectId: PropTypes.number,
+  projectName: PropTypes.string,
 };
 
 export default ProgressAndDel;

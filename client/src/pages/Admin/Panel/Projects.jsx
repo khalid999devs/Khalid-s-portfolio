@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import ProjectCard from '../../../components/Admin/Projects/ProjectCard.jsx';
+import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import axios from 'axios';
+import ProjectCard from '../../../components/Admin/Projects/ProjectCard.jsx';
 import { deleteProject } from '../../../axios/projects.js';
 import Popup from '../../../components/utils/Popup.jsx';
-import axios from 'axios';
 import { reqFileWrapper, reqs } from '../../../axios/requests.js';
-import { projectPlaceholder } from '../../../assets/index.js';
 
 const Projects = () => {
   const { setPageTitle } = useOutletContext();
@@ -45,10 +44,10 @@ const Projects = () => {
       .then((res) => {
         if (res.data.succeed) setProjects(res.data.result);
       })
-      .catch((err) => {
-        // alert(err.response.data.msg);
+      .catch(() => {
+        // Error handled silently
       });
-  }, []);
+  }, [setPageTitle]);
 
   return (
     <div className='flex flex-row flex-wrap gap-5'>

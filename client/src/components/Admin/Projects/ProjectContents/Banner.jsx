@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ImgFileUploader from '../../../utils/ImgFileUploader';
+import PropTypes from 'prop-types';
 
 const Banner = ({ projectData, handleSubmit, mode, handleDelete }) => {
   const [banner, setBanner] = useState({});
@@ -35,6 +36,17 @@ const Banner = ({ projectData, handleSubmit, mode, handleDelete }) => {
       </div>
     </div>
   );
+};
+
+
+Banner.propTypes = {
+  projectData: PropTypes.shape({
+    id: PropTypes.number,
+    bannerImg: PropTypes.string,
+  }),
+  handleSubmit: PropTypes.func,
+  mode: PropTypes.string,
+  handleDelete: PropTypes.func,
 };
 
 export default Banner;

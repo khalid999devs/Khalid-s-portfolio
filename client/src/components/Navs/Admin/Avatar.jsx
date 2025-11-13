@@ -1,4 +1,3 @@
-import React from 'react';
 import { avatarImg } from '../../../assets';
 
 const Avatar = () => {

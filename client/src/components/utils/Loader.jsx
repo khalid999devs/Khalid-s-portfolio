@@ -1,5 +1,5 @@
-import React from 'react';
 import { loadingGif } from '../../assets';
+import PropTypes from 'prop-types';
 
 const Loader = ({ classes }) => {
   return (
@@ -14,6 +14,11 @@ const Loader = ({ classes }) => {
       />
     </div>
   );
+};
+
+
+Loader.propTypes = {
+  classes: PropTypes.string,
 };
 
 export default Loader;

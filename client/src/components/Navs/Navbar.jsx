@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import NavLogo from './Admin/NavLogo';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { OutlinedSmallButton } from '../Buttons/OutlinedButton';
 import PageNav from './PageNav';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
@@ -9,7 +9,6 @@ import { upworkedSocialLinks } from '../../Constants';
 import { myResume } from '../../assets';
 
 const Navbar = () => {
-  const navigate = useNavigate();
   const [isPageMenu, setIsPageMenu] = useState(false);
   const navBarRef = useRef(null);
 

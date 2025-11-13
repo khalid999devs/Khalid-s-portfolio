@@ -1,16 +1,17 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { textBlinkAnimation } from '../../../animations/textBlinkAnimation';
+import PropTypes from 'prop-types';
 
 const NavLogo = ({ onClick }) => {
-  const navigate = useNavigate();
   const logoRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (logoRef.current) {
       textBlinkAnimation(logoRef.current);
     }
-  }, []);
+  }, [navigate]);
 
   return (
     <div
@@ -32,6 +33,10 @@ const NavLogo = ({ onClick }) => {
       </h1>
     </div>
   );
+};
+
+NavLogo.propTypes = {
+  onClick: PropTypes.func,
 };
 
 export default NavLogo;

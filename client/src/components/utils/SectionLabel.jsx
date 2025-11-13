@@ -1,6 +1,5 @@
-import { useEffect, useRef } from 'react';
 import { BiSolidRightArrow } from 'react-icons/bi';
-import { textBlinkAnimation } from '../../animations/textBlinkAnimation';
+import PropTypes from 'prop-types';
 
 const SectionLabel = ({ text, noAnime = false }) => {
   // const sectionLabel = useRef(null);
@@ -25,6 +24,11 @@ const SectionLabel = ({ text, noAnime = false }) => {
       </div>
     </div>
   );
+};
+
+SectionLabel.propTypes = {
+  text: PropTypes.string,
+  noAnime: PropTypes.bool,
 };
 
 export default SectionLabel;

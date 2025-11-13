@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { reqFileWrapper } from '../../axios/requests';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useLocation } from 'react-router-dom';
 import useDocumentHeight from '../../hooks/useDocumentHeight';
+import PropTypes from 'prop-types';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -107,6 +108,15 @@ const ProjectSlider = ({ sliderContents }) => {
       </div>
     </div>
   );
+};
+
+ProjectSlider.propTypes = {
+  sliderContents: PropTypes.arrayOf(
+    PropTypes.shape({
+      url: PropTypes.string,
+      alt: PropTypes.string,
+    })
+  ),
 };
 
 export default ProjectSlider;

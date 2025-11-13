@@ -4,7 +4,7 @@ import { reqs } from './requests';
 export const deleteProject = (
   projectId,
   projectName,
-  setLoading = (state) => {},
+  setLoading = () => {},
   setPopup
 ) => {
   const userValidate = prompt(
@@ -33,7 +33,7 @@ export const deleteProject = (
         })
         .catch((err) => {
           setLoading(false);
-          reject(err.response.data);
+          reject(err.response?.data || { msg: 'Failed to delete project' });
         });
     });
   } else {

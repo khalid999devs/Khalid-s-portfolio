@@ -10,7 +10,7 @@ function textBlinkAnimation(element, duration = 1) {
   const originalText = element.textContent;
   element.textContent = '';
 
-  const spans = originalText.split('').map((letter, index) => {
+  const spans = originalText.split('').map((letter) => {
     const span = document.createElement('span');
     span.textContent = letter === ' ' ? '\u00A0' : getRandomCharacter();
     span.style.display = 'inline-block';

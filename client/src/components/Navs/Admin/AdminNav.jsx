@@ -1,4 +1,3 @@
-import React from 'react';
 import { adminNavLinks } from '../../../Constants';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { MdLogout } from 'react-icons/md';
@@ -7,6 +6,7 @@ import { reqs } from '../../../axios/requests';
 
 const AdminNav = () => {
   const navigate = useNavigate();
+
   const handleAdminLogOut = (e) => {
     e.preventDefault();
     axios
@@ -15,7 +15,7 @@ const AdminNav = () => {
         if (res.data.succeed) navigate('/admin-login');
         else alert(res.data.msg);
       })
-      .catch((err) => alert(err.response.data.msg));
+      .catch((err) => alert(err.response?.data?.msg || 'An error occurred'));
   };
 
   return (
@@ -25,7 +25,7 @@ const AdminNav = () => {
           <NavLink
             key={key}
             to={item.path}
-            className={({ isActive, isPending }) =>
+            className={({ isActive }) =>
               `py-2.5 px-4 flex items-center gap-3 group duration-300 transition-all text-lg text-secondary-light w-full group hover:bg-primary-dark hover:text-onPrimary-main rounded-lg ${
                 isActive &&
                 !(window.location.pathname !== '/admin' && item.path === '') &&

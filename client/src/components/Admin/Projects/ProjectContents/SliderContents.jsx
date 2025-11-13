@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import ImgFileUploader from '../../../utils/ImgFileUploader';
 import { reqFileWrapper } from '../../../../axios/requests';
 import { IoClose } from 'react-icons/io5';
 import PrimaryButton from '../../../Buttons/PrimaryButton';
 import { MdDone } from 'react-icons/md';
+import PropTypes from 'prop-types';
 
 const SliderContents = ({ projectData, mode, handleSubmit, handleDelete }) => {
   const [sliderContents, setSliderContents] = useState([]);
   const [uploadedSliders, setUploadedSliders] = useState([]);
+  const imageURLsRef = useRef(new Map()); // Track created Object URLs
 
   useEffect(() => {
     if (projectData?.id && projectData?.sliderContents) {
@@ -32,6 +34,17 @@ const SliderContents = ({ projectData, mode, handleSubmit, handleDelete }) => {
       ]);
     }
   };
+
+  // Cleanup all Object URLs on unmount
+  useEffect(() => {
+    const urlMap = imageURLsRef.current;
+    return () => {
+      urlMap.forEach((url) => {
+        URL.revokeObjectURL(url);
+      });
+      urlMap.clear();
+    };
+  }, []);
 
   return (
     <div className='box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8 pt-7 col-span-10'>
@@ -63,7 +76,14 @@ const SliderContents = ({ projectData, mode, handleSubmit, handleDelete }) => {
                     <img
                       src={
                         !item.url
-                          ? URL.createObjectURL(item)
+                          ? (() => {
+                              const imgKey = `slider-${key}`;
+                              if (!imageURLsRef.current.has(imgKey)) {
+                                const url = URL.createObjectURL(item);
+                                imageURLsRef.current.set(imgKey, url);
+                              }
+                              return imageURLsRef.current.get(imgKey);
+                            })()
                           : reqFileWrapper(item.url)
                       }
                       className='w-full h-full object-cover'
@@ -98,6 +118,16 @@ const SliderContents = ({ projectData, mode, handleSubmit, handleDelete }) => {
       </div>
     </div>
   );
+};
+
+SliderContents.propTypes = {
+  projectData: PropTypes.shape({
+    id: PropTypes.number,
+    sliderContents: PropTypes.array,
+  }),
+  mode: PropTypes.string,
+  handleSubmit: PropTypes.func,
+  handleDelete: PropTypes.func,
 };
 
 export default SliderContents;

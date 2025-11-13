@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import AdminBar from '../../../components/Navs/Admin/AdminBar';
 import AdminNav from '../../../components/Navs/Admin/AdminNav';
@@ -17,9 +17,11 @@ const Admin = () => {
       .then((res) => {
         if (!res.data.succeed) navigate('/admin-login');
       })
-      .catch((err) => {
+      .catch(() => {
         navigate('/admin-login');
       });
+    // navigate is stable from useNavigate, pageTitle shouldn't trigger auth check
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageTitle]);
 
   return (

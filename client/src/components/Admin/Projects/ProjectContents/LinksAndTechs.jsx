@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import PrimaryButton from '../../../Buttons/PrimaryButton';
 import { MdDone } from 'react-icons/md';
 import Input from '../../../Forms/Input';
 import { handleInputValChange } from '../../../../utils/FormValidations/handleValueChange';
 import FormIconLists from '../../FormIconLists';
+import PropTypes from 'prop-types';
 
 const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
   const [data, setData] = useState({
@@ -93,6 +94,19 @@ const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
       </div>
     </div>
   );
+};
+
+
+LinksAndTechs.propTypes = {
+  mode: PropTypes.string,
+  projectData: PropTypes.shape({
+    id: PropTypes.number,
+    siteLink: PropTypes.string,
+    designLink: PropTypes.string,
+    codeLink: PropTypes.string,
+    techStack: PropTypes.array,
+  }),
+  handleSubmitData: PropTypes.func,
 };
 
 export default LinksAndTechs;

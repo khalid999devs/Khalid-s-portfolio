@@ -1,9 +1,10 @@
 module.exports = {
   development: {
     username: 'root',
-    password: '',
+    password: 'root',
     database: 'khalid_portfolio',
     host: 'localhost',
+    port: 8889,
     dialect: 'mysql',
     logging: false,
     pool: {

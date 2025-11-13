@@ -11,6 +11,6 @@ export async function handleCompressImg(imageFile, maxSize, widthOrHeight) {
 
     return compressedFile;
   } catch (error) {
-    console.log(error);
+    console.error('Image compression error:', error);
   }
 }

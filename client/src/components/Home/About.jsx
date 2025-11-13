@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import SectionLabel from '../utils/SectionLabel';
 import { GravityField, myPic } from '../../assets';
 import { OutlinedBigIcon } from '../Buttons/OutlinedButton';
@@ -22,6 +22,7 @@ const About = () => {
         true
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

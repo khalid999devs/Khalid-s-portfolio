@@ -1,6 +1,7 @@
-import React, { Suspense, useState, useEffect } from 'react';
+/* eslint-disable react/no-unknown-property */
+import { Suspense, useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Html, OrbitControls, useProgress } from '@react-three/drei';
+import { Html, useProgress } from '@react-three/drei';
 import Model from './Model';
 
 function Loader() {

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { reqs } from '../../../axios/requests';
 import Technologies from '../../../components/Admin/Settings/Technologies';
 import Popup from '../../../components/utils/Popup';
@@ -29,9 +29,9 @@ const Settings = () => {
         }
       })
       .catch((err) => {
-        console.log(err);
+        console.error('Error fetching settings:', err);
       });
-  }, []);
+  }, [setPageTitle]);
 
   const handleCreateSettings = (data) => {
     if (mode === 'create') {
@@ -61,7 +61,7 @@ const Settings = () => {
         .catch((err) => {
           setLoading(false);
           setPopup({
-            text: err.response.data.msg,
+            text: err.response?.data?.msg || 'Failed to update settings',
             type: 'error',
             state: true,
           });
@@ -97,7 +97,7 @@ const Settings = () => {
         .catch((err) => {
           setLoading(false);
           setPopup({
-            text: err.response.data.msg,
+            text: err.response?.data?.msg || 'Failed to edit settings',
             type: 'error',
             state: true,
           });
@@ -106,8 +106,6 @@ const Settings = () => {
       return;
     }
   };
-
-  // console.log(settings);
 
   return (
     <div className='h-full w-full grid grid-cols-9 gap-5'>

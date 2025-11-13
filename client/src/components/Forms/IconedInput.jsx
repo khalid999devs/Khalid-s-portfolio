@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { IoAddCircleOutline } from 'react-icons/io5';
+import PropTypes from 'prop-types';
 
 const IconedInput = ({
   name,
@@ -46,6 +47,16 @@ const IconedInput = ({
       </button>
     </form>
   );
+};
+
+
+IconedInput.propTypes = {
+  name: PropTypes.string,
+  handleSubmit: PropTypes.func,
+  inputProps: PropTypes.object,
+  size: PropTypes.string,
+  inputClasses: PropTypes.string,
+  classes: PropTypes.string,
 };
 
 export default IconedInput;

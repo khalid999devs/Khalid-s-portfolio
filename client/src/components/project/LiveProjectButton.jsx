@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { MdArrowOutward } from 'react-icons/md';
+import PropTypes from 'prop-types';
 
 const LiveProjectButton = ({ link }) => {
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -32,6 +33,11 @@ const LiveProjectButton = ({ link }) => {
       <MdArrowOutward className='text-primary-main text-2xl transition-all duration-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5' />
     </div>
   );
+};
+
+
+LiveProjectButton.propTypes = {
+  link: PropTypes.string,
 };
 
 export default LiveProjectButton;
