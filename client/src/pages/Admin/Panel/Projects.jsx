@@ -132,10 +132,6 @@ const Projects = () => {
 
   return (
     <div className='flex flex-col gap-5'>
-      <div className='text-white/70 text-sm mb-2'>
-        Drag and drop to reorder projects
-      </div>
-
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}

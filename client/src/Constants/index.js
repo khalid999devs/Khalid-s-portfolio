@@ -84,8 +84,14 @@ export const workingFields = `Website Development—Web Application & Software D
 
 export const experience = [
   {
+    company: 'Liftoff',
+    designation: 'Remote Full Stack Software Engineer',
+    date: '2025 — Present',
+    link: 'https://www.linkedin.com/company/liftoffapp/posts/?feedView=all',
+  },
+  {
     company: 'DevGenit',
-    designation: 'Chief Operating Officer',
+    designation: 'Chief Operating Officer (Self-employed)',
     date: '2023 — Present',
     link: 'https://www.devgenit.com',
   },

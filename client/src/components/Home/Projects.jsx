@@ -249,7 +249,7 @@ const ProjectsShows = () => {
           {/* Info Section */}
           <div className='absolute top-1/2 left-1/2 w-full flex justify-between items-center px-4 pl-0 text-white transform -translate-y-1/2 -translate-x-1/2 text-montreal-mono z-10 mix-blend-difference info '>
             <div className='flex-1 uppercase text-sm pointer-all'>
-              <p className='w-[75%]'>{activeSlide?.title || 'TITLE'}</p>
+              <p className='md:w-[75%]'>{activeSlide?.title || 'TITLE'}</p>
             </div>
             <div
               className='flex-1 uppercase text-sm'
@@ -321,6 +321,7 @@ const ProjectsShows = () => {
           )}
         </section>
 
+        {/* mobile screen render */}
         <div className='md:hidden pt-24 mb-20 grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 items-start justify-start gap-8'>
           {projects?.slice(0, maxShowed).map((item, key) => {
             return (
@@ -355,7 +356,7 @@ const ProjectsShows = () => {
                   </div>
 
                   <div className='w-full flex justify-between items-center flex-wrap gap-4 mt-3'>
-                    <h2 className='text-white text-base sm:text-xl md:text-2xl'>
+                    <h2 className='text-white text-base sm:text-xl md:text-2xl line-clamp-1 max-w-[85%]'>
                       {item.title}
                     </h2>
 
