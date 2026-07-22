@@ -89,15 +89,17 @@ const SliderContents = ({ projectData, mode, handleSubmit, handleDelete }) => {
                       className='w-full h-full object-cover'
                       alt={'slider ' + item.id}
                     />
-                    <div
+                    <button
+                      type='button'
+                      aria-label={`Remove slider image ${key + 1}`}
                       className='absolute right-[3%] top-[3%] bg-body-main bg-opacity-70 text-sm duration-500 group-hover:bg-opacity-100 w-[22px] h-[22px] rounded-full flex items-center justify-center cursor-pointer'
                       onClick={(e) => {
                         e.preventDefault();
                         item.id && removeSliderContent(item.id);
                       }}
                     >
-                      <IoClose className='text-primary-main' />
-                    </div>
+                      <IoClose aria-hidden='true' className='text-primary-main' />
+                    </button>
                   </div>
                 );
               })}

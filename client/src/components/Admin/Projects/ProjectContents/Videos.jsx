@@ -182,7 +182,6 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
               <div
                 key={key}
                 className='w-[128px] h-[100px] bg-black rounded-lg relative overflow-hidden group'
-                onClick={() => togglePlayPause(key)}
               >
                 <video
                   id={`video-${key}`}
@@ -201,23 +200,35 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
                   playsInline
                   preload='metadata'
                   muted={playingVideo !== key}
+                  aria-hidden='true'
                   className='w-full h-full object-cover'
                 ></video>
-                <div
-                  className='absolute text-xl text-primary-main top-1/2 left-1/2'
-                  style={{ transform: 'translate(-50%,-50%)' }}
+                <button
+                  type='button'
+                  aria-label={
+                    playingVideo === key ? 'Pause video preview' : 'Play video preview'
+                  }
+                  className='absolute inset-0 flex items-center justify-center text-xl text-primary-main'
+                  onClick={() => togglePlayPause(key)}
                 >
-                  {playingVideo === key ? <FaPause /> : <FaPlay />}
-                </div>
-                <div
+                  {playingVideo === key ? (
+                    <FaPause aria-hidden='true' />
+                  ) : (
+                    <FaPlay aria-hidden='true' />
+                  )}
+                </button>
+                <button
+                  type='button'
+                  aria-label={`Remove video ${key + 1}`}
                   className='absolute right-[3%] top-[3%] bg-body-main bg-opacity-70 text-sm duration-500 group-hover:bg-opacity-100 w-[22px] h-[22px] rounded-full flex items-center justify-center cursor-pointer'
                   onClick={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     item.id && handleRemoveVideo(item.id);
                   }}
                 >
-                  <IoClose className='text-primary-main' />
-                </div>
+                  <IoClose aria-hidden='true' className='text-primary-main' />
+                </button>
               </div>
             ))}
           </div>

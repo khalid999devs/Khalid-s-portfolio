@@ -1,16 +1,216 @@
-const { projects } = require('../models');
+const { randomBytes } = require('crypto');
+const { projects, sequelize } = require('../models');
 const { BadRequestError, UnauthorizedError } = require('../errors');
 const deleteFile = require('../utils/deleteFile');
+const { toStoredUploadPath } = require('../utils/uploadPaths');
+
+const ARRAY_FIELDS = [
+  'role',
+  'techStack',
+  'videos',
+  'thumbnailContents',
+  'sliderContents',
+];
+const LINK_FIELDS = ['siteLink', 'designLink', 'codeLink', 'techStack'];
+const INFO_FIELDS = [
+  'title',
+  'subtitle',
+  'overview',
+  'role',
+  'category',
+  'date',
+  'locationYear',
+  ...LINK_FIELDS,
+];
+const CONTENT_MODES = [
+  'bannerImg',
+  'videos',
+  'thumbnailContents',
+  'sliderContents',
+];
+const CONTENT_METADATA_KEYS = {
+  videos: 'serverVid',
+  thumbnailContents: 'serverThumb',
+  sliderContents: 'serverContent',
+};
+
+const hasOwn = (object, key) =>
+  Object.prototype.hasOwnProperty.call(object, key);
+
+const assertOnlyFields = (data, allowedFields) => {
+  const unexpectedField = Object.keys(data || {}).find(
+    (field) => !allowedFields.includes(field)
+  );
+
+  if (unexpectedField) {
+    throw new BadRequestError(`Unexpected field: ${unexpectedField}`);
+  }
+};
+
+const pickFields = (data, allowedFields) => {
+  const picked = {};
+
+  allowedFields.forEach((field) => {
+    if (hasOwn(data, field) && data[field] !== undefined) {
+      picked[field] = data[field];
+    }
+  });
+
+  return picked;
+};
+
+const parseArray = (value, fieldName) => {
+  let parsedValue = value;
+
+  if (typeof value === 'string') {
+    try {
+      parsedValue = JSON.parse(value);
+    } catch (error) {
+      throw new BadRequestError(`${fieldName} must be a valid array`);
+    }
+  }
+
+  if (!Array.isArray(parsedValue)) {
+    throw new BadRequestError(`${fieldName} must be an array`);
+  }
+
+  return parsedValue;
+};
+
+const parseStoredArray = (value, fieldName) => {
+  if (value === null || value === undefined || value === '') {
+    return [];
+  }
+
+  return parseArray(value, fieldName);
+};
+
+const normalizeArrayFieldsForStorage = (data, fields) => {
+  fields.forEach((field) => {
+    if (hasOwn(data, field)) {
+      data[field] = JSON.stringify(parseArray(data[field], field));
+    }
+  });
+};
+
+const assertScalarFields = (data, fields) => {
+  fields.forEach((field) => {
+    if (
+      hasOwn(data, field) &&
+      data[field] !== undefined &&
+      data[field] !== null &&
+      typeof data[field] !== 'string'
+    ) {
+      throw new BadRequestError(`${field} must be a string`);
+    }
+  });
+};
+
+const parseBoolean = (value, fieldName) => {
+  if (value === undefined || value === false || value === 'false') {
+    return false;
+  }
+  if (value === true || value === 'true') {
+    return true;
+  }
+
+  throw new BadRequestError(`${fieldName} must be true or false`);
+};
+
+const getUploadedFiles = (req) =>
+  Object.values(req.files || {})
+    .flat()
+    .filter(Boolean);
+
+const cleanupUploadedFiles = (req) => {
+  getUploadedFiles(req).forEach((file) => {
+    try {
+      deleteFile(toStoredUploadPath(file.path));
+    } catch (error) {
+      // Do not attempt a broader fallback deletion: if containment validation
+      // fails, preserving a file is safer than unlinking an unknown path.
+      console.error('Unable to clean up a rejected upload safely', error);
+    }
+  });
+};
+
+const deleteStoredFilesSafely = (storedPaths) => {
+  [...new Set(storedPaths.filter(Boolean))].forEach((storedPath) => {
+    try {
+      deleteFile(storedPath);
+    } catch (error) {
+      // The database operation has already succeeded. Keep serving a correct
+      // response and surface the orphan/suspicious path in server diagnostics.
+      console.error('Unable to delete a stored upload safely', error);
+    }
+  });
+};
+
+const publicFileMetadata = (file, storedPath) => ({
+  fieldname: file.fieldname,
+  filename: file.filename,
+  mimetype: file.mimetype,
+  path: storedPath,
+  size: file.size,
+});
+
+const createContentItem = (file, metadataKey, id) => {
+  const storedPath = toStoredUploadPath(file.path);
+
+  return {
+    id:
+      id ||
+      `${Date.now()}-${randomBytes(8).toString('hex')}`,
+    url: storedPath,
+    [metadataKey]: publicFileMetadata(file, storedPath),
+  };
+};
+
+const projectForResponse = (project) => {
+  const data = project.get
+    ? project.get({ plain: true })
+    : { ...project };
+
+  ARRAY_FIELDS.forEach((field) => {
+    if (hasOwn(data, field)) {
+      data[field] = parseStoredArray(data[field], field);
+    }
+  });
+
+  return data;
+};
+
+const collectContentPaths = (project, field) =>
+  parseStoredArray(project[field], field)
+    .map((item) => item?.url)
+    .filter(Boolean);
 
 const createProject = async (req, res) => {
+  const body = req.body || {};
+  assertOnlyFields(body, [
+    'title',
+    'subtitle',
+    'overview',
+    'role',
+    'date',
+    'category',
+    'locationYear',
+  ]);
+
   const { title, subtitle, overview, role, date, category, locationYear } =
-    req.body;
-  if (!title || !subtitle || !overview || !role || !locationYear || !date)
+    body;
+  if (!title || !subtitle || !overview || !role || !locationYear || !date) {
     throw new BadRequestError(
       'Data for all the necessary fields must be provided'
     );
+  }
 
-  // Get the highest displayOrder to set the new project at the end
+  assertScalarFields(
+    { title, subtitle, overview, date, category, locationYear },
+    ['title', 'subtitle', 'overview', 'date', 'category', 'locationYear']
+  );
+  const normalizedRole = parseArray(role, 'role');
+
   const maxOrderProject = await projects.findOne({
     order: [['displayOrder', 'DESC']],
     attributes: ['displayOrder'],
@@ -19,7 +219,7 @@ const createProject = async (req, res) => {
     ? maxOrderProject.displayOrder + 1
     : 0;
 
-  let initialInfos = await projects.create({
+  const initialInfos = await projects.create({
     title,
     value: title
       .split(' ')
@@ -28,282 +228,252 @@ const createProject = async (req, res) => {
     category: category || 'all',
     subtitle,
     overview,
-    role: JSON.stringify(role),
+    role: JSON.stringify(normalizedRole),
     date,
     locationYear,
     displayOrder: nextDisplayOrder,
   });
 
-  initialInfos.dataValues.role = JSON.parse(initialInfos.dataValues.role);
-  initialInfos.dataValues.techStack = JSON.parse(
-    initialInfos.dataValues.techStack
-  );
-  initialInfos.dataValues.sliderContents = JSON.parse(
-    initialInfos.dataValues.sliderContents
-  );
-  initialInfos.dataValues.thumbnailContents = JSON.parse(
-    initialInfos.dataValues.thumbnailContents
-  );
-  initialInfos.dataValues.videos = JSON.parse(initialInfos.dataValues.videos);
-
   res.json({
     succeed: true,
     msg: 'Successfully created the project',
-    initialInfos,
+    initialInfos: projectForResponse(initialInfos),
   });
 };
 
 const updateProjectContents = async (req, res) => {
-  const projectId = req.params.id;
-  let data = req.body;
+  let committed = false;
 
-  let project = await projects.findOne({ where: { id: projectId } });
-  if (!project)
-    throw new BadRequestError('Please Enter the correct project Id!');
+  try {
+    const body = req.body || {};
+    // Older clients included title because it once selected the upload folder.
+    // Accept but ignore it; the immutable route id now chooses the folder.
+    assertOnlyFields(body, [...LINK_FIELDS, 'title']);
+    const data = pickFields(body, LINK_FIELDS);
+    assertScalarFields(data, ['siteLink', 'designLink', 'codeLink']);
+    normalizeArrayFieldsForStorage(data, ['techStack']);
 
-  if (req.files) {
-    const uploadedFiles = req.files;
+    const project = await projects.findByPk(req.params.id);
+    if (!project) {
+      throw new BadRequestError('Please enter the correct project id');
+    }
 
-    if (uploadedFiles.bannerImg?.length > 0) {
-      data.bannerImg = uploadedFiles.bannerImg[0].path;
+    const stalePaths = [];
+    const uploadedFiles = req.files || {};
+
+    if (uploadedFiles.bannerImg?.length) {
+      if (project.bannerImg) stalePaths.push(project.bannerImg);
+      data.bannerImg = toStoredUploadPath(uploadedFiles.bannerImg[0].path);
     }
-    if (uploadedFiles.videos?.length > 0) {
-      const readyVideos = uploadedFiles.videos.map((item, index) => ({
-        id: `${index + 1}@${Date.now()}`,
-        url: item.path,
-        serverVid: item,
-      }));
-      data.videos = JSON.stringify(readyVideos);
+
+    ['videos', 'sliderContents', 'thumbnailContents'].forEach((field) => {
+      if (uploadedFiles[field]?.length) {
+        stalePaths.push(...collectContentPaths(project, field));
+        data[field] = JSON.stringify(
+          uploadedFiles[field].map((file) =>
+            createContentItem(file, CONTENT_METADATA_KEYS[field])
+          )
+        );
+      }
+    });
+
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestError('No supported project content was provided');
     }
-    if (uploadedFiles.sliderContents?.length > 0) {
-      const readySliderContents = uploadedFiles.sliderContents.map(
-        (item, index) => ({
-          id: `${index + 1}@${Date.now()}`,
-          url: item.path,
-          serverContent: item,
-        })
-      );
-      data.sliderContents = JSON.stringify(readySliderContents);
-    }
-    if (uploadedFiles.thumbnailContents?.length > 0) {
-      const readyThumbnailContents = uploadedFiles.thumbnailContents.map(
-        (item, index) => ({
-          id: `${index + 1}@${Date.now()}`,
-          url: item.path,
-          serverThumb: item,
-        })
-      );
-      data.thumbnailContents = JSON.stringify(readyThumbnailContents);
-    }
+
+    await project.update(data);
+    committed = true;
+    deleteStoredFilesSafely(stalePaths);
+
+    res.json({
+      succeed: true,
+      msg: 'Successfully updated project content!',
+      result: projectForResponse(project),
+    });
+  } catch (error) {
+    if (!committed) cleanupUploadedFiles(req);
+    throw error;
   }
-
-  if (data.techStack) data.techStack = JSON.stringify(data.techStack);
-
-  await projects.update({ ...data }, { where: { id: projectId } });
-
-  if (data.techStack) data.techStack = JSON.parse(data.techStack);
-  if (data.videos) data.videos = JSON.parse(data.videos);
-  if (data.sliderContents)
-    data.sliderContents = JSON.parse(data.sliderContents);
-
-  const result = { ...project, ...data };
-
-  res.json({
-    succeed: true,
-    msg: 'Successfully updated project content!',
-    result: result,
-  });
 };
 
 const editProjectInfos = async (req, res) => {
-  const projectId = req.params.id;
-  let data = req.body;
-
-  let project = await projects.findOne({ where: { id: projectId } });
-  if (!project)
-    throw new BadRequestError('Please Enter the correct project Id!');
-
-  if (data.bannerImg || data.videos || data.sliderContents)
+  const body = req.body || {};
+  const mediaField = Object.keys(body).find((field) =>
+    CONTENT_MODES.includes(field)
+  );
+  if (mediaField) {
     throw new UnauthorizedError(
-      'You are not permitted to change this data in this route!'
+      'Project media cannot be changed through this route'
     );
+  }
 
-  if (data.techStack) data.techStack = JSON.stringify(data.techStack);
-  if (data.role) data.role = JSON.stringify(data.role);
+  assertOnlyFields(body, INFO_FIELDS);
+  const data = pickFields(body, INFO_FIELDS);
+  assertScalarFields(data, [
+    'title',
+    'subtitle',
+    'overview',
+    'category',
+    'date',
+    'locationYear',
+    'siteLink',
+    'designLink',
+    'codeLink',
+  ]);
+  normalizeArrayFieldsForStorage(data, ['techStack', 'role']);
 
-  await projects.update({ ...data }, { where: { id: projectId } });
+  if (Object.keys(data).length === 0) {
+    throw new BadRequestError('No supported project information was provided');
+  }
 
-  if (data.techStack) data.techStack = JSON.parse(data.techStack);
-  if (data.role) data.role = JSON.parse(data.role);
+  const project = await projects.findByPk(req.params.id);
+  if (!project) {
+    throw new BadRequestError('Please enter the correct project id');
+  }
+
+  await project.update(data);
 
   res.json({
     succeed: true,
-    msg: 'Successfully Updated Project Infos',
-    result: { ...project, ...data },
+    msg: 'Successfully updated project information',
+    result: projectForResponse(project),
   });
 };
 
 const editProjectContents = async (req, res) => {
-  const projectId = req.params.id;
-  let { mode, contentId, replaceItem } = req.body;
-  replaceItem = JSON.parse(replaceItem);
+  let committed = false;
 
-  let project = await projects.findOne({ where: { id: projectId } });
-  if (!project)
-    throw new BadRequestError('Please Enter the correct project Id!');
+  try {
+    const body = req.body || {};
+    assertOnlyFields(body, [
+      'mode',
+      'contentId',
+      'replaceItem',
+      'title',
+    ]);
 
-  if (req.files) {
-    const uploadedFiles = req.files;
-
-    if (mode === 'bannerImg' && uploadedFiles.bannerImg?.length > 0) {
-      if (project.img) deleteFile(project.img);
-      project.bannerImg = uploadedFiles.bannerImg[0].path;
-    } else if (mode === 'videos' && uploadedFiles.videos?.length > 0) {
-      let dataVideos = JSON.parse(project.videos);
-
-      if (!replaceItem) {
-        uploadedFiles.videos.forEach((item, index) => {
-          dataVideos.push({
-            id: `${dataVideos?.length + 1}@${Date.now()}`,
-            url: item.path,
-            serverVid: item,
-          });
-        });
-      } else {
-        dataVideos.forEach((item, index) => {
-          if (contentId === item.id) {
-            if (item.url) deleteFile(item.url);
-
-            item.url = uploadedFiles.videos[0].path;
-            item.serverVid = uploadedFiles.videos[0];
-          }
-        });
-      }
-
-      project.videos = JSON.stringify(dataVideos);
-    } else if (
-      mode === 'sliderContents' &&
-      uploadedFiles.sliderContents?.length > 0
-    ) {
-      let dataSliderContents = JSON.parse(project.sliderContents);
-
-      if (!replaceItem) {
-        uploadedFiles.sliderContents.forEach((item, index) => {
-          dataSliderContents.push({
-            id: `${dataSliderContents?.length + 1}@${Date.now()}`,
-            url: item.path,
-            serverContent: item,
-          });
-        });
-      } else {
-        dataSliderContents.forEach((item, index) => {
-          if (contentId === item.id) {
-            if (item.url) deleteFile(item.url);
-            item.url = uploadedFiles.sliderContents[0].path;
-            item.serverContent = uploadedFiles.sliderContents[0];
-          }
-        });
-      }
-      project.sliderContents = JSON.stringify(dataSliderContents);
-    } else if (
-      mode === 'thumbnailContents' &&
-      uploadedFiles.thumbnailContents?.length > 0
-    ) {
-      let dataThumbnailContents = JSON.parse(project.thumbnailContents);
-
-      if (!replaceItem) {
-        uploadedFiles.thumbnailContents.forEach((item, index) => {
-          dataThumbnailContents.push({
-            id: `${dataThumbnailContents?.length + 1}@${Date.now()}`,
-            url: item.path,
-            serverThumb: item,
-          });
-        });
-      } else {
-        dataThumbnailContents.forEach((item, index) => {
-          if (contentId === item.id) {
-            if (item.url) deleteFile(item.url);
-            item.url = uploadedFiles.thumbnailContents[0].path;
-            item.serverThumb = uploadedFiles.thumbnailContents[0];
-          }
-        });
-      }
-      project.thumbnailContents = JSON.stringify(dataThumbnailContents);
+    const { mode, contentId } = body;
+    if (!CONTENT_MODES.includes(mode)) {
+      throw new BadRequestError('A valid project content mode is required');
     }
+
+    const replaceItem = parseBoolean(body.replaceItem, 'replaceItem');
+    const uploadedFiles = getUploadedFiles(req);
+    const modeFiles = req.files?.[mode] || [];
+
+    if (
+      modeFiles.length === 0 ||
+      uploadedFiles.some((file) => file.fieldname !== mode)
+    ) {
+      throw new BadRequestError('Uploaded files must match the selected mode');
+    }
+
+    if ((mode === 'bannerImg' || replaceItem) && modeFiles.length !== 1) {
+      throw new BadRequestError('This operation requires exactly one file');
+    }
+
+    const project = await projects.findByPk(req.params.id);
+    if (!project) {
+      throw new BadRequestError('Please enter the correct project id');
+    }
+
+    const stalePaths = [];
+    if (mode === 'bannerImg') {
+      if (project.bannerImg) stalePaths.push(project.bannerImg);
+      project.bannerImg = toStoredUploadPath(modeFiles[0].path);
+    } else {
+      const contentItems = parseStoredArray(project[mode], mode);
+      const metadataKey = CONTENT_METADATA_KEYS[mode];
+
+      if (replaceItem) {
+        if (!contentId || contentId === 'null') {
+          throw new BadRequestError('A content id is required for replacement');
+        }
+
+        const itemIndex = contentItems.findIndex(
+          (item) =>
+            item &&
+            typeof item === 'object' &&
+            String(item.id) === String(contentId)
+        );
+        if (itemIndex === -1) {
+          throw new BadRequestError('The requested project content was not found');
+        }
+
+        if (contentItems[itemIndex].url) {
+          stalePaths.push(contentItems[itemIndex].url);
+        }
+        contentItems[itemIndex] = createContentItem(
+          modeFiles[0],
+          metadataKey,
+          contentItems[itemIndex].id
+        );
+      } else {
+        contentItems.push(
+          ...modeFiles.map((file) => createContentItem(file, metadataKey))
+        );
+      }
+
+      project[mode] = JSON.stringify(contentItems);
+    }
+
+    await project.save({ fields: [mode] });
+    committed = true;
+    deleteStoredFilesSafely(stalePaths);
+
+    res.json({
+      succeed: true,
+      msg: 'Successfully updated project contents!',
+      result: projectForResponse(project),
+    });
+  } catch (error) {
+    if (!committed) cleanupUploadedFiles(req);
+    throw error;
   }
-
-  await project.save();
-
-  project.dataValues.videos = JSON.parse(project.dataValues.videos);
-  project.dataValues.sliderContents = JSON.parse(
-    project.dataValues.sliderContents
-  );
-  project.dataValues.thumbnailContents = JSON.parse(
-    project.dataValues.thumbnailContents
-  );
-  // project.dataValues.techStack = JSON.parse(project.dataValues.techStack);
-
-  res.json({
-    succeed: true,
-    msg: 'Successfully updated project contents!',
-    result: project,
-  });
 };
 
 const deleteProjectContents = async (req, res) => {
-  const projectId = req.params.id;
-  const { mode, contentId } = req.body;
-
-  let project = await projects.findOne({
-    attributes: [
-      'id',
-      'bannerImg',
-      'sliderContents',
-      'videos',
-      'thumbnailContents',
-    ],
-    where: { id: projectId },
-  });
-
-  if (!project)
-    throw new BadRequestError('Please Enter the correct project Id!');
-
-  if (mode === 'bannerImg') {
-    if (project.bannerImg) deleteFile(project.bannerImg);
-    project.bannerImg = null;
-  } else if (mode === 'videos') {
-    let dataVideos = JSON.parse(project.videos);
-    let filteredVideos = [];
-    dataVideos.forEach((item) => {
-      if (item.id === contentId) {
-        if (item.url) deleteFile(item.url);
-        item.serverVid = {};
-      } else filteredVideos.push(item);
-    });
-    project.videos = JSON.stringify(filteredVideos);
-  } else if (mode === 'sliderContents') {
-    let dataSliderContents = JSON.parse(project.sliderContents);
-    let filteredSliderContents = [];
-    dataSliderContents.forEach((item) => {
-      if (item.id === contentId) {
-        if (item.url) deleteFile(item.url);
-        item.serverContent = {};
-      } else filteredSliderContents.push(item);
-    });
-    project.sliderContents = JSON.stringify(filteredSliderContents);
-  } else if (mode === 'thumbnailContents') {
-    let dataThumbnailContents = JSON.parse(project.thumbnailContents);
-    let filteredThumbnailContents = [];
-    dataThumbnailContents.forEach((item) => {
-      if (item.id === contentId) {
-        if (item.url) deleteFile(item.url);
-        item.serverThumb = {};
-      } else filteredThumbnailContents.push(item);
-    });
-    project.thumbnailContents = JSON.stringify(filteredThumbnailContents);
+  const body = req.body || {};
+  assertOnlyFields(body, ['mode', 'contentId']);
+  const { mode, contentId } = body;
+  if (!CONTENT_MODES.includes(mode)) {
+    throw new BadRequestError('A valid project content mode is required');
   }
 
-  await project.save();
+  const project = await projects.findByPk(req.params.id);
+  if (!project) {
+    throw new BadRequestError('Please enter the correct project id');
+  }
+
+  const stalePaths = [];
+  if (mode === 'bannerImg') {
+    if (project.bannerImg) stalePaths.push(project.bannerImg);
+    project.bannerImg = null;
+  } else {
+    if (!contentId) {
+      throw new BadRequestError('A content id is required');
+    }
+
+    const contentItems = parseStoredArray(project[mode], mode);
+    const itemIndex = contentItems.findIndex(
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        String(item.id) === String(contentId)
+    );
+    if (itemIndex === -1) {
+      throw new BadRequestError('The requested project content was not found');
+    }
+
+    if (contentItems[itemIndex].url) {
+      stalePaths.push(contentItems[itemIndex].url);
+    }
+    contentItems.splice(itemIndex, 1);
+    project[mode] = JSON.stringify(contentItems);
+  }
+
+  await project.save({ fields: [mode] });
+  deleteStoredFilesSafely(stalePaths);
 
   res.json({
     succeed: true,
@@ -312,32 +482,22 @@ const deleteProjectContents = async (req, res) => {
 };
 
 const deleteProject = async (req, res) => {
-  const projectId = req.params.id;
+  const project = await projects.findByPk(req.params.id);
+  if (!project) {
+    throw new BadRequestError('Please enter the correct project id');
+  }
 
-  let project = await projects.findOne({
-    where: { id: projectId },
-  });
-  if (!project)
-    throw new BadRequestError('Please Enter the correct project Id!');
+  const storedPaths = [
+    project.bannerImg,
+    ...collectContentPaths(project, 'videos'),
+    ...collectContentPaths(project, 'sliderContents'),
+    ...collectContentPaths(project, 'thumbnailContents'),
+  ];
 
-  if (project.bannerImg) deleteFile(project.bannerImg);
-
-  const projVideos = JSON.parse(project.videos);
-  projVideos.forEach((item) => {
-    if (item.url) deleteFile(item.url);
-  });
-
-  const projSliderContents = JSON.parse(project.sliderContents);
-  projSliderContents.forEach((item) => {
-    if (item.url) deleteFile(item.url);
-  });
-
-  const projThumbContents = JSON.parse(project.thumbnailContents);
-  projThumbContents.forEach((item) => {
-    if (item.url) deleteFile(item.url);
-  });
-
+  // Remove the database record first. A failed filesystem cleanup leaves an
+  // orphan for maintenance; deleting files first could leave broken DB rows.
   await project.destroy();
+  deleteStoredFilesSafely(storedPaths);
 
   res.json({
     succeed: true,
@@ -346,11 +506,13 @@ const deleteProject = async (req, res) => {
 };
 
 const getProjects = async (req, res) => {
-  const { mode, projectId } = req.body;
+  const body = req.body || {};
+  assertOnlyFields(body, ['mode', 'projectId']);
+  const { mode, projectId } = body;
   let result;
 
   if (mode === 'all') {
-    result = await projects.findAll({
+    const projectRows = await projects.findAll({
       attributes: [
         'id',
         'title',
@@ -368,55 +530,74 @@ const getProjects = async (req, res) => {
       ],
       order: [['displayOrder', 'ASC']],
     });
-    result.forEach((item) => {
-      item.dataValues.thumbnailContents = JSON.parse(
-        item.dataValues.thumbnailContents
-      );
-      item.dataValues.role = JSON.parse(item.dataValues.role);
-    });
+    result = projectRows.map(projectForResponse);
   } else if (mode === 'single') {
-    if (!projectId) throw new BadRequestError('Project Id must be provided!');
-    result = await projects.findOne({ where: { id: projectId } });
+    if (!projectId) {
+      throw new BadRequestError('Project id must be provided');
+    }
 
-    result.dataValues.techStack = JSON.parse(result.dataValues.techStack);
-    result.dataValues.role = JSON.parse(result.dataValues.role);
-    result.dataValues.videos = JSON.parse(result.dataValues.videos);
-    result.dataValues.thumbnailContents = JSON.parse(
-      result.dataValues.thumbnailContents
-    );
-    result.dataValues.sliderContents = JSON.parse(
-      result.dataValues.sliderContents
-    );
+    const project = await projects.findByPk(projectId);
+    if (!project) {
+      throw new BadRequestError('The requested project was not found');
+    }
+    result = projectForResponse(project);
   } else if (mode === 'cat') {
-    result = await projects.findAll({
+    const projectRows = await projects.findAll({
       attributes: ['id', 'title', 'category'],
     });
-    result = [...new Set(result.map((item) => item.dataValues.category))];
+    result = [
+      ...new Set(projectRows.map((item) => item.dataValues.category)),
+    ];
+  } else {
+    throw new BadRequestError('A valid project query mode is required');
   }
 
   res.json({
     succeed: true,
     msg: 'Successfully fetched project data!',
-    result: result,
+    result,
   });
 };
 
 const reorderProjects = async (req, res) => {
-  const { projectOrders } = req.body;
+  const body = req.body || {};
+  assertOnlyFields(body, ['projectOrders']);
+  const { projectOrders } = body;
 
-  if (!projectOrders || !Array.isArray(projectOrders)) {
-    throw new BadRequestError('Project orders must be provided as an array');
+  if (!Array.isArray(projectOrders) || projectOrders.length > 500) {
+    throw new BadRequestError(
+      'Project orders must be provided as an array of at most 500 items'
+    );
   }
 
-  // Update each project's displayOrder in a transaction
-  const updatePromises = projectOrders.map((item) =>
-    projects.update(
-      { displayOrder: item.displayOrder },
-      { where: { id: item.id } }
+  const seenIds = new Set();
+  const seenDisplayOrders = new Set();
+  projectOrders.forEach((item) => {
+    if (
+      !item ||
+      !Number.isInteger(item.id) ||
+      !Number.isInteger(item.displayOrder) ||
+      item.displayOrder < 0 ||
+      item.displayOrder >= projectOrders.length ||
+      seenIds.has(item.id) ||
+      seenDisplayOrders.has(item.displayOrder)
+    ) {
+      throw new BadRequestError('Project orders contain invalid values');
+    }
+    seenIds.add(item.id);
+    seenDisplayOrders.add(item.displayOrder);
+  });
+
+  await sequelize.transaction((transaction) =>
+    Promise.all(
+      projectOrders.map((item) =>
+        projects.update(
+          { displayOrder: item.displayOrder },
+          { transaction, where: { id: item.id } }
+        )
+      )
     )
   );
-
-  await Promise.all(updatePromises);
 
   res.json({
     succeed: true,

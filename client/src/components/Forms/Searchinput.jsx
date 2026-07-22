@@ -7,6 +7,8 @@ const Searchinput = ({ onSubmit, onChange }) => {
   return (
     <div className='w-full'>
       <form
+        role='search'
+        aria-label='Admin projects'
         onSubmit={(e) => {
           e.preventDefault();
           onSubmit && onSubmit(e);
@@ -14,11 +16,15 @@ const Searchinput = ({ onSubmit, onChange }) => {
         className='w-full flex gap-1 pl-2 pr-4 text-secondary-light'
       >
         <div className='flex items-center justify-center'>
-          <IoSearch className='text-xl text-secondary-light' />
+          <IoSearch
+            aria-hidden='true'
+            className='text-xl text-secondary-light'
+          />
         </div>
         <input
           type='text'
           name='search'
+          aria-label='Search projects'
           value={value}
           onChange={(e) => {
             setValue(e.target.value);

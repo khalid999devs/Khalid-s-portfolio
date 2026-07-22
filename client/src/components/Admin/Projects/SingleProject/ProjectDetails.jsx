@@ -361,7 +361,11 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
               src={
                 mode === 'create' ? newProjIllustration : editProjIllustration
               }
-              alt='project-create-img'
+              alt={
+                mode === 'create'
+                  ? 'Create project illustration'
+                  : 'Edit project illustration'
+              }
             />
           </div>
         </div>

@@ -36,7 +36,7 @@ const ProjectCard = ({
   };
 
   return (
-    <div
+    <article
       ref={setNodeRef}
       style={style}
       className='min-h-[300px] max-w-[312px] w-full bg-primary-dark rounded-xl box-big-shadow px-2 pt-3 pb-3.5 flex flex-col'
@@ -45,33 +45,37 @@ const ProjectCard = ({
         <img
           src={img || projectPlaceholder}
           className='w-full h-full object-cover'
-          alt='Project Image'
+          alt={`${title || 'Untitled project'} thumbnail`}
         />
         <div className='absolute right-3 top-3 flex gap-2 items-center'>
           <RoundedIconBtn
             onClick={() => navigate(`/admin/edit-project/${value}?id=${id}`)}
             classes={`hover:!bg-green-800`}
+            label={`Edit ${title || 'project'}`}
           />
           <RoundedIconBtn
             onClick={() => handleDeleteProject(id, title)}
             Icon={MdOutlineDelete}
             classes={`hover:!bg-red-700`}
+            label={`Delete ${title || 'project'}`}
           />
         </div>
-        <div
+        <button
+          type='button'
           {...attributes}
           {...listeners}
+          aria-label={`Reorder ${title || 'project'}`}
           className='absolute left-3 top-3 bg-black/60 backdrop-blur-sm rounded-lg p-2 cursor-grab active:cursor-grabbing hover:bg-black/80 transition-all duration-200 hover:scale-110'
           title='Drag to reorder'
         >
-          <MdDragIndicator className='text-white text-xl' />
-        </div>
+          <MdDragIndicator aria-hidden='true' className='text-white text-xl' />
+        </button>
       </div>
       <div className='px-3.5 flex-1 flex flex-col justify-between pt-5'>
         <div className='grid gap-3'>
-          <h1 className='text-xl line-clamp-2 leading-tight'>
+          <h2 className='text-xl line-clamp-2 leading-tight'>
             {title || 'Project Title'}
-          </h1>
+          </h2>
           <p className='text-sm text-montreal-mono text-secondary-dark line-clamp-1'>
             {subtitle || 'Project Subtitle'}
           </p>
@@ -83,7 +87,7 @@ const ProjectCard = ({
           onClick={() => navigate(`/admin/edit-project/${value}?id=${id}`)}
         />
       </div>
-    </div>
+    </article>
   );
 };
 

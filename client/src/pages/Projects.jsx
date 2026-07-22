@@ -4,13 +4,12 @@ import { OutlinedBigIcon } from '../components/Buttons/OutlinedButton';
 import { useAppContext } from '../App';
 import { reqFileWrapper } from '../axios/requests';
 import { FaArrowRightLong } from 'react-icons/fa6';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import PageTransition from '../animations/PageTransition';
 import MetaCard from '../components/utils/MetaCard';
 
 const Projects = () => {
   const loc = useLocation();
-  const navigate = useNavigate();
   const {
     appData: { projects },
   } = useAppContext();
@@ -35,12 +34,9 @@ const Projects = () => {
 
       <div className='flex flex-col gap-8 w-full md:pl-28'>
         <div className='flex w-full justify-center md:justify-start items-center gap-4'>
-          <h1 className='text-[2.2rem] sm:text-[3rem] md:text-[4rem] text-pp-eiko text-letter-reveal'>
-            SELECTED
-          </h1>
-
-          <h1 className='text-[2.2rem] sm:text-[3rem] md:text-[4rem] text-letter-reveal'>
-            WORKS
+          <h1 className='flex items-center gap-4 text-[2.2rem] sm:text-[3rem] md:text-[4rem] text-letter-reveal'>
+            <span className='text-pp-eiko'>SELECTED</span>
+            <span>WORKS</span>
           </h1>
         </div>
 
@@ -53,6 +49,7 @@ const Projects = () => {
                 }`}
                 text={item}
                 key={key}
+                pressed={item === targetCat}
                 onClick={() => {
                   setTargetCat(item);
                 }}
@@ -73,12 +70,10 @@ const Projects = () => {
             })
             .map((item, key) => {
               return (
-                <div
+                <Link
+                  to={`/singleProject/${item.value + '@' + item.id}`}
                   className='w-full grid border-b-[0.05px] border-opacity-30 border-secondary-light pb-3 gap-6 group cursor-pointer pointer-all'
-                  onClick={() => {
-                    navigate(`/singleProject/${item.value + '@' + item.id}`);
-                  }}
-                  key={key}
+                  key={item.id || key}
                 >
                   <div className='w-full h-full rounded-lg overflow-hidden '>
                     <img
@@ -108,12 +103,13 @@ const Projects = () => {
                         {item.title}
                       </h2>
 
-                      <button className=''>
-                        <FaArrowRightLong className='text-white text-2xl transition-all duration-500 group-hover:-translate-x-1' />
-                      </button>
+                      <FaArrowRightLong
+                        aria-hidden='true'
+                        className='text-white text-2xl transition-all duration-500 group-hover:-translate-x-1'
+                      />
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
         </div>

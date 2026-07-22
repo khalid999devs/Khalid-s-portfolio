@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import axios from 'axios';
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { reqFileWrapper, reqs } from '../axios/requests';
 import { loadingGif, projectPlaceholder } from '../assets';
 import { BsFillCaretRightFill } from 'react-icons/bs';
@@ -13,7 +13,7 @@ import {
   OutlinedBigIcon,
   OutlinedSmallButton,
 } from '../components/Buttons/OutlinedButton';
-import ProjectVideos from './Project/projectVideos';
+import ProjectVideos from './Project/ProjectVideos';
 import { useAppContext } from '../App';
 import HRLine from '../components/utils/HRLine';
 import useTextRevealAnimation from '../animations/useTextRevealAnimation';
@@ -134,9 +134,9 @@ const SingleProject = () => {
 
       <div className='flex w-full flex-col gap-20 sec-project-x-padding'>
         <div className='flex flex-col w-full md:justify-start '>
-          <h4 className='text-[12px] sm:text-sm text-montreal-mono text-onPrimary-main '>
+          <p className='text-[12px] sm:text-sm text-montreal-mono text-onPrimary-main '>
             {project.subtitle}
-          </h4>
+          </p>
 
           {project.title && (
             <h1 className='text-[2.5rem] sm:text-[3rem] md:text-[4rem] uppercase break-words text-left text-letter-reveal pointer-all'>
@@ -154,18 +154,17 @@ const SingleProject = () => {
           <TextDividerHeading
             role='CODE LINK'
             text={
-              <div
+              <a
+                href={
+                  project.codeLink || 'https://github.com/khalid999devs'
+                }
+                target='_blank'
+                rel='noopener noreferrer'
                 className='flex items-center gap-3 group uppercase cursor-pointer'
-                onClick={() => {
-                  window.open(
-                    project.codeLink || 'https://github.com/khalid999devs',
-                    '_blank'
-                  );
-                }}
               >
                 <span className='group-hover:underline'>GITHUB</span>
-                <FaGithub className='text-white text-lg' />
-              </div>
+                <FaGithub aria-hidden='true' className='text-white text-lg' />
+              </a>
             }
           />
 
@@ -185,7 +184,7 @@ const SingleProject = () => {
               : projectPlaceholder
           }
           className='w-full min-h-[200px] max-h-[300px] md:max-h-[400px] object-cover h-auto pointer-all'
-          alt='BannerImg'
+          alt={`${project.title || 'Project'} banner`}
         />
       </div>
 
@@ -239,15 +238,12 @@ const SingleProject = () => {
             <h2 className='text-4xl '>{nextProject.title}</h2>
 
             <div className='w-full overflow-hidden h-auto border-b-[0.5] border-secondary-main border-b border-opacity-40'>
-              <div
-                className='bg-primary-dark mt-4 rounded-t-md max-h-[90px] max-w-[200px] w-full p-3 pb-0 overflow-hidden m-auto translate-y-2 transition-transform duration-300 cursor-pointer pointer-all hover:translate-y-0'
-                onClick={() => {
-                  navigate(
-                    `/singleProject/${
-                      nextProject?.value + '@' + nextProject?.id
-                    }`
-                  );
-                }}
+              <Link
+                to={`/singleProject/${
+                  nextProject?.value + '@' + nextProject?.id
+                }`}
+                aria-label={`View next project: ${nextProject.title}`}
+                className='block bg-primary-dark mt-4 rounded-t-md max-h-[90px] max-w-[200px] w-full p-3 pb-0 overflow-hidden m-auto translate-y-2 transition-transform duration-300 cursor-pointer pointer-all hover:translate-y-0'
               >
                 <div className='rounded-t-lg '>
                   <img
@@ -255,11 +251,11 @@ const SingleProject = () => {
                       nextProject?.thumbnailContents[0]?.url ||
                         nextProject?.bannerImg
                     )}
-                    alt='next project image'
+                    alt={`${nextProject.title} thumbnail`}
                     className='rounded-t-lg h-full'
                   />
                 </div>
-              </div>
+              </Link>
               {/* <HRLine classes={`!my-0`} /> */}
             </div>
 

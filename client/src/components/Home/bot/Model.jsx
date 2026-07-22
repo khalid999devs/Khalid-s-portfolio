@@ -1,29 +1,46 @@
 /* eslint-disable react/no-unknown-property */
-import { forwardRef, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import gsap from 'gsap';
+import PropTypes from 'prop-types';
 
-const Model = forwardRef((props) => {
+const Model = ({ onLoad, ...props }) => {
   const group = useRef();
+  const didNotifyLoad = useRef(false);
   const { nodes, materials, animations } = useGLTF('/scene.glb');
   const { actions } = useAnimations(animations, group);
 
   useEffect(() => {
+    let action;
+
     if (actions && animations.length > 0) {
-      const action = actions[Object.keys(actions)[0]];
+      action = actions[Object.keys(actions)[0]];
       if (action) action.play();
     }
+
+    return () => action?.stop();
   }, [actions, animations]);
 
   useEffect(() => {
     if (group.current) {
-      gsap.fromTo(
+      const tween = gsap.fromTo(
         group.current.scale,
         { x: 0, y: 0, z: 0 },
         { x: 300, y: 300, z: 300, duration: 1.5, ease: 'power2.out' }
       );
+
+      return () => tween.kill();
     }
+
+    return undefined;
   }, []);
+
+  useEffect(() => {
+    if (!didNotifyLoad.current) {
+      didNotifyLoad.current = true;
+      onLoad?.();
+    }
+  }, [onLoad]);
 
   return (
     <group ref={group} {...props} scale={1} dispose={null}>
@@ -207,10 +224,10 @@ const Model = forwardRef((props) => {
       </group>
     </group>
   );
-});
+};
 
-Model.displayName = 'Model';
-
-useGLTF.preload('/scene.glb');
+Model.propTypes = {
+  onLoad: PropTypes.func,
+};
 
 export default Model;

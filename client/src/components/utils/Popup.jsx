@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import gsap from 'gsap';
 import PrimaryButton from '../Buttons/PrimaryButton';
 import { loadingGif } from '../../assets';
@@ -19,6 +19,8 @@ const Popup = ({
   const alertRef = useRef();
   const timeline = useRef();
   const [popOn, setPopOn] = useState(false);
+  const popupId = useId();
+  const messageId = `${popupId}-message`;
 
   useEffect(() => {
     const el = alertRef.current;
@@ -37,6 +39,7 @@ const Popup = ({
             scale: 1,
             opacity: 1,
             duration: 0.2,
+            onComplete: () => el?.focus(),
           },
           0
         );
@@ -71,6 +74,11 @@ const Popup = ({
     // <div className='fixed '>
     <div
       ref={alertRef}
+      role={type === 'error' || type === 'warning' ? 'alertdialog' : 'dialog'}
+      aria-modal='true'
+      aria-hidden={!state}
+      aria-describedby={messageId}
+      tabIndex='-1'
       className={`p-4 px-5 hidden flex-col items-center justify-between gap-4 min-h-[200px] max-w-[400px] w-full ${
         type === 'success'
           ? 'bg-green-600'
@@ -85,6 +93,7 @@ const Popup = ({
       style={{ transform: 'translate(-50%,-50%)' }}
     >
       <p
+        id={messageId}
         className={`w-full text-lg p-2 text-left ${
           type === 'warning'
             ? 'text-text-main'
@@ -101,7 +110,7 @@ const Popup = ({
           <img
             src={loadingGif}
             className='w-[100px] h-[100px]'
-            alt='loading img'
+            alt='Loading'
           />
         </div>
       ) : (
@@ -131,7 +140,7 @@ Popup.propTypes = {
   state: PropTypes.bool,
   setPopup: PropTypes.func,
   closeText: PropTypes.string,
-  customButtons: PropTypes.array,
+  customButtons: PropTypes.node,
   loading: PropTypes.bool,
   onClose: PropTypes.func,
 };

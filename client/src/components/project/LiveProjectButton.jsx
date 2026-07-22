@@ -17,7 +17,10 @@ const LiveProjectButton = ({ link }) => {
   };
 
   return (
-    <div
+    <a
+      href={link}
+      target='_blank'
+      rel='noopener noreferrer'
       className='hidden md:flex pointer-all w-[150px] h-[150px] rounded-full bg-secondary-main shadow-md shadow-primary-dark items-center justify-center gap-2 group cursor-pointer absolute right-[8%] -top-[17%]'
       style={{
         transform: `translate(${position.x}px, ${position.y}px)`,
@@ -25,13 +28,13 @@ const LiveProjectButton = ({ link }) => {
       }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      onClick={() => {
-        window.open(link, '_blank');
-      }}
     >
       <span className='text-lg text-primary-main'>Live site</span>
-      <MdArrowOutward className='text-primary-main text-2xl transition-all duration-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5' />
-    </div>
+      <MdArrowOutward
+        aria-hidden='true'
+        className='text-primary-main text-2xl transition-all duration-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5'
+      />
+    </a>
   );
 };
 

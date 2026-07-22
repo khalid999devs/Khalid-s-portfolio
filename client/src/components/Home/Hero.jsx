@@ -1,11 +1,36 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { socialLinks, upworkedSocialLinks } from '../../Constants';
 import { textBlinkAnimation } from '../../animations/textBlinkAnimation';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
-import Scene from './bot/Scene';
 import { isUpwork } from '../../config';
 import { textBlinkAnimateByWord } from '../../animations/textBlinkAnimateByWord';
 import { useMichibotInteraction } from '../../hooks/useMichibotInteraction';
+
+const Scene = lazy(() => import('./bot/Scene'));
+
+const supportsWebGL = () => {
+  if (typeof document === 'undefined') return false;
+
+  try {
+    const canvas = document.createElement('canvas');
+    const contextOptions = { failIfMajorPerformanceCaveat: true };
+    const context =
+      canvas.getContext('webgl2', contextOptions) ||
+      canvas.getContext('webgl', contextOptions) ||
+      canvas.getContext('experimental-webgl', contextOptions);
+
+    if (!context) return false;
+
+    context.getExtension('WEBGL_lose_context')?.loseContext();
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const BotPlaceholder = () => (
+  <div className='w-full h-full' aria-hidden='true' />
+);
 
 const Hero = () => {
   const nameTitleRef = useRef(null);
@@ -15,9 +40,14 @@ const Hero = () => {
   const heroRef = useRef(null);
   const botContainerRef = useRef(null);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [sceneStatus, setSceneStatus] = useState('checking');
 
   const { isActive, isDesktop, isLoaded, setIsLoaded, handleClick } =
     useMichibotInteraction(botContainerRef, heroRef);
+
+  const handleSceneLoad = useCallback(() => {
+    setIsLoaded(true);
+  }, [setIsLoaded]);
 
   useEffect(() => {
     if (nameTitleRef.current) {
@@ -34,6 +64,39 @@ const Hero = () => {
         wordBlinkAnimation(passionRef.current, null, heroRef.current, true);
       }
     }
+  }, []);
+
+  useEffect(() => {
+    if (!supportsWebGL()) {
+      setSceneStatus('unavailable');
+      return undefined;
+    }
+
+    setSceneStatus('waiting');
+
+    const showScene = () => setSceneStatus('ready');
+    let idleCallbackId;
+    let fallbackTimerId;
+
+    if (typeof window.requestIdleCallback === 'function') {
+      idleCallbackId = window.requestIdleCallback(showScene, {
+        timeout: 2000,
+      });
+    } else {
+      fallbackTimerId = window.setTimeout(showScene, 1200);
+    }
+
+    return () => {
+      if (
+        idleCallbackId !== undefined &&
+        typeof window.cancelIdleCallback === 'function'
+      ) {
+        window.cancelIdleCallback(idleCallbackId);
+      }
+      if (fallbackTimerId !== undefined) {
+        window.clearTimeout(fallbackTimerId);
+      }
+    };
   }, []);
 
   return (
@@ -76,7 +139,13 @@ const Hero = () => {
                   ✨
                 </div>
               )}
-              <Scene onLoad={() => setIsLoaded(true)} isActive={isActive} />
+              {sceneStatus === 'ready' ? (
+                <Suspense fallback={<BotPlaceholder />}>
+                  <Scene onLoad={handleSceneLoad} isActive={isActive} />
+                </Suspense>
+              ) : (
+                <BotPlaceholder />
+              )}
             </div>
           </div>
         </div>

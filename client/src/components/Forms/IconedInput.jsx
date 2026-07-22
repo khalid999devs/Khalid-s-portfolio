@@ -32,6 +32,7 @@ const IconedInput = ({
         onChange={(e) => setValue(e.target.value)}
         name={name}
         {...inputProps}
+        aria-label={inputProps?.['aria-label'] || `Add ${name || 'item'}`}
         className={
           `outline-none w-full placeholder:text-secondary-main placeholder:opacity-100 bg-transparent text-primary-main text-base ${
             size === 'small' && '!text-sm'
@@ -41,9 +42,10 @@ const IconedInput = ({
       />
       <button
         type='submit'
+        aria-label={`Add ${name || 'item'}`}
         className='text-secondary-light text-2xl flex items-center justify-center'
       >
-        <IoAddCircleOutline />
+        <IoAddCircleOutline aria-hidden='true' />
       </button>
     </form>
   );

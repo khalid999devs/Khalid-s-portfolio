@@ -2,75 +2,103 @@ const { Contact } = require('../models');
 const { BadRequestError } = require('../errors');
 const mailer = require('../utils/sendMail');
 const sendSMS = require('../utils/sendSMS');
+const {
+  normalizeContactMessage,
+  normalizeMessage,
+  parseMessageListQuery,
+} = require('../utils/contactValidation');
+
+const allowedEmailModes = new Set(['contact', 'custom', 'newsletter']);
 
 const sendMessage = async (req, res) => {
-  const { name, phone, email, address, message } = req.body;
-  if (name && phone && message) {
-    await Contact.create({
-      name,
-      phone,
-      email: email || null,
-      message,
-      address: address || null,
-    });
-    res.json({ succeed: true, msg: 'Thank you. We have got your message' });
-  } else {
-    throw new BadRequestError('input fields should not be empty');
-  }
+  const contact = normalizeContactMessage(req.body);
+  await Contact.create(contact);
+  res.json({ succeed: true, msg: 'Thank you. We have got your message' });
 };
 
 const getAllMessage = async (req, res) => {
-  const messages = await Contact.findAll({ order: [['id', 'DESC']] });
-  res.json({ succeed: true, result: messages });
+  const { page, limit, offset } = parseMessageListQuery(req.query);
+  const { count, rows } = await Contact.findAndCountAll({
+    order: [['id', 'DESC']],
+    limit,
+    offset,
+  });
+
+  res.json({
+    succeed: true,
+    result: rows,
+    pagination: {
+      page,
+      limit,
+      total: count,
+      totalPages: Math.ceil(count / limit),
+    },
+  });
 };
 
 const sendEmailToClient = async (req, res) => {
-  const mode = req.params.mode;
+  const mode = req.params.mode || 'custom';
   const { text, subject, email, name, id } = req.body;
-  if (!text) {
-    throw new Error(`you didn't give any reply`);
+  let contact;
+
+  if (!allowedEmailModes.has(mode)) {
+    throw new BadRequestError('Unsupported email delivery mode.');
   }
 
-  try {
-    const response = await mailer(
-      {
-        info: {
-          subject: subject,
-          body: text,
-        },
-        client: {
-          fullName: name,
-          email: email,
-        },
-      },
-      mode || 'custom'
-    );
-    if (mode === 'contact') {
-      await Contact.update(
-        { replied: 1, replyMsg: text },
-        { where: { id: id } }
-      );
+  const normalizedText = normalizeMessage(text);
+
+  if (mode === 'contact') {
+    let contactId = Number.NaN;
+    if (typeof id === 'number' && Number.isSafeInteger(id)) {
+      contactId = id;
+    } else if (typeof id === 'string' && /^[1-9]\d*$/.test(id)) {
+      contactId = Number(id);
     }
-    res.json({ succeed: true, msg: 'email sent', text });
-  } catch (error) {
-    throw new BadRequestError(error);
+
+    if (!Number.isSafeInteger(contactId) || contactId < 1) {
+      throw new BadRequestError('A valid contact ID is required.');
+    }
+
+    contact = await Contact.findByPk(contactId);
+    if (!contact) {
+      throw new BadRequestError('The requested contact does not exist.');
+    }
   }
+
+  await mailer(
+    {
+      info: {
+        subject,
+        body: normalizedText,
+      },
+      client: {
+        fullName: contact?.name || (typeof name === 'string' ? name : ''),
+        email: contact ? contact.email : email,
+      },
+    },
+    mode
+  );
+
+  if (mode === 'contact') {
+    await contact.update({ replied: 1, replyMsg: normalizedText });
+  }
+
+  res.json({ succeed: true, msg: 'Email accepted for delivery.' });
 };
 
 const smsToClient = async (req, res) => {
-  const mode = req.params.mode;
   const { phone, message } = req.body;
   if (!phone || !message) {
     throw new BadRequestError('Fields must not be empty');
   }
 
-  try {
-    const response = await sendSMS(phone, message);
-    if (response.type == '1101') res.json({ succeed: true, msg: response.msg });
-    else res.json({ succeed: false, msg: response.msg });
-  } catch (error) {
-    throw new BadRequestError(error);
+  const response = await sendSMS(phone, message);
+  if (response.type === '1101') {
+    res.json({ succeed: true, msg: response.msg });
+    return;
   }
+
+  res.json({ succeed: false, msg: response.msg });
 };
 
 module.exports = {

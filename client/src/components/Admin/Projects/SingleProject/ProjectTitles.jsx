@@ -187,22 +187,24 @@ const ProjectTitles = ({
                   >
                     {filteredCategories.map((item, key) => {
                       return (
-                        <div
+                        <button
+                          type='button'
                           key={key}
                           className={`w-full py-3 px-3 ${
                             key + 1 != filteredCategories.length
                               ? 'border-b border-b-1 border-b-primary-main border-opacity-30'
                               : ''
-                          } capitalize cursor-pointer transition-all duration-300 hover:bg-neutral-700 text-sm`}
-                          onClick={() =>
+                          } capitalize cursor-pointer transition-all duration-300 hover:bg-neutral-700 text-sm text-left`}
+                          onClick={() => {
                             setTitlesData((titlesData) => ({
                               ...titlesData,
                               category: item,
-                            }))
-                          }
+                            }));
+                            setIsSuggestion(false);
+                          }}
                         >
                           {item}
-                        </div>
+                        </button>
                       );
                     })}
                   </div>

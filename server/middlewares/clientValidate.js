@@ -2,6 +2,7 @@ const { clients } = require('../models');
 const { UnauthenticatedError, BadRequestError } = require('../errors');
 const { hashSync, compare } = require('bcryptjs');
 const deleteFile = require('../utils/deleteFile');
+const { toStoredUploadPath } = require('../utils/uploadPaths');
 const hashSalt = Number(process.env.SALT);
 
 const emailValidate = async (req, res, next) => {
@@ -16,7 +17,9 @@ const emailValidate = async (req, res, next) => {
     // }
     next();
   } else {
-    deleteFile(req.file.path);
+    if (req.file?.path) {
+      deleteFile(toStoredUploadPath(req.file.path));
+    }
     throw new UnauthenticatedError('Email field should not be empty');
   }
 };

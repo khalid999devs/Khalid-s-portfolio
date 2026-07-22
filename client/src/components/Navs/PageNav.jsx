@@ -20,9 +20,49 @@ const calculateRandomBlockDelay = (rowIndex, totalRows) => {
   return blockDelay + rowDelay;
 };
 
-const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
+const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
   const timeRef = useRef(null);
   const contactTitleRef = useRef(null);
+  const menuRef = useRef(null);
+  const closeButtonRef = useRef(null);
+
+  useEffect(() => {
+    if (!isPageMenu) return undefined;
+
+    const triggerElement = triggerRef?.current;
+    closeButtonRef.current?.focus();
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsPageMenu(false);
+        return;
+      }
+
+      if (event.key !== 'Tab' || !menuRef.current) return;
+
+      const focusableElements = menuRef.current.querySelectorAll(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement?.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      triggerElement?.focus();
+    };
+  }, [isPageMenu, setIsPageMenu, triggerRef]);
 
   useEffect(() => {
     let iid;
@@ -99,7 +139,14 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
       {/* PageNav menu with sliding animation */}
       {isPageMenu && (
         <motion.div
-          className={`transition-all duration-700 grid grid-rows-[auto,1fr] min-h-screen w-full sec-x-padding fixed top-0 left-0 bg-body-main screen-max-width z-50 ${classes}`}
+          ref={menuRef}
+          id='site-menu'
+          role='dialog'
+          aria-modal='true'
+          aria-label='Site menu'
+          className={`transition-all duration-700 grid grid-rows-[auto,1fr] min-h-screen w-full sec-x-padding fixed top-0 left-0 bg-body-main screen-max-width z-50 ${
+            classes || ''
+          }`}
           initial={{ opacity: 1 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, transform: 'translateY(100%)' }}
@@ -121,19 +168,31 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
 
             <div className='flex items-center text-sm'>
               {/* hamburger */}
-              <div
+              <button
+                ref={closeButtonRef}
+                type='button'
+                aria-label='Close site menu'
                 className='w-8 min-h-8 h-fit relative cursor-pointer opacity-80 duration-500 hover:opacity-100'
                 onClick={handleHamburgerClick}
               >
-                <span className='w-full h-[1px] bg-onPrimary-dark absolute top-1/2 left-0 -translate-y-1/2 -rotate-45'></span>
-                <span className='w-full h-[1px] bg-onPrimary-dark absolute top-1/2 left-0 -translate-y-1/2 rotate-45'></span>
-              </div>
+                <span
+                  aria-hidden='true'
+                  className='w-full h-[1px] bg-onPrimary-dark absolute top-1/2 left-0 -translate-y-1/2 -rotate-45'
+                ></span>
+                <span
+                  aria-hidden='true'
+                  className='w-full h-[1px] bg-onPrimary-dark absolute top-1/2 left-0 -translate-y-1/2 rotate-45'
+                ></span>
+              </button>
             </div>
           </div>
 
           {/* menus */}
           <div className='w-full h-full grid grid-cols-1 md:grid-cols-[1fr,1.25fr]'>
-            <div className='pt-10 w-full flex flex-col gap-1 md:gap-8 text-montreal-mono'>
+            <nav
+              aria-label='Site pages'
+              className='pt-10 w-full flex flex-col gap-1 md:gap-8 text-montreal-mono'
+            >
               {pageNavLinks.map((item, key) => (
                 <NavLink
                   className={({ isActive }) =>
@@ -148,10 +207,10 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
                   {item.title}
                 </NavLink>
               ))}
-            </div>
+            </nav>
 
             <div className='md:border-l-[1px] border-secondary-light overflow-hidden relative md:pl-28 flex flex-col justify-end items-start'>
-              <h1
+              <h2
                 className='text-7xl uppercase text-primary-main opacity-90 tracking-wide absolute left-0 hidden md:inline-block select-none'
                 id={'contact-title'}
                 ref={contactTitleRef}
@@ -163,12 +222,15 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
                 }}
               >
                 Contact
-              </h1>
+              </h2>
 
               <div className='flex flex-col gap-9 md:gap-14 pb-8 mb-9 md:mb-0'>
                 <div className='flex flex-col gap-4 md:gap-8'>
                   <div className='flex items-center md:justify-start gap-1 -translate-x-1 group'>
-                    <MdOutlineArrowRightAlt className='text-white text-4xl transition-transform duration-1000 group-hover:translate-x-1' />
+                    <MdOutlineArrowRightAlt
+                      aria-hidden='true'
+                      className='text-white text-4xl transition-transform duration-1000 group-hover:translate-x-1'
+                    />
                     <a
                       href='mailto:khalidahammeduzzal@gmail.com'
                       className='text-lg md:text-2xl text-pp-eiko uppercase text-flicker thick-underline'
@@ -186,9 +248,16 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
                         <p className='text-[10px] md:text-xs text-montreal-mono'>
                           LOCAL TIME
                         </p>
-                        <BiSolidRightArrow className='text-[10px] md:text-xs mt-0.5' />
+                        <BiSolidRightArrow
+                          aria-hidden='true'
+                          className='text-[10px] md:text-xs mt-0.5'
+                        />
                       </div>
-                      <p className='text-white text-xs' ref={timeRef}>
+                      <p
+                        className='text-white text-xs'
+                        ref={timeRef}
+                        aria-label='Local time in Bangladesh'
+                      >
                         {new Date().toLocaleTimeString()}
                       </p>
                     </div>
@@ -201,7 +270,13 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
                       <OutlinedSmallButton
                         key={key}
                         text={item.title}
-                        onClick={() => window.open(item.path, '_blank')}
+                        onClick={() =>
+                          window.open(
+                            item.path,
+                            '_blank',
+                            'noopener,noreferrer'
+                          )
+                        }
                       />
                     )
                   )}
@@ -214,7 +289,11 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
 
       {/* Page transition animation */}
       {isPageMenu && (
-        <div className='page-blocks-container transition-in' key={423}>
+        <div
+          className='page-blocks-container transition-in'
+          key={423}
+          aria-hidden='true'
+        >
           {Array.from({ length: 10 }).map((_, rowIndex) => (
             <div className='row' key={rowIndex}>
               {Array.from({ length: 11 }).map((_, blockIndex) => (
@@ -243,6 +322,9 @@ PageNav.propTypes = {
   isPageMenu: PropTypes.bool,
   setIsPageMenu: PropTypes.func,
   classes: PropTypes.string,
+  triggerRef: PropTypes.shape({
+    current: PropTypes.object,
+  }),
 };
 
 export default PageNav;

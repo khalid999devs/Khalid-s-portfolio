@@ -10,7 +10,7 @@ const AdminNav = () => {
   const handleAdminLogOut = (e) => {
     e.preventDefault();
     axios
-      .get(reqs.ADMIN_LOGOUT, { withCredentials: true })
+      .post(reqs.ADMIN_LOGOUT, null, { withCredentials: true })
       .then((res) => {
         if (res.data.succeed) navigate('/admin-login');
         else alert(res.data.msg);
@@ -19,7 +19,10 @@ const AdminNav = () => {
   };
 
   return (
-    <div className='fixed flex flex-col min-h-screen justify-between gap-12 max-w-[185px] w-full pb-28'>
+    <nav
+      aria-label='Admin navigation'
+      className='fixed flex flex-col min-h-screen justify-between gap-12 max-w-[185px] w-full pb-28'
+    >
       <div className='grid gap-3'>
         {adminNavLinks.map((item, key) => (
           <NavLink
@@ -33,21 +36,28 @@ const AdminNav = () => {
               }`
             }
           >
-            <item.icon className='text-lg group-hover:transition-all group-hover:duration-300 group-hover:text-onPrimary-main' />
-            <p>{item.title}</p>
+            <item.icon
+              aria-hidden='true'
+              className='text-lg group-hover:transition-all group-hover:duration-300 group-hover:text-onPrimary-main'
+            />
+            <span>{item.title}</span>
           </NavLink>
         ))}
       </div>
       <div>
         <button
+          type='button'
           className='py-2.5 px-4 flex items-center gap-3 group duration-300 transition-all text-lg text-secondary-light w-full group hover:bg-primary-dark hover:text-onPrimary-main rounded-lg'
           onClick={handleAdminLogOut}
         >
-          <MdLogout className='text-lg group-hover:transition-all group-hover:duration-300 group-hover:text-onPrimary-main' />
-          <p>Log out</p>
+          <MdLogout
+            aria-hidden='true'
+            className='text-lg group-hover:transition-all group-hover:duration-300 group-hover:text-onPrimary-main'
+          />
+          <span>Log out</span>
         </button>
       </div>
-    </div>
+    </nav>
   );
 };
 

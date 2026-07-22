@@ -24,21 +24,24 @@ const Footer = () => {
   }, []);
 
   return (
-    <div className='w-full  mt-8 mb-10'>
+    <footer className='w-full mt-8 mb-10'>
       <div className='w-full screen-max-width sec-x-padding'>
         <div className='w-full border-[1px] border-secondary-light rounded-2xl pt-14 pb-10 px-10 xl:px-14'>
           <div className='w-full pb-12 border-b-[0.7px] border-opacity-40 border-secondary-main'>
             <div className='flex w-full flex-col gap-8 md:gap-3 md:flex-row md:justify-between md:items-end'>
-              <h1
+              <h2
                 className='text-white text-[1.5rem] md:text-[3rem] max-w-[350px] w-full'
                 style={{ lineHeight: '125%' }}
               >
                 Let&apos;s create something great together
-              </h1>
+              </h2>
 
               {!isUpwork && (
                 <div className='flex items-center md:justify-end gap-1 group'>
-                  <MdOutlineArrowRightAlt className='text-white text-4xl transition-transform duration-1000 group-hover:translate-x-1' />
+                  <MdOutlineArrowRightAlt
+                    aria-hidden='true'
+                    className='text-white text-4xl transition-transform duration-1000 group-hover:translate-x-1'
+                  />
                   <a
                     href='mailto:khalidahammeduzzal@gmail.com'
                     className='text-lg md:text-3xl text-pp-eiko uppercase text-flicker thick-underline'
@@ -56,9 +59,16 @@ const Footer = () => {
               <div className='flex items-center gap-4'>
                 <div className='flex item-center gap-1 '>
                   <p className='text-xs text-montreal-mono'>LOCAL TIME</p>
-                  <BiSolidRightArrow className='text-xs mt-0.5' />
+                  <BiSolidRightArrow
+                    aria-hidden='true'
+                    className='text-xs mt-0.5'
+                  />
                 </div>
-                <p className='text-white text-xs' ref={timeRef}>
+                <p
+                  className='text-white text-xs'
+                  ref={timeRef}
+                  aria-label='Local time in Bangladesh'
+                >
                   {new Date().toLocaleTimeString()}
                 </p>
               </div>
@@ -67,7 +77,7 @@ const Footer = () => {
 
           <div className='w-full pt-8 flex flex-col gap-7 md:gap-4 md:flex-row md:items-center md:justify-between'>
             <div className='w-8 m-auto md:m-0 h-7 rounded-lg text-onPrimary-main'>
-              <h2 className='text-pp-eiko text-lg font-semibold'>KA</h2>
+              <span className='text-pp-eiko text-lg font-semibold'>KA</span>
             </div>
             {/* social links */}
             <div className='flex w-full flex-wrap items-center justify-center flex-row gap-7 md:gap-8 lg:gap-14'>
@@ -77,7 +87,7 @@ const Footer = () => {
                     key={index}
                     href={link.path}
                     target='_blank'
-                    rel='noreferrer'
+                    rel='noopener noreferrer'
                     className='transition-all duration-300 text-sm text-flicker'
                   >
                     {link.title}
@@ -92,11 +102,41 @@ const Footer = () => {
               <p className='whitespace-nowrap'>
                 Made with 🤍 by Khalid Ahammed
               </p>
+              <p className='max-w-[260px]'>
+                3D model{' '}
+                <a
+                  href='https://sketchfab.com/3d-models/michi-bot-3de2985ed85e478387d2829b690d9523'
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='underline underline-offset-2'
+                >
+                  “Michi Bot”
+                </a>{' '}
+                by{' '}
+                <a
+                  href='https://sketchfab.com/v3dartist'
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='underline underline-offset-2'
+                >
+                  victorcalles
+                </a>
+                , licensed under{' '}
+                <a
+                  href='https://creativecommons.org/licenses/by-nc/4.0/'
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='underline underline-offset-2'
+                >
+                  CC BY-NC 4.0
+                </a>
+                .
+              </p>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </footer>
   );
 };
 

@@ -69,40 +69,48 @@ const ProjectSlider = ({ sliderContents }) => {
         ref={sliderRef}
         className='hidden md:flex w-full flex-row gap-2 md:gap-3.5 lg:gap-4 overflow-visible pointer-all'
       >
-        {sliderContents?.map((item) => (
+        {sliderContents?.map((item, index) => (
           <div
             key={item.id}
             className='max-w-[98%] lg:max-w-[80%] rounded-[18px] h-auto flex-shrink-0 pointer-all overflow-hidden bg-body-main'
           >
-            <img
-              src={reqFileWrapper(item?.url)}
-              className='w-full h-auto rounded-[18px] max-h-[85vh] cursor-pointer transition-all duration-1000 hover:scale-[101%]'
-              alt='Project Slide'
-              title='Click to view in full screen'
-              onClick={() => {
-                window.open(reqFileWrapper(item?.url), '_blank');
-              }}
-            />
+            <a
+              href={reqFileWrapper(item?.url)}
+              target='_blank'
+              rel='noopener noreferrer'
+              aria-label={`Open project image ${index + 1} at full size`}
+              className='block'
+            >
+              <img
+                src={reqFileWrapper(item?.url)}
+                className='w-full h-auto rounded-[18px] max-h-[85vh] cursor-pointer transition-all duration-1000 hover:scale-[101%]'
+                alt={item.alt || `Project detail ${index + 1}`}
+              />
+            </a>
           </div>
         ))}
       </div>
 
       {/* Separate slider for mobile screens */}
       <div className='flex md:hidden w-full flex-col gap-4 overflow-visible pointer-all'>
-        {sliderContents?.map((item) => (
+        {sliderContents?.map((item, index) => (
           <div
             key={item.id}
             className='w-full rounded-[18px] h-auto flex-shrink-0 pointer-all overflow-hidden bg-body-main'
           >
-            <img
-              src={reqFileWrapper(item?.url)}
-              className='w-full h-auto rounded-[18px] max-h-[85vh] cursor-pointer transition-all duration-500 hover:scale-[102%]'
-              alt='Project Slide'
-              title='Click to view in full screen'
-              onClick={() => {
-                window.open(reqFileWrapper(item?.url), '_blank');
-              }}
-            />
+            <a
+              href={reqFileWrapper(item?.url)}
+              target='_blank'
+              rel='noopener noreferrer'
+              aria-label={`Open project image ${index + 1} at full size`}
+              className='block'
+            >
+              <img
+                src={reqFileWrapper(item?.url)}
+                className='w-full h-auto rounded-[18px] max-h-[85vh] cursor-pointer transition-all duration-500 hover:scale-[102%]'
+                alt={item.alt || `Project detail ${index + 1}`}
+              />
+            </a>
           </div>
         ))}
       </div>

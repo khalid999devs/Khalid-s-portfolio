@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { IoEye } from 'react-icons/io5';
 import { IoEyeOff } from 'react-icons/io5';
 import PropTypes from 'prop-types';
@@ -15,10 +16,23 @@ const Input = ({
   size = 'normal',
   labelClass,
 }) => {
+  const generatedId = useId();
+  const inputId = inputProps?.id || inputProps?.name || generatedId;
+  const alertId = `${inputId}-message`;
+  const describedBy = [
+    inputProps?.['aria-describedby'],
+    alert?.msg ? alertId : null,
+  ]
+    .filter(Boolean)
+    .join(' ') || undefined;
+  const isInvalid =
+    inputProps?.['aria-invalid'] ??
+    (alert?.state === 'error' && Boolean(alert?.msg));
+
   return (
     <div className={'grid gap-2 w-full ' + classes}>
       <label
-        htmlFor={inputProps?.name}
+        htmlFor={inputId}
         className={
           `${
             size === 'small'
@@ -36,6 +50,9 @@ const Input = ({
           <input
             type={type || 'text'}
             {...inputProps}
+            id={inputId}
+            aria-describedby={describedBy}
+            aria-invalid={isInvalid || undefined}
             className={
               `p-3.5 ${
                 size === 'small'
@@ -50,6 +67,9 @@ const Input = ({
         ) : (
           <textarea
             {...inputProps}
+            id={inputId}
+            aria-describedby={describedBy}
+            aria-invalid={isInvalid || undefined}
             className={
               `p-3.5 py-2.5 text-sm border border-opacity-50 border-secondary-main outline-none rounded-lg w-full bg-transparent placeholder:text-secondary-main placeholder:opacity-80 placeholder:font-extralight text-text-main ` +
               inputClasses
@@ -57,18 +77,27 @@ const Input = ({
           ></textarea>
         )}
         {(show === true || show === false) && (
-          <div
-            className={`absolute right-[3%] top-[50%] cursor-pointer`}
+          <button
+            type='button'
+            className='absolute right-[3%] top-[50%] cursor-pointer'
             style={{ transform: 'translate(-50%,-50%)' }}
             onClick={onShowClick}
+            aria-label={show ? 'Hide password' : 'Show password'}
+            aria-pressed={show}
           >
-            {show ? <IoEye /> : <IoEyeOff />}
-          </div>
+            {show ? (
+              <IoEye aria-hidden='true' />
+            ) : (
+              <IoEyeOff aria-hidden='true' />
+            )}
+          </button>
         )}
       </div>
 
       {alert?.msg && (
         <p
+          id={alertId}
+          role={alert.state === 'error' ? 'alert' : 'status'}
           className={`${
             alert.state === 'error'
               ? 'text-red-400'

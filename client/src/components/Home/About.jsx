@@ -41,13 +41,14 @@ const About = () => {
           <div className='max-w-[400px] w-full relative'>
             <img
               src={GravityField}
-              alt='gravity-field'
+              alt=''
+              aria-hidden='true'
               className='w-full h-auto z-0'
               loading='lazy'
             />
             <img
               src={myPic}
-              alt='gravity-field'
+              alt='Portrait of Khalid Ahammed'
               className='w-[72%] md:w-[70%] lg:w-[75%] xl:w-[65%] absolute top-[47%] left-[46%] h-auto z-10 object-cover saturate-[20%] transition-all duration-1000 hover:saturate-[100%] pointer-all'
               style={{ transform: 'translate(-50%,-50%)' }}
               loading='lazy'

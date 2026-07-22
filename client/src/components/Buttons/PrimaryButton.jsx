@@ -26,12 +26,14 @@ const PrimaryButton = ({
       <span>{text || 'Button'}</span>
       {Icon ? (
         <Icon
+          aria-hidden='true'
           className={`group-hover:text-primary-main text-body-main hover:transition-all duration-300 ${
             state === 'small' ? 'text-[1rem]' : 'text-xl'
           } ${btnState === 'error' && 'text-primary-main'}`}
         />
       ) : (
         <IoArrowForward
+          aria-hidden='true'
           className={`group-hover:text-primary-main text-body-main hover:transition-all duration-300 ${
             state === 'small' ? 'text-[1rem]' : 'text-xl'
           } ${btnState === 'error' && 'text-primary-main'}`}
@@ -47,7 +49,7 @@ PrimaryButton.propTypes = {
   onClick: PropTypes.func,
   classes: PropTypes.string,
   Icon: PropTypes.elementType,
-  type: PropTypes.string,
+  type: PropTypes.oneOf(['button', 'submit', 'reset']),
   state: PropTypes.string,
   btnState: PropTypes.string,
 };

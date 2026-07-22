@@ -1,9 +1,10 @@
 const deleteFile = require('./deleteFile');
+const { toStoredUploadPath } = require('./uploadPaths');
 
 const deleteMultipleFiles = (files) => {
   files.forEach((file) => {
     if (file.path) {
-      deleteFile(file.path);
+      deleteFile(toStoredUploadPath(file.path));
     } else if (file.url) {
       deleteFile(file.url);
     }

@@ -77,8 +77,6 @@ const ImgFileUploader = ({
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    oClick: true,
-    noKeyboard: true,
     multiple: type === 'multiple' ? true : false,
     // accept: 'image/*',
   });
@@ -106,21 +104,23 @@ const ImgFileUploader = ({
     return (
       <div
         className={
-          'flex h-full w-full items-center justify-center relative cursor-pointer group ' +
+          'flex h-full w-full items-center justify-center relative group ' +
           imageContainerClass
         }
       >
         <img
           src={dataURL ? fileImg : validFileWrapper(fileImg)}
-          alt='FileImg'
+          alt={video ? 'Selected video preview' : 'Selected image preview'}
           className='w-full h-full rounded-lg object-cover'
         />
-        <div
+        <button
+          type='button'
+          aria-label={video ? 'Remove selected video' : 'Remove selected image'}
           className='absolute right-[3%] top-[3%] bg-body-main bg-opacity-60 text-lg duration-500 group-hover:bg-opacity-80 w-[25px] h-[25px] rounded-full flex items-center justify-center cursor-pointer'
           onClick={clearFileImg}
         >
-          <IoClose className='text-primary-main' />
-        </div>
+          <IoClose aria-hidden='true' className='text-primary-main' />
+        </button>
         {type === 'multiple' && fileNumber && (
           <div className='absolute bottom-[2%] right-[2%] bg-primary-dark text-primary-main text-md px-2 py-0.5 rounded-sm border-l-4 border-t-4 border-l-secondary-main border-t-secondary-main'>
             {fileNumber}
@@ -128,6 +128,7 @@ const ImgFileUploader = ({
         )}
         {video && (
           <div
+            aria-hidden='true'
             className='absolute text-4xl text-primary-main top-1/2 left-1/2'
             style={{ transform: 'translate(-50%,-50%)' }}
           >
@@ -136,7 +137,8 @@ const ImgFileUploader = ({
         )}
         <div className='absolute left-0 bottom-0 w-max'>
           <PrimaryButton
-            type={'small'}
+            type='button'
+            state='small'
             text={video ? 'Add video' : 'Add Image'}
             Icon={RiImageAddLine}
             classes={'!py-1 !px-1.5 rounded-none text-xs text-body-main'}
@@ -154,7 +156,12 @@ const ImgFileUploader = ({
   } else {
     return (
       <div
-        {...getRootProps()}
+        {...getRootProps({
+          role: 'button',
+          'aria-label': video
+            ? 'Upload video files'
+            : `Upload ${type === 'multiple' ? 'image files' : 'an image'}`,
+        })}
         className={
           'flex w-full h-full items-center justify-center relative cursor-pointer flex-col border-2 border-secondary-main border-dashed p-4 rounded-lg ' +
           dropContainerClass
@@ -194,6 +201,8 @@ const ImgFileUploader = ({
           </p> */}
         </div>
         <div
+          role='status'
+          aria-live='polite'
           className={`absolute top-[50%] left-[50%] text-onPrimary-main bg-secondary-main rounded-lg w-[97%] h-[95%] text-lg md:text-sm font-medium text-center p-3 ${
             isDragActive ? 'flex' : 'hidden'
           } justify-center items-center text-md`}
@@ -203,6 +212,8 @@ const ImgFileUploader = ({
         </div>
         {loading && (
           <div
+            role='status'
+            aria-live='polite'
             className={`absolute top-[50%] left-[50%] text-onPrimary-main bg-primary-main bg-opacity-95 rounded-lg w-[97%] h-[95%] text-lg font-medium flex flex-col justify-center items-center text-md text-center p-3`}
             style={{ transform: 'translate(-50%,-50%)' }}
           >

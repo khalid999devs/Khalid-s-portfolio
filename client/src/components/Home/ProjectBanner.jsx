@@ -55,15 +55,15 @@ const ProjectBanner = () => {
               <span className='blink-animate'>Selected</span>
             </p>
             <div className='flex gap-0.5 items-end justify-end text-xs text-onPrimary-dark text-right'>
-              <MdOutlineArrowBackIos />
-              <MdOutlineArrowForwardIos />
+              <MdOutlineArrowBackIos aria-hidden='true' />
+              <MdOutlineArrowForwardIos aria-hidden='true' />
             </div>
           </div>
 
           <div>
-            <h1 className='text-[4rem] sm:text-[70px] md:text-[105px] uppercase'>
+            <h2 className='text-[4rem] sm:text-[70px] md:text-[105px] uppercase'>
               PROJECTS{' '}
-            </h1>
+            </h2>
           </div>
 
           <div className='flex-col hidden sm:flex gap-3 md:gap-7 justify-between'>
@@ -72,7 +72,7 @@ const ProjectBanner = () => {
               <span className='blink-animate'>WEB APPS</span>
             </p>
             <p className='text-lg text-left text-onPrimary-dark'>
-              <MdOutlineArrowOutward />
+              <MdOutlineArrowOutward aria-hidden='true' />
             </p>
           </div>
         </div>
@@ -88,7 +88,12 @@ const ProjectBanner = () => {
       </div>
 
       <div className='absolute left-1/2 bottom-8 -translate-x-1/2 -translate-y-1/2'>
-        <img src={ScrollMouseAnime} className='w-10 opacity-20' alt='mouse' />
+        <img
+          src={ScrollMouseAnime}
+          className='w-10 opacity-20'
+          alt=''
+          aria-hidden='true'
+        />
       </div>
     </div>
   );

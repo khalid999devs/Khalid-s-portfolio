@@ -1,19 +1,53 @@
-const { verify } = require('jsonwebtoken')
-const { UnauthorizedError } = require('../errors')
+const { verify } = require('jsonwebtoken');
+const { Admin } = require('../models');
+const { UnauthenticatedError } = require('../errors');
+const {
+  ADMIN_COOKIE_NAME,
+  getAdminTokenVerificationOptions,
+  requireAdminSecret,
+} = require('../utils/createToken');
 
-const adminValidate = (req, res, next) => {
-  const { token } = req.signedCookies
+const adminValidate = async (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  const token = req.signedCookies?.[ADMIN_COOKIE_NAME];
+
   if (!token) {
-    throw new UnauthorizedError('admin not logged in')
+    throw new UnauthenticatedError('Admin authentication required');
   }
-  const validAdmin = verify(token, process.env.ADMIN_SECRET)
-  if (!validAdmin) {
-    throw new UnauthorizedError(
-      'you do not have permission to access this route'
-    )
-  }
-  req.admin = validAdmin
-  next()
-}
 
-module.exports = adminValidate
+  let validAdmin;
+  try {
+    validAdmin = verify(
+      token,
+      requireAdminSecret(),
+      getAdminTokenVerificationOptions()
+    );
+  } catch (_error) {
+    throw new UnauthenticatedError('Invalid or expired admin session');
+  }
+
+  if (
+    validAdmin.role !== 'admin' ||
+    !Number.isInteger(validAdmin.id) ||
+    validAdmin.sub !== String(validAdmin.id)
+  ) {
+    throw new UnauthenticatedError('Invalid or expired admin session');
+  }
+
+  const existingAdmin = await Admin.findByPk(validAdmin.id, {
+    attributes: ['id', 'userName'],
+  });
+
+  if (!existingAdmin || existingAdmin.userName !== validAdmin.userName) {
+    throw new UnauthenticatedError('Invalid or expired admin session');
+  }
+
+  req.admin = {
+    id: existingAdmin.id,
+    role: 'admin',
+    userName: existingAdmin.userName,
+  };
+  next();
+};
+
+module.exports = adminValidate;

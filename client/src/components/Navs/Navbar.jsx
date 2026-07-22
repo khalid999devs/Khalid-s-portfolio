@@ -11,19 +11,24 @@ import { myResume } from '../../assets';
 const Navbar = () => {
   const [isPageMenu, setIsPageMenu] = useState(false);
   const navBarRef = useRef(null);
+  const menuButtonRef = useRef(null);
 
   useEffect(() => {
+    let unlockTimer;
+
     if (isPageMenu) {
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
       document.body.style.width = '100%';
     } else {
-      setTimeout(() => {
+      unlockTimer = setTimeout(() => {
         document.body.style.overflow = 'auto';
         document.body.style.position = '';
         document.body.style.width = '';
       }, 1000);
     }
+
+    return () => clearTimeout(unlockTimer);
   }, [isPageMenu]);
 
   useEffect(() => {
@@ -42,8 +47,11 @@ const Navbar = () => {
 
   return (
     <>
-      <div ref={navBarRef} className='w-full fixed top-0 left-0 z-50'>
-        <div className='screen-max-width py-3.5 sec-x-padding flex items-center justify-between mix-blend-difference'>
+      <header ref={navBarRef} className='w-full fixed top-0 left-0 z-50'>
+        <nav
+          aria-label='Primary navigation'
+          className='screen-max-width py-3.5 sec-x-padding flex items-center justify-between mix-blend-difference'
+        >
           <div>
             <NavLogo />
           </div>
@@ -51,7 +59,7 @@ const Navbar = () => {
             <OutlinedSmallButton
               text={'My Resume'}
               onClick={() => {
-                window.open(myResume, '_blank');
+                window.open(myResume, '_blank', 'noopener,noreferrer');
               }}
             />
           </div>
@@ -63,17 +71,17 @@ const Navbar = () => {
               Projects
             </Link>
             {!isUpwork ? (
-              <Link
-                to={'mailto:khalidahammeduzzal@gmail.com'}
+              <a
+                href='mailto:khalidahammeduzzal@gmail.com'
                 className=' blink-animate-nav text-flicker !hidden sm:!inline'
               >
                 Email Me
-              </Link>
+              </a>
             ) : (
               <a
                 href={upworkedSocialLinks[0].path}
                 target='_blank'
-                rel='noreferrer'
+                rel='noopener noreferrer'
                 className='transition-all blink-animate-nav duration-300 text-xs sm:text-sm text-flicker pointer-all'
               >
                 {upworkedSocialLinks[0].title}
@@ -81,22 +89,41 @@ const Navbar = () => {
             )}
 
             {/* hamburger */}
-            <div
+            <button
+              ref={menuButtonRef}
+              type='button'
+              aria-label='Open site menu'
+              aria-haspopup='dialog'
+              aria-expanded={isPageMenu}
+              aria-controls='site-menu'
               className='w-8 h-auto grid gap-1.5 select-none cursor-pointer'
               onClick={() => {
                 setIsPageMenu(true);
                 // document.body.style.overflowY = 'hidden';
               }}
             >
-              <span className='w-full h-[1px] bg-onPrimary-dark'></span>
-              <span className='w-full h-[1px] bg-onPrimary-dark'></span>
-              <span className='w-full h-[1px] bg-onPrimary-dark'></span>
-            </div>
+              <span
+                aria-hidden='true'
+                className='w-full h-[1px] bg-onPrimary-dark'
+              ></span>
+              <span
+                aria-hidden='true'
+                className='w-full h-[1px] bg-onPrimary-dark'
+              ></span>
+              <span
+                aria-hidden='true'
+                className='w-full h-[1px] bg-onPrimary-dark'
+              ></span>
+            </button>
           </div>
-        </div>
-      </div>
+        </nav>
+      </header>
       {/* nav menu page */}
-      <PageNav isPageMenu={isPageMenu} setIsPageMenu={setIsPageMenu} />
+      <PageNav
+        isPageMenu={isPageMenu}
+        setIsPageMenu={setIsPageMenu}
+        triggerRef={menuButtonRef}
+      />
     </>
   );
 };

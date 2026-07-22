@@ -139,13 +139,14 @@ const About = () => {
           <div className='max-w-[400px] m-auto md:m-0 w-full relative'>
             <img
               src={GravityField}
-              alt='gravity-field'
+              alt=''
+              aria-hidden='true'
               className='w-full h-auto z-0'
               loading='lazy'
             />
             <img
               src={myPic}
-              alt='my pic'
+              alt='Portrait of Khalid Ahammed'
               className='w-[70%] md:w-[73%] xl:w-[65%] absolute top-[47%] left-[46%] h-auto z-10 object-cover saturate-[20%] transition-all duration-1000 hover:saturate-[100%] pointer-all'
               style={{ transform: 'translate(-50%,-50%)' }}
               loading='eager'
@@ -199,9 +200,9 @@ const About = () => {
       {/* skill sec */}
       <div ref={aboutskillParentRef} className='w-full flex flex-col gap-6'>
         <div className='flex flex-col gap-4 w-fit'>
-          <h1 className='text-lg md:text-3xl inline animte-help-text-reveal'>
+          <h2 className='text-lg md:text-3xl inline animte-help-text-reveal'>
             I can help you with...
-          </h1>
+          </h2>
           <HRLine disablePadding={true} />
         </div>
 
@@ -241,9 +242,11 @@ const About = () => {
         <HRLine disablePadding={true} />
         {experience.map((item, key) => (
           <React.Fragment key={key}>
-            <div
+            <a
+              href={item.link}
+              target='_blank'
+              rel='noopener noreferrer'
               className='w-full grid gap-3 group cursor-pointer pointer-all'
-              onClick={() => window.open(item.link, '_blank')}
             >
               <div className='flex items-start gap-4 justify-between'>
                 <span className='text-secondary-light text-sm text-montreal-mono cursor-pointer pointer-all group-hover:underline'>
@@ -255,7 +258,7 @@ const About = () => {
               <h2 className='text-primary-main text-pp-eiko text-2xl'>
                 {item.designation}
               </h2>
-            </div>
+            </a>
             <HRLine disablePadding={true} />
           </React.Fragment>
         ))}
@@ -267,9 +270,11 @@ const About = () => {
         <HRLine disablePadding={true} />
         {achievements.map((item, key) => (
           <React.Fragment key={key}>
-            <div
+            <a
+              href={item.link}
+              target='_blank'
+              rel='noopener noreferrer'
               className='w-full grid gap-3 group cursor-pointer pointer-all'
-              onClick={() => window.open(item.link, '_blank')}
             >
               <div className='flex items-start gap-4 justify-between'>
                 <span className='text-secondary-light text-sm text-montreal-mono cursor-pointer pointer-all group-hover:underline'>
@@ -281,7 +286,7 @@ const About = () => {
               <h2 className='text-primary-main text-pp-eiko text-2xl'>
                 {item.title}
               </h2>
-            </div>
+            </a>
             <HRLine disablePadding={true} />
           </React.Fragment>
         ))}

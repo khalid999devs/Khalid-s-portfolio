@@ -1,14 +1,21 @@
-/* eslint-disable react-refresh/only-export-components */
 import { lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
-import './axios/global.js';
-import App from './App.jsx';
-import './index.css';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import ErrorPage from './pages/ErrorPage.jsx';
-import Home from './pages/Home.jsx';
+import { HelmetProvider } from 'react-helmet-async';
+import './axios/global.js';
+import './index.css';
 
-//admin
+const App = lazy(() => import('./App.jsx'));
+const ErrorPage = lazy(() => import('./pages/ErrorPage.jsx'));
+
+// Public routes
+const Home = lazy(() => import('./pages/Home.jsx'));
+const Projects = lazy(() => import('./pages/Projects.jsx'));
+const About = lazy(() => import('./pages/About.jsx'));
+const SingleProject = lazy(() => import('./pages/SingleProject.jsx'));
+const CodingLab = lazy(() => import('./pages/CodingLab.jsx'));
+
+// Admin routes
 const Login = lazy(() => import('./pages/Admin/Auth/Login.jsx'));
 const Admin = lazy(() => import('./pages/Admin/Panel/Admin.jsx'));
 const Dashboard = lazy(() => import('./pages/Admin/Panel/Dashboard.jsx'));
@@ -19,86 +26,95 @@ const CreateProject = lazy(() =>
 );
 const Settings = lazy(() => import('./pages/Admin/Panel/Settings.jsx'));
 
-//client
-import Projects from './pages/Projects.jsx';
-import About from './pages/About.jsx';
-import SingleProject from './pages/SingleProject.jsx';
-import CodingLab from './pages/CodingLab.jsx';
+const fullPageFallback = (
+  <div
+    className='bg-body-main min-h-screen w-full flex items-center justify-center text-onPrimary-main'
+    role='status'
+    aria-live='polite'
+  >
+    <span className='text-sm uppercase'>Loading page…</span>
+  </div>
+);
 
-import { HelmetProvider } from 'react-helmet-async';
-import Loader from './components/utils/Loader.jsx';
+const contentFallback = (
+  <div
+    className='min-h-[50vh] w-full flex items-center justify-center text-onPrimary-main'
+    role='status'
+    aria-live='polite'
+  >
+    <span className='text-sm uppercase'>Loading page…</span>
+  </div>
+);
+
+const suspend = (Component, fallback = contentFallback) => (
+  <Suspense fallback={fallback}>
+    <Component />
+  </Suspense>
+);
 
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <App />,
-    errorElement: <ErrorPage />,
+    element: suspend(App, fullPageFallback),
+    errorElement: suspend(ErrorPage, fullPageFallback),
     children: [
       {
         index: true,
-        element: <Home />,
+        element: suspend(Home),
       },
       {
         path: 'projects',
-        element: <Projects />,
+        element: suspend(Projects),
       },
       {
         path: 'about-me',
-        element: <About />,
+        element: suspend(About),
       },
       {
         path: 'singleProject/:value',
-        element: <SingleProject />,
+        element: suspend(SingleProject),
       },
       {
         path: 'coding-lab',
-        element: <CodingLab />,
+        element: suspend(CodingLab),
       },
     ],
   },
   {
     path: '/admin-login',
-    element: (
-      <Suspense fallback={<Loader classes={'z-40 !w-screen !h-screen'} />}>
-        <Login />
-      </Suspense>
-    ),
-    errorElement: <ErrorPage />,
+    element: suspend(Login, fullPageFallback),
+    errorElement: suspend(ErrorPage, fullPageFallback),
   },
   {
     path: '/admin',
-    element: (
-      <Suspense fallback={<Loader classes={'z-40 !w-screen !h-screen'} />}>
-        <Admin />
-      </Suspense>
-    ),
-    errorElement: <ErrorPage />,
+    element: suspend(Admin, fullPageFallback),
+    errorElement: suspend(ErrorPage, fullPageFallback),
     children: [
       {
         index: true,
-        element: <Dashboard />,
+        element: suspend(Dashboard),
       },
       {
         path: 'projects',
-        element: <AdminProjects />,
+        element: suspend(AdminProjects),
       },
       {
         path: 'edit-project/:value',
-        element: <EditProject />,
+        element: suspend(EditProject),
       },
       {
         path: 'add-project',
-        element: <CreateProject />,
+        element: suspend(CreateProject),
       },
       {
         path: 'settings',
-        element: <Settings />,
+        element: suspend(Settings),
       },
     ],
   },
   {
     path: '/error',
-    element: <ErrorPage />,
+    element: suspend(ErrorPage, fullPageFallback),
   },
 ]);
 

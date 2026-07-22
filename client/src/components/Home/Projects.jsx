@@ -289,22 +289,25 @@ const ProjectsShows = () => {
           {/* Images */}
           {projects?.slice(0, maxShowed).map((item, index) => (
             <div
-              key={index}
+              key={item.id || index}
               className='absolute top-1/2 left-1/2 w-[40%] h-[50%] max-h-[350px] transform -translate-x-1/2 -translate-y-1/2 scale-125 -z-[1] overflow-hidden clip-path-polygon-[0%_100%,100%_100%,100%_100%,0%_100%] opacity-0 img'
             >
-              <img
-                src={
-                  item.thumbnailContents && item.thumbnailContents.length
-                    ? reqFileWrapper(item.thumbnailContents[0].url)
-                    : reqFileWrapper(item?.bannerImg)
-                }
-                className='w-full h-full object-cover duration-1000 cursor-pointer hover:scale-[103%] filter contrast-100 brightness-100'
-                alt={`Image ${index + 1}`}
-                onClick={() => {
-                  navigate(`/singleProject/${item.value + '@' + item.id}`);
-                }}
-                loading='lazy'
-              />
+              <Link
+                to={`/singleProject/${item.value + '@' + item.id}`}
+                aria-label={`View ${item.title}`}
+                className='block w-full h-full'
+              >
+                <img
+                  src={
+                    item.thumbnailContents && item.thumbnailContents.length
+                      ? reqFileWrapper(item.thumbnailContents[0].url)
+                      : reqFileWrapper(item?.bannerImg)
+                  }
+                  className='w-full h-full object-cover duration-1000 cursor-pointer hover:scale-[103%] filter contrast-100 brightness-100'
+                  alt={`${item.title} project thumbnail`}
+                  loading='lazy'
+                />
+              </Link>
             </div>
           ))}
 
@@ -325,12 +328,10 @@ const ProjectsShows = () => {
         <div className='md:hidden pt-24 mb-20 grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 items-start justify-start gap-8'>
           {projects?.slice(0, maxShowed).map((item, key) => {
             return (
-              <div
+              <Link
+                to={`/singleProject/${item.value + '@' + item.id}`}
                 className='w-full grid border-b-[0.05px] border-opacity-30 border-secondary-light pb-3 gap-4 md:gap-6 group cursor-pointer pointer-all'
-                onClick={() => {
-                  navigate(`/singleProject/${item.value + '@' + item.id}`);
-                }}
-                key={key}
+                key={item.id || key}
               >
                 <div className='w-full h-full rounded-lg overflow-hidden '>
                   <img
@@ -360,12 +361,13 @@ const ProjectsShows = () => {
                       {item.title}
                     </h2>
 
-                    <button className=''>
-                      <FaArrowRightLong className='text-white text-2xl transition-all duration-500 group-hover:-translate-x-1' />
-                    </button>
+                    <FaArrowRightLong
+                      aria-hidden='true'
+                      className='text-white text-2xl transition-all duration-500 group-hover:-translate-x-1'
+                    />
                   </div>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>

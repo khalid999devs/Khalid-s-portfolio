@@ -1,0 +1,5 @@
+# Local remediation notes and progress tracking (never publish).
+/docs/
+
+# macOS metadata should never enter the repository.
+.DS_Store

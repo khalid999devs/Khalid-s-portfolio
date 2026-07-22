@@ -6,7 +6,7 @@ import PropTypes from 'prop-types';
 
 const AdminBar = ({ title, loginState = false }) => {
   return (
-    <div className='screen-max-width sec-x-padding py-4'>
+    <header className='screen-max-width sec-x-padding py-4'>
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-10 '>
           <NavLogo />
@@ -18,13 +18,13 @@ const AdminBar = ({ title, loginState = false }) => {
               <Searchinput />
             </div>
             <div className='flex items-center gap-3'>
-              <IconButton />
+              <IconButton label='Notifications' />
               <Avatar />
             </div>
           </div>
         )}
       </div>
-    </div>
+    </header>
   );
 };
 

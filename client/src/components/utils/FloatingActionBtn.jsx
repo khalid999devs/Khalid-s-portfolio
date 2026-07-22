@@ -51,7 +51,7 @@ const FloatingActionBtn = ({ siteLink, designLink }) => {
             classes={'bg-onPrimary-main !rounded-xl'}
             textClasses={'text-primary-main'}
             onClick={() => {
-              window.open(siteLink, '_blank');
+              window.open(siteLink, '_blank', 'noopener,noreferrer');
             }}
           />
         )}
@@ -62,11 +62,14 @@ const FloatingActionBtn = ({ siteLink, designLink }) => {
             classes={'bg-onPrimary-main !rounded-xl'}
             textClasses={'text-primary-main'}
             onClick={() => {
-              window.open(designLink, '_blank');
+              window.open(designLink, '_blank', 'noopener,noreferrer');
             }}
           />
         )}
         <button
+          type='button'
+          aria-label={open ? 'Hide project actions' : 'Show project actions'}
+          aria-expanded={open}
           className={`absolute left-[100%] p-1 opacity-70 duration-500 transition-all hover:opacity-100 glass rounded-md bg-primary-dark ${
             !open ? 'bottom-[100%]' : 'bottom-[45%]'
           }`}
@@ -74,9 +77,9 @@ const FloatingActionBtn = ({ siteLink, designLink }) => {
             setOpen((prev) => !prev);
           }}
         >
-          <p className='text-primary-main text-xl'>
+          <span className='text-primary-main text-xl' aria-hidden='true'>
             {open ? <FaAngleDown /> : <FaAngleUp />}
-          </p>
+          </span>
         </button>
       </div>
     </div>
