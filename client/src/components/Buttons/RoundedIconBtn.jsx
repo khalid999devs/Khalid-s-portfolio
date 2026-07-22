@@ -7,7 +7,7 @@ const RoundedIconBtn = ({ Icon, classes, onClick, label = 'Edit' }) => {
       type='button'
       aria-label={label}
       className={
-        'w-7 h-7 rounded-full bg-primary-dark text-white text-md transition-all duration-300 hover:bg-black flex items-center justify-center ' +
+        'w-7 h-7 rounded-full bg-primary-dark text-white text-base transition-all duration-300 hover:bg-black flex items-center justify-center ' +
         classes
       }
       onClick={onClick}

@@ -39,8 +39,8 @@ const Input = ({
               ? 'text-sm'
               : size === 'normal'
               ? 'text-sm'
-              : 'text-md'
-          } text-secondary-light font-medium opacity-90 ` + labelClass
+              : 'text-base'
+          } text-muted-light font-medium opacity-90 ` + labelClass
         }
       >
         {label}
@@ -60,7 +60,7 @@ const Input = ({
                   : size === 'normal'
                   ? 'py-2.5 border rounded-lg placeholder:font-extralight'
                   : 'py-3 border rounded-lg placeholder:font-extralight'
-              } text-md border-opacity-50 border-secondary-main outline-none w-full placeholder:text-secondary-main placeholder:opacity-100 bg-transparent text-primary-main ` +
+              } text-base border-secondary-main/50 outline-hidden w-full placeholder:text-muted-main bg-transparent text-primary-main ` +
               inputClasses
             }
           />
@@ -71,7 +71,7 @@ const Input = ({
             aria-describedby={describedBy}
             aria-invalid={isInvalid || undefined}
             className={
-              `p-3.5 py-2.5 text-sm border border-opacity-50 border-secondary-main outline-none rounded-lg w-full bg-transparent placeholder:text-secondary-main placeholder:opacity-80 placeholder:font-extralight text-text-main ` +
+              `p-3.5 py-2.5 text-sm border border-secondary-main/50 outline-hidden rounded-lg w-full bg-transparent placeholder:text-muted-main/80 placeholder:font-extralight text-primary-main ` +
               inputClasses
             }
           ></textarea>
@@ -102,7 +102,7 @@ const Input = ({
             alert.state === 'error'
               ? 'text-red-400'
               : alert.state === 'none'
-              ? 'text-tertiary-main'
+              ? 'text-muted-light'
               : 'text-orange-300'
           } text-xs ml-1 -mt-1.5`}
         >

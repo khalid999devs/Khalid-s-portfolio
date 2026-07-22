@@ -27,18 +27,6 @@ export const reqFileWrapper = (src) => {
   return serverOrigin ? `${serverOrigin}${normalizedPath}` : normalizedPath;
 };
 
-export const validFileWrapper = (fileImg) => {
-  if (typeof fileImg === 'object') {
-    if (fileImg.name) {
-      return window.URL.createObjectURL(fileImg);
-    } else {
-      return null;
-    }
-  } else {
-    return reqFileWrapper(fileImg);
-  }
-};
-
 //API REQUESTS ENUMS
 export const reqs = {
   //admin

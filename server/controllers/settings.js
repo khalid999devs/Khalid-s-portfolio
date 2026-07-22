@@ -1,15 +1,37 @@
 const { settings } = require('../models');
-const { BadRequestError } = require('../errors');
+const { BadRequestError, NotFoundError } = require('../errors');
+const fs = require('node:fs');
 const path = require('path');
 
 const MAX_TECHNOLOGY_GROUPS = 50;
 const MAX_ITEMS_PER_GROUP = 100;
 const MAX_ITEM_LENGTH = 100;
+const MAX_TECHNOLOGIES_BYTES = 60 * 1024;
+const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/u;
 const FORBIDDEN_OBJECT_KEYS = new Set([
   '__proto__',
   'constructor',
   'prototype',
 ]);
+const DEFAULT_RESUME_PATH = path.resolve(
+  __dirname,
+  '../uploads/assets/Resume_Khalid_Ahammed.pdf'
+);
+
+const resolveResumeFilePath = (environment = process.env) =>
+  environment.RESUME_FILE_PATH?.trim() || DEFAULT_RESUME_PATH;
+
+const isResumeAvailable = async (environment = process.env) => {
+  try {
+    await fs.promises.access(
+      resolveResumeFilePath(environment),
+      fs.constants.R_OK
+    );
+    return true;
+  } catch (_error) {
+    return false;
+  }
+};
 
 const assertOnlyTechnologies = (body) => {
   const unexpectedField = Object.keys(body || {}).find(
@@ -50,11 +72,12 @@ const normalizeTechnologies = (value) => {
   const normalized = Object.create(null);
   const seenGroupNames = new Set();
   entries.forEach(([rawGroupName, rawItems]) => {
-    const groupName = rawGroupName.trim();
+    const groupName = rawGroupName.normalize('NFC').trim();
     const groupComparisonKey = groupName.toLocaleLowerCase('en-US');
     if (
       !groupName ||
-      groupName.length > 64 ||
+      [...groupName].length > 64 ||
+      CONTROL_CHARACTERS.test(groupName) ||
       FORBIDDEN_OBJECT_KEYS.has(groupName) ||
       seenGroupNames.has(groupComparisonKey)
     ) {
@@ -77,8 +100,12 @@ const normalizeTechnologies = (value) => {
         throw new BadRequestError('Technology names must be strings');
       }
 
-      const item = rawItem.trim();
-      if (!item || item.length > MAX_ITEM_LENGTH) {
+      const item = rawItem.normalize('NFC').trim();
+      if (
+        !item ||
+        [...item].length > MAX_ITEM_LENGTH ||
+        CONTROL_CHARACTERS.test(item)
+      ) {
         throw new BadRequestError(
           `Technology names must be between 1 and ${MAX_ITEM_LENGTH} characters`
         );
@@ -94,6 +121,10 @@ const normalizeTechnologies = (value) => {
       return item;
     });
   });
+
+  if (Buffer.byteLength(JSON.stringify(normalized), 'utf8') > MAX_TECHNOLOGIES_BYTES) {
+    throw new BadRequestError('Technologies exceed the storage limit');
+  }
 
   return normalized;
 };
@@ -117,6 +148,9 @@ const addSettings = async (req, res) => {
   }
 
   const result = await settings.create({
+    // A fixed primary key turns concurrent cross-instance creates into one
+    // winner plus a database-enforced conflict instead of duplicate settings.
+    id: 1,
     technologies: JSON.stringify(technologies),
   });
   const responseSettings = result.get
@@ -158,6 +192,7 @@ const editSettings = async (req, res) => {
 
 const getSettings = async (req, res) => {
   const result = await settings.findOne({ order: [['id', 'ASC']] });
+  const resumeAvailable = await isResumeAvailable();
   let settingsRes;
 
   if (result) {
@@ -170,15 +205,18 @@ const getSettings = async (req, res) => {
   res.json({
     succeed: true,
     result: settingsRes,
+    resumeAvailable,
     msg: 'Successfully fetched settings!',
   });
 };
 
-const downloadResume = (req, res, next) => {
-  const filePath = path.join(
-    __dirname,
-    '../uploads/assets/Resume_Khalid_Ahammed.pdf'
-  );
+const downloadResume = async (req, res, next) => {
+  const filePath = resolveResumeFilePath();
+  if (!(await isResumeAvailable())) {
+    next(new NotFoundError('Resume is not available.'));
+    return;
+  }
+
   res.download(filePath, 'Resume_Khalid_Ahammed.pdf', (err) => {
     if (err) {
       next(new BadRequestError('Failed to download resume'));
@@ -191,5 +229,7 @@ module.exports = {
   downloadResume,
   editSettings,
   getSettings,
+  isResumeAvailable,
   normalizeTechnologies,
+  resolveResumeFilePath,
 };

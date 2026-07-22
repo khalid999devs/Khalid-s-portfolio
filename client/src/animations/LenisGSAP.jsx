@@ -1,15 +1,29 @@
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ReactLenis } from 'lenis/react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import PropTypes from 'prop-types';
 import useTextRevealAnimation from './useTextRevealAnimation';
+import usePrefersReducedMotion from '../hooks/usePrefersReducedMotion';
 
 gsap.registerPlugin(ScrollTrigger);
 
 export function LenisGSAP({ children }) {
   const lenisRef = useRef();
+  const prefersReducedMotion = usePrefersReducedMotion();
   useTextRevealAnimation('text-letter-reveal');
+
+  const lenisOptions = useMemo(
+    () => ({
+      lerp: prefersReducedMotion ? 1 : 0.1,
+      duration: prefersReducedMotion ? 0 : 1.5,
+      syncTouch: !prefersReducedMotion,
+      smoothWheel: !prefersReducedMotion,
+      autoRaf: false,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+    }),
+    [prefersReducedMotion]
+  );
 
   useEffect(() => {
     function update(time) {
@@ -32,14 +46,7 @@ export function LenisGSAP({ children }) {
     <ReactLenis
       ref={lenisRef}
       root
-      options={{
-        lerp: 0.1,
-        duration: 1.5,
-        syncTouch: true,
-        smoothWheel: true,
-        autoRaf: false,
-        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      }}
+      options={lenisOptions}
     >
       {children}
     </ReactLenis>

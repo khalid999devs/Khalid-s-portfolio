@@ -1,4 +1,5 @@
 const { realpathSync } = require('fs');
+const { realpath } = require('fs/promises');
 const { isAbsolute, relative, resolve, sep } = require('path');
 
 const SERVER_ROOT = resolve(__dirname, '..');
@@ -59,6 +60,17 @@ const assertExistingPathIsContained = (resolvedPath) => {
   }
 };
 
+const assertExistingPathIsContainedAsync = async (resolvedPath) => {
+  const [realUploadsRoot, realResolvedPath] = await Promise.all([
+    realpath(UPLOADS_ROOT),
+    realpath(resolvedPath),
+  ]);
+
+  if (isOutsideRoot(realUploadsRoot, realResolvedPath)) {
+    throw new Error('Upload path escapes the uploads directory through a symlink');
+  }
+};
+
 const toStoredUploadPath = (filePath) => {
   if (typeof filePath !== 'string' || filePath.length === 0) {
     throw new TypeError('Uploaded file path must be a non-empty string');
@@ -89,6 +101,7 @@ module.exports = {
   SERVER_ROOT,
   UPLOADS_ROOT,
   assertExistingPathIsContained,
+  assertExistingPathIsContainedAsync,
   resolveStoredUploadPath,
   toStoredUploadPath,
 };

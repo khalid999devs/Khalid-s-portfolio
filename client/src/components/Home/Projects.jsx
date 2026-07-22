@@ -9,6 +9,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import useDocumentHeight from '../../hooks/useDocumentHeight';
 import { OutlinedBigIcon } from '../Buttons/OutlinedButton';
+import usePrefersReducedMotion from '../../hooks/usePrefersReducedMotion';
 
 function animateImageEntry(img) {
   gsap.fromTo(
@@ -74,65 +75,15 @@ const ProjectsShows = () => {
   const [activeSlide, setActiveSlide] = useState({});
   const isMidScreen = useIsGreaterOrEqualMd();
   const documentHeight = useDocumentHeight();
+  const prefersReducedMotion = usePrefersReducedMotion();
   const maxShowed = 5;
 
   const updateInfoContent = useCallback(
     (index) => {
-      const infoItems = document.querySelectorAll('.info > div p');
-      const link = document.querySelector('.info .link a');
-
-      infoItems.forEach((item) => {
-        // Clear content safely
-        while (item.firstChild) {
-          item.removeChild(item.firstChild);
-        }
-      });
-
       const item = projects[index];
-      const contentArray = [item.title, item.subtitle, item.date];
-
-      infoItems.forEach((element, i) => {
-        if (i < 4) {
-          const letters = contentArray[i].split('');
-          letters.forEach((letter) => {
-            const span = document.createElement('span');
-            span.textContent = letter;
-            span.style.opacity = 0;
-            element.appendChild(span);
-
-            gsap.to(span, {
-              opacity: 1,
-              duration: 0.01,
-              ease: 'power1.inOut',
-              delay: 0.03 * index,
-            });
-          });
-        }
-      });
-      if (link) {
-        setActiveSlide(projects[index]);
-
-        const linkText = link.textContent;
-        // Clear link content safely
-        while (link.firstChild) {
-          link.removeChild(link.firstChild);
-        }
-        linkText.split('').forEach((letter) => {
-          const span = document.createElement('span');
-          span.textContent = letter;
-          span.style.opacity = 0;
-          link.appendChild(span);
-
-          gsap.to(span, {
-            opacity: 1,
-            duration: 0.01,
-            ease: 'power1.inOut',
-            delay: 0.03 * index,
-          });
-        });
-      }
+      if (item) setActiveSlide(item);
     },
-    [projects, setActiveSlide]
+    [projects]
   );
 
   useEffect(() => {
@@ -140,17 +91,22 @@ const ProjectsShows = () => {
   }, [projects]);
 
   useEffect(() => {
-    if (!projects.length) return;
+    if (!projects.length || prefersReducedMotion) return undefined;
 
     let scrollTriggerInstance;
-    let mm = gsap.matchMedia();
+    const delayedCalls = [];
+    const mm = gsap.matchMedia();
+    let animatedImages = [];
+    let animatedProgressBar;
 
     mm.add('(min-width: 768px)', () => {
       const pinnedSection = sliderRef.current;
       const progressBar = progressBarRef.current;
       const slideNum = Math.min(projects.length, maxShowed);
       const pinnedHeight = window.innerHeight * (slideNum * 2);
-      const images = gsap.utils.toArray('.img');
+      const images = gsap.utils.toArray('.img', pinnedSection);
+      animatedImages = images;
+      animatedProgressBar = progressBar;
 
       if (images.length && pinnedSection && progressBar) {
         updateInfoContent(0);
@@ -160,7 +116,7 @@ const ProjectsShows = () => {
         scrollTriggerInstance = ScrollTrigger.create({
           trigger: pinnedSection,
           start: 'top top',
-          end: `+=${pinnedHeight} * 2`,
+          end: `+=${pinnedHeight * 2}`,
           pin: true,
           pinSpacing: true,
           scrub: 0.1,
@@ -185,15 +141,19 @@ const ProjectsShows = () => {
                   }
                   if (currentCycle < images.length) {
                     animateImageEntry(images[currentCycle]);
-                    gsap.delayedCall(0.5, () =>
-                      updateInfoContent(currentCycle)
+                    delayedCalls.push(
+                      gsap.delayedCall(0.5, () =>
+                        updateInfoContent(currentCycle)
+                      )
                     );
                   }
                 } else {
                   if (currentCycle < images.length) {
                     animateImageEntry(images[currentCycle]);
-                    gsap.delayedCall(0.5, () =>
-                      updateInfoContent(currentCycle)
+                    delayedCalls.push(
+                      gsap.delayedCall(0.5, () =>
+                        updateInfoContent(currentCycle)
+                      )
                     );
                   }
                   if (lastCycle < images.length) {
@@ -235,9 +195,21 @@ const ProjectsShows = () => {
     });
 
     return () => {
+      delayedCalls.forEach((call) => call.kill());
+      gsap.killTweensOf(animatedImages);
+      animatedImages.forEach((image) =>
+        gsap.killTweensOf(image.querySelector('img'))
+      );
+      if (animatedProgressBar) gsap.killTweensOf(animatedProgressBar);
       mm.revert();
     };
-  }, [projects, isMidScreen, documentHeight, updateInfoContent]);
+  }, [
+    projects,
+    isMidScreen,
+    documentHeight,
+    prefersReducedMotion,
+    updateInfoContent,
+  ]);
 
   return (
     <div className='w-full body-max-width sec-inner-x-padding h-auto bg-body-main'>
@@ -266,20 +238,26 @@ const ProjectsShows = () => {
             </div>
             {/* <div className='flex-1 uppercase text-sm'>TAG</div> */}
             <div className='flex-1 flex justify-end link'>
-              <Link
-                to={`/singleProject/${
-                  activeSlide.value + '@' + activeSlide.id
-                }`}
-                key={Date.now()}
-                className='relative uppercase text-sm text-white border border-white/25 rounded-md px-2 py-1 hover:bg-white text-pp-eiko hover:text-black transition duration-300 pointer-all'
-              >
-                Explore
-              </Link>
+              {activeSlide?.id && activeSlide?.value && (
+                <Link
+                  to={`/singleProject/${
+                    activeSlide.value + '@' + activeSlide.id
+                  }`}
+                  key={activeSlide.id}
+                  className='relative uppercase text-sm text-white border border-white/25 rounded-md px-2 py-1 hover:bg-white text-pp-eiko hover:text-black transition duration-300 pointer-all'
+                >
+                  Explore
+                </Link>
+              )}
             </div>
           </div>
 
           {/* Progress Bar */}
-          <div className='absolute top-1/2 left-[75%] w-[2px] h-[120px] bg-primary-dark -translate-x-1/2 -translate-y-1/2 progress-bar z-10'>
+          <div
+            className={`absolute top-1/2 left-[75%] w-[2px] h-[120px] bg-primary-dark -translate-x-1/2 -translate-y-1/2 progress-bar z-10 ${
+              prefersReducedMotion ? 'hidden' : ''
+            }`}
+          >
             <div
               className='absolute top-0 left-0 w-full h-[10%] bg-white z-10 progress'
               ref={progressBarRef}
@@ -290,7 +268,13 @@ const ProjectsShows = () => {
           {projects?.slice(0, maxShowed).map((item, index) => (
             <div
               key={item.id || index}
-              className='absolute top-1/2 left-1/2 w-[40%] h-[50%] max-h-[350px] transform -translate-x-1/2 -translate-y-1/2 scale-125 -z-[1] overflow-hidden clip-path-polygon-[0%_100%,100%_100%,100%_100%,0%_100%] opacity-0 img'
+              className={
+                prefersReducedMotion
+                  ? index === 0
+                    ? 'absolute top-1/2 left-1/2 w-[40%] h-[50%] max-h-[350px] -translate-x-1/2 -translate-y-1/2 -z-[1] overflow-hidden opacity-100 img'
+                    : 'hidden'
+                  : 'absolute top-1/2 left-1/2 w-[40%] h-[50%] max-h-[350px] transform -translate-x-1/2 -translate-y-1/2 scale-125 -z-[1] overflow-hidden [clip-path:polygon(0%_100%,100%_100%,100%_100%,0%_100%)] opacity-0 img'
+              }
             >
               <Link
                 to={`/singleProject/${item.value + '@' + item.id}`}
@@ -330,7 +314,7 @@ const ProjectsShows = () => {
             return (
               <Link
                 to={`/singleProject/${item.value + '@' + item.id}`}
-                className='w-full grid border-b-[0.05px] border-opacity-30 border-secondary-light pb-3 gap-4 md:gap-6 group cursor-pointer pointer-all'
+                className='w-full grid border-b-[0.05px] border-secondary-light/30 pb-3 gap-4 md:gap-6 group cursor-pointer pointer-all'
                 key={item.id || key}
               >
                 <div className='w-full h-full rounded-lg overflow-hidden '>
@@ -348,10 +332,10 @@ const ProjectsShows = () => {
 
                 <div className='w-full'>
                   <div className='w-full flex justify-between items-center flex-row flex-wrap gap-1 md:gap-5'>
-                    <span className='text-[10px] text-secondary-light opacity-80 uppercase'>
+                    <span className='text-[10px] text-muted-light opacity-80 uppercase'>
                       PROJECT /{key + 1 < 10 ? `0${key + 1}` : key + 1}
                     </span>
-                    <span className='text-[10px] text-secondary-light opacity-80 uppercase'>
+                    <span className='text-[10px] text-muted-light opacity-80 uppercase'>
                       {item.role.join(' — ')}
                     </span>
                   </div>

@@ -1,9 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
 import axios from 'axios';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { reqFileWrapper, reqs } from '../axios/requests';
-import { loadingGif, projectPlaceholder } from '../assets';
+import { projectPlaceholder } from '../assets';
 import { BsFillCaretRightFill } from 'react-icons/bs';
 import { FaGithub } from 'react-icons/fa';
 
@@ -24,6 +24,15 @@ import ProjectSlider from '../components/project/ProjectSlider';
 import FloatingActionBtn from '../components/utils/FloatingActionBtn';
 import MetaCard from '../components/utils/MetaCard';
 
+const getProjectErrorType = (error) => {
+  const status = error?.response?.status;
+  const message = String(error?.response?.data?.msg || '').toLowerCase();
+
+  return status === 404 || message.includes('not found')
+    ? 'not-found'
+    : 'service';
+};
+
 const SingleProject = () => {
   const navigate = useNavigate();
   const loc = useLocation();
@@ -33,62 +42,83 @@ const SingleProject = () => {
   const { value } = useParams();
   const [project, setProject] = useState({});
   const [projLoading, setProjLoading] = useState(false);
-  const [nextProject, setNextProject] = useState({});
   useTextRevealAnimation('project-text-reveal');
   const projectDescParent = useRef(null);
   const projectDesc = useRef(null);
 
-  const findProjectAndgetNext = () => {
+  const nextProject = useMemo(() => {
     const numberOfProjects = projects?.length;
     if (numberOfProjects && numberOfProjects > 1 && project?.value) {
       const currKey = projects.findIndex(
         (item) => item.value === project.value
       );
 
-      if (currKey + 1 >= numberOfProjects) {
-        setNextProject(projects[0]);
-      } else {
-        setNextProject(projects[currKey + 1]);
-      }
+      if (currKey < 0 || currKey + 1 >= numberOfProjects) return projects[0];
+      return projects[currKey + 1];
     }
-  };
-
-  useEffect(() => {
-    findProjectAndgetNext();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project, projects]);
+    return {};
+  }, [project.value, projects]);
 
   useEffect(() => {
     window.scrollTo({
       left: 0,
       top: 0,
     });
-  }, [loc.pathname, project]);
+  }, [loc.pathname]);
 
   useEffect(() => {
-    const spArr = value.split('@');
-    const projectId = spArr[spArr.length - 1];
+    const controller = new AbortController();
+    const spArr = (value || '').split('@');
+    const projectId = Number(spArr[spArr.length - 1]);
+    const navigateToError = (errorType) => {
+      navigate('/error', {
+        replace: true,
+        state: {
+          errorType,
+          retryPath: loc.pathname,
+        },
+      });
+    };
+
+    if (!Number.isSafeInteger(projectId) || projectId < 1) {
+      navigateToError('not-found');
+      return () => controller.abort();
+    }
+
+    setProject({});
     setProjLoading(true);
     axios
-      .post(reqs.GET_PROJECT, { mode: 'single', projectId })
+      .post(
+        reqs.GET_PROJECT,
+        { mode: 'single', projectId },
+        { signal: controller.signal }
+      )
       .then((res) => {
         if (res.data.succeed) {
           setProject(res.data.result);
+        } else {
+          navigateToError(
+            getProjectErrorType({
+              response: { status: res.status, data: res.data },
+            })
+          );
         }
         setProjLoading(false);
       })
-      .catch(() => {
-        // console.log(err);
+      .catch((error) => {
+        if (controller.signal.aborted) return;
         setProjLoading(false);
-        navigate('/error');
+        navigateToError(getProjectErrorType(error));
       });
-    // navigate is stable from useNavigate
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+
+    return () => controller.abort();
+  }, [loc.pathname, navigate, value]);
 
   useEffect(() => {
+    let animationHandle;
+
     if (projectDescParent.current && projectDesc.current) {
-      wordBlinkAnimation(
+      animationHandle = wordBlinkAnimation(
         projectDesc.current,
         null,
         projectDescParent.current,
@@ -97,6 +127,8 @@ const SingleProject = () => {
         6
       );
     }
+
+    return () => animationHandle?.kill();
   }, [project]);
 
   if (projLoading) {
@@ -114,16 +146,6 @@ const SingleProject = () => {
             : reqFileWrapper(project?.bannerImg)
         }
       />
-
-      {projLoading && (
-        <div className='w-full min-h-[400px] flex items-center justify-center'>
-          <img
-            src={loadingGif}
-            alt='Loading...'
-            className='max-w-[90px] h-auto'
-          />
-        </div>
-      )}
 
       {(project?.siteLink || project?.designLink) && (
         <FloatingActionBtn
@@ -193,17 +215,17 @@ const SingleProject = () => {
         className='flex w-full flex-col md:flex-row justify-between items-start gap-16 md:gap-24 sec-project-x-padding pointer-all'
       >
         {project.overview && (
-          <div ref={projectDesc} className='text-secondary-light flex-1 w-full'>
+          <div ref={projectDesc} className='text-muted-light flex-1 w-full'>
             {project?.overview}
           </div>
         )}
 
         <div className='flex-1 flex flex-col gap-3 w-full'>
           <div className='flex items-center gap-1 pt-1'>
-            <span className='text-xs sm:text-sm text-secondary-main opacity-80 uppercase text-letter-reveal'>
+            <span className='text-xs sm:text-sm text-muted-main opacity-80 uppercase text-letter-reveal'>
               # TECH STACK
             </span>
-            <BsFillCaretRightFill className='text-secondary-main text-xs' />
+            <BsFillCaretRightFill className='text-muted-main text-xs' />
           </div>
           <div className='flex flex-row flex-wrap gap-x-2 gap-y-3'>
             {project?.techStack?.map((prop, i) => (
@@ -234,10 +256,10 @@ const SingleProject = () => {
           <HRLine />
 
           <div className='relative w-full sec-project-x-padding flex flex-col gap-3.5 justify-center items-center'>
-            <div className='text-secondary-light text-sm'>Next Project</div>
+            <div className='text-muted-light text-sm'>Next Project</div>
             <h2 className='text-4xl '>{nextProject.title}</h2>
 
-            <div className='w-full overflow-hidden h-auto border-b-[0.5] border-secondary-main border-b border-opacity-40'>
+            <div className='w-full overflow-hidden h-auto border-b-[0.5px] border-secondary-main/40'>
               <Link
                 to={`/singleProject/${
                   nextProject?.value + '@' + nextProject?.id

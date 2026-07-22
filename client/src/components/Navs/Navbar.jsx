@@ -6,32 +6,32 @@ import PageNav from './PageNav';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 import { isUpwork } from '../../config';
 import { upworkedSocialLinks } from '../../Constants';
-import { myResume } from '../../assets';
+import { downloadResume } from '../../axios';
+import PropTypes from 'prop-types';
 
-const Navbar = () => {
+const Navbar = ({ resumeAvailable = false }) => {
   const [isPageMenu, setIsPageMenu] = useState(false);
   const navBarRef = useRef(null);
   const menuButtonRef = useRef(null);
 
   useEffect(() => {
-    let unlockTimer;
-
     if (isPageMenu) {
       document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
     } else {
-      unlockTimer = setTimeout(() => {
-        document.body.style.overflow = 'auto';
-        document.body.style.position = '';
-        document.body.style.width = '';
-      }, 1000);
+      document.body.style.overflow = '';
     }
-
-    return () => clearTimeout(unlockTimer);
   }, [isPageMenu]);
 
+  useEffect(
+    () => () => {
+      document.body.style.overflow = '';
+    },
+    []
+  );
+
   useEffect(() => {
+    const animationHandles = [];
+
     if (navBarRef.current) {
       const animatingElements = [
         ...document.querySelectorAll('.blink-animate-nav'),
@@ -39,10 +39,19 @@ const Navbar = () => {
 
       if (animatingElements.length > 0) {
         animatingElements.forEach((ele) => {
-          wordBlinkAnimation(ele, null, navBarRef.current, false, false);
+          const handle = wordBlinkAnimation(
+            ele,
+            null,
+            navBarRef.current,
+            false,
+            false
+          );
+          if (handle) animationHandles.push(handle);
         });
       }
     }
+
+    return () => animationHandles.forEach((handle) => handle.kill());
   }, []);
 
   return (
@@ -55,25 +64,25 @@ const Navbar = () => {
           <div>
             <NavLogo />
           </div>
-          <div className='hidden sm:inline-block'>
-            <OutlinedSmallButton
-              text={'My Resume'}
-              onClick={() => {
-                window.open(myResume, '_blank', 'noopener,noreferrer');
-              }}
-            />
-          </div>
+          {resumeAvailable && (
+            <div className='hidden sm:inline-block'>
+              <OutlinedSmallButton
+                text={'My Resume'}
+                onClick={downloadResume}
+              />
+            </div>
+          )}
           <div className='flex items-center justify-between gap-6 text-sm'>
             <Link
               to={'/projects'}
-              className='blink-animate-nav text-flicker !hidden sm:!inline '
+              className='blink-animate-nav text-flicker hidden! sm:inline!'
             >
               Projects
             </Link>
             {!isUpwork ? (
               <a
                 href='mailto:khalidahammeduzzal@gmail.com'
-                className=' blink-animate-nav text-flicker !hidden sm:!inline'
+                className='blink-animate-nav text-flicker hidden! sm:inline!'
               >
                 Email Me
               </a>
@@ -126,6 +135,10 @@ const Navbar = () => {
       />
     </>
   );
+};
+
+Navbar.propTypes = {
+  resumeAvailable: PropTypes.bool,
 };
 
 export default Navbar;

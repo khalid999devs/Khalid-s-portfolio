@@ -4,11 +4,10 @@ const mailer = require('../utils/sendMail');
 const sendSMS = require('../utils/sendSMS');
 const {
   normalizeContactMessage,
-  normalizeMessage,
+  normalizeEmailDeliveryRequest,
+  normalizeSmsDeliveryRequest,
   parseMessageListQuery,
 } = require('../utils/contactValidation');
-
-const allowedEmailModes = new Set(['contact', 'custom', 'newsletter']);
 
 const sendMessage = async (req, res) => {
   const contact = normalizeContactMessage(req.body);
@@ -38,28 +37,11 @@ const getAllMessage = async (req, res) => {
 
 const sendEmailToClient = async (req, res) => {
   const mode = req.params.mode || 'custom';
-  const { text, subject, email, name, id } = req.body;
+  const delivery = normalizeEmailDeliveryRequest(mode, req.body);
   let contact;
 
-  if (!allowedEmailModes.has(mode)) {
-    throw new BadRequestError('Unsupported email delivery mode.');
-  }
-
-  const normalizedText = normalizeMessage(text);
-
   if (mode === 'contact') {
-    let contactId = Number.NaN;
-    if (typeof id === 'number' && Number.isSafeInteger(id)) {
-      contactId = id;
-    } else if (typeof id === 'string' && /^[1-9]\d*$/.test(id)) {
-      contactId = Number(id);
-    }
-
-    if (!Number.isSafeInteger(contactId) || contactId < 1) {
-      throw new BadRequestError('A valid contact ID is required.');
-    }
-
-    contact = await Contact.findByPk(contactId);
+    contact = await Contact.findByPk(delivery.contactId);
     if (!contact) {
       throw new BadRequestError('The requested contact does not exist.');
     }
@@ -68,29 +50,29 @@ const sendEmailToClient = async (req, res) => {
   await mailer(
     {
       info: {
-        subject,
-        body: normalizedText,
+        subject: delivery.subject,
+        body: delivery.text,
       },
       client: {
-        fullName: contact?.name || (typeof name === 'string' ? name : ''),
-        email: contact ? contact.email : email,
+        fullName: contact?.name || delivery.name || '',
+        email: contact ? contact.email : delivery.email,
       },
     },
     mode
   );
 
   if (mode === 'contact') {
-    await contact.update({ replied: 1, replyMsg: normalizedText });
+    await contact.update({ replied: 1, replyMsg: delivery.text });
   }
 
   res.json({ succeed: true, msg: 'Email accepted for delivery.' });
 };
 
 const smsToClient = async (req, res) => {
-  const { phone, message } = req.body;
-  if (!phone || !message) {
-    throw new BadRequestError('Fields must not be empty');
-  }
+  const { phone, message } = normalizeSmsDeliveryRequest(
+    req.params.mode,
+    req.body
+  );
 
   const response = await sendSMS(phone, message);
   if (response.type === '1101') {
@@ -98,7 +80,7 @@ const smsToClient = async (req, res) => {
     return;
   }
 
-  res.json({ succeed: false, msg: response.msg });
+  res.status(400).json({ succeed: false, msg: response.msg });
 };
 
 module.exports = {

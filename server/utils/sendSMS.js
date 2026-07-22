@@ -16,7 +16,7 @@ const providerMessages = {
   1101: 'accepted',
 };
 
-const clientInputStatuses = new Set(['1002', '1003', '1004', '1005', '1010']);
+const clientInputStatuses = new Set(['1002', '1003', '1004', '1005']);
 
 class SmsDeliveryError extends Error {
   constructor(message = 'SMS delivery is temporarily unavailable.') {

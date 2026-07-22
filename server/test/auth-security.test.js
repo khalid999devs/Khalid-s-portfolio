@@ -3,7 +3,9 @@ const test = require('node:test');
 const { verify } = require('jsonwebtoken');
 
 const { parseAllowedOrigins, validateRuntimeConfig } = require('../index');
+const { Admin } = require('../models');
 const adminRouter = require('../routers/admin');
+const adminTokenVerify = require('../middlewares/adminTokenVerify');
 const {
   ADMIN_COOKIE_MAX_AGE_MS,
   ADMIN_COOKIE_NAME,
@@ -41,6 +43,7 @@ test('runtime configuration requires distinct, strong application secrets', () =
 test('production only accepts HTTPS browser origins', () => {
   const productionEnv = {
     ADMIN_SECRET: adminSecret,
+    ADMIN_USERNAME: 'portfolio-admin',
     COOKIE_SECRET: cookieSecret,
     DB_HOST: 'db.internal',
     DB_NAME: 'portfolio',
@@ -80,7 +83,11 @@ test('admin tokens require the fixed algorithm, issuer, audience, and subject', 
   process.env.ADMIN_SECRET = adminSecret;
 
   try {
-    const token = createAdminJWT({ id: 42, userName: 'admin' });
+    const token = createAdminJWT({
+      id: 42,
+      sessionVersion: 7,
+      userName: 'admin',
+    });
     const payload = verify(
       token,
       adminSecret,
@@ -88,6 +95,7 @@ test('admin tokens require the fixed algorithm, issuer, audience, and subject', 
     );
 
     assert.equal(payload.id, 42);
+    assert.equal(payload.sessionVersion, 7);
     assert.equal(payload.sub, '42');
     assert.equal(payload.role, 'admin');
     assert.equal(payload.iss, 'my-portfolio-api');
@@ -136,6 +144,47 @@ test('admin cookies are host-only, signed, HttpOnly, strict, and time-aligned', 
   } finally {
     if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
     else process.env.NODE_ENV = originalNodeEnv;
+  }
+});
+
+test('credential rotation invalidates tokens with an older session version', async () => {
+  const originalAdminSecret = process.env.ADMIN_SECRET;
+  const originalFindByPk = Admin.findByPk;
+  process.env.ADMIN_SECRET = adminSecret;
+  Admin.findByPk = async () => ({
+    id: 42,
+    sessionVersion: 4,
+    userName: 'admin',
+  });
+
+  const createRequest = (sessionVersion) => ({
+    signedCookies: {
+      token: createAdminJWT({ id: 42, sessionVersion, userName: 'admin' }),
+    },
+  });
+  const response = { set() {} };
+
+  try {
+    await assert.rejects(
+      () => adminTokenVerify(createRequest(3), response, () => {}),
+      /Invalid or expired admin session/u
+    );
+
+    const request = createRequest(4);
+    let nextCalled = false;
+    await adminTokenVerify(request, response, () => {
+      nextCalled = true;
+    });
+    assert.equal(nextCalled, true);
+    assert.deepEqual(request.admin, {
+      id: 42,
+      role: 'admin',
+      userName: 'admin',
+    });
+  } finally {
+    Admin.findByPk = originalFindByPk;
+    if (originalAdminSecret === undefined) delete process.env.ADMIN_SECRET;
+    else process.env.ADMIN_SECRET = originalAdminSecret;
   }
 });
 

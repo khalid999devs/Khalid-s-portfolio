@@ -8,21 +8,42 @@ import { reqs } from '../../../axios/requests';
 const Admin = () => {
   const navigate = useNavigate();
   const [pageTitle, setPageTitle] = useState('Dashboard');
+  const [authStatus, setAuthStatus] = useState('checking');
 
   useEffect(() => {
+    const controller = new AbortController();
+
     axios
       .get(reqs.IS_ADMIN_VALID, {
-        withCredentials: true,
+        signal: controller.signal,
       })
       .then((res) => {
-        if (!res.data.succeed) navigate('/admin-login');
+        if (res.data.succeed) {
+          setAuthStatus('authorized');
+        } else {
+          navigate('/admin-login', { replace: true });
+        }
       })
       .catch(() => {
-        navigate('/admin-login');
+        if (!controller.signal.aborted) {
+          navigate('/admin-login', { replace: true });
+        }
       });
-    // navigate is stable from useNavigate, pageTitle shouldn't trigger auth check
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageTitle]);
+
+    return () => controller.abort();
+  }, [navigate]);
+
+  if (authStatus !== 'authorized') {
+    return (
+      <div
+        className='bg-body-main min-h-screen w-full flex items-center justify-center text-onPrimary-main'
+        role='status'
+        aria-live='polite'
+      >
+        Verifying administrator session…
+      </div>
+    );
+  }
 
   return (
     <div className='bg-body-main min-h-screen w-full'>

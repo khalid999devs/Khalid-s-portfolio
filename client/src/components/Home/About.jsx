@@ -6,15 +6,19 @@ import SkillsAndTechs from './SkillsAndTechs';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 import useIsGreaterOrEqualMd from '../../hooks/useIsGreaterOrEqualMd';
 import { downloadResume } from '../../axios';
+import { useAppContext } from '../../App';
 
 const About = () => {
   const aboutTextRef = useRef(null);
   const aboutParentRef = useRef(null);
   const isGreaterOrEqualMd = useIsGreaterOrEqualMd();
+  const { resumeAvailable } = useAppContext();
 
   useEffect(() => {
+    let animationHandle;
+
     if (aboutParentRef.current && aboutTextRef.current) {
-      wordBlinkAnimation(
+      animationHandle = wordBlinkAnimation(
         aboutTextRef.current,
         isGreaterOrEqualMd,
         aboutParentRef.current,
@@ -22,6 +26,8 @@ const About = () => {
         true
       );
     }
+
+    return () => animationHandle?.kill();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -58,7 +64,7 @@ const About = () => {
           <div className='flex gap-10 md:gap-20 mds:gap-[115px] mdl:gap-[190px] lg:gap-[85px] xl:gap-[104px] md:pt-10 lg:pt-[25px] xl:pt-[60px] md:pl-16 flex-col w-full md:min-w-[120px] justify-between h-full md:max-w-[400px] lg:max-w-[500px] 3xl:pt-16 3xl:gap-36 mt-4 md:mt-0'>
             <p
               ref={aboutTextRef}
-              className='text-secondary-main md:text-sm xl:text-base uppercase pointer-all'
+              className='text-muted-main md:text-sm xl:text-base uppercase pointer-all'
               style={{
                 wordSpacing: '0.15rem',
               }}
@@ -68,12 +74,14 @@ const About = () => {
               through code and enjoy collaborating with diverse teams to create
               impactful solutions.
             </p>
-            <div className='inline-block m-auto md:m-0'>
-              <OutlinedBigIcon
-                text={'DOWNLOAD CV'}
-                onClick={() => downloadResume()}
-              />
-            </div>
+            {resumeAvailable && (
+              <div className='inline-block m-auto md:m-0'>
+                <OutlinedBigIcon
+                  text={'DOWNLOAD CV'}
+                  onClick={downloadResume}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

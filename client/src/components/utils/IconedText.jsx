@@ -8,7 +8,7 @@ const IconedText = ({ text, Icon, onIconClick }) => {
       <button
         type='button'
         aria-label={`Remove ${text || 'item'}`}
-        className='text-md flex items-center justify-center text-primary-dark'
+        className='text-base flex items-center justify-center text-primary-dark'
         onClick={onIconClick}
       >
         {Icon ? <Icon aria-hidden='true' /> : <MdClose aria-hidden='true' />}

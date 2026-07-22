@@ -11,6 +11,7 @@ import { MdOutlineArrowRightAlt } from 'react-icons/md';
 import { BiSolidRightArrow } from 'react-icons/bi';
 import { OutlinedSmallButton } from '../Buttons/OutlinedButton';
 import { isUpwork } from '../../config';
+import { formatBangladeshTime } from '../../utils/bangladeshTime';
 import gsap from 'gsap';
 import PropTypes from 'prop-types';
 
@@ -69,7 +70,7 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
     const timeContainer = timeRef.current;
     if (timeContainer) {
       iid = setInterval(() => {
-        timeContainer.innerText = new Date().toLocaleTimeString();
+        timeContainer.innerText = formatBangladeshTime();
       }, 1000);
     }
 
@@ -144,7 +145,7 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
           role='dialog'
           aria-modal='true'
           aria-label='Site menu'
-          className={`transition-all duration-700 grid grid-rows-[auto,1fr] min-h-screen w-full sec-x-padding fixed top-0 left-0 bg-body-main screen-max-width z-50 ${
+          className={`transition-all duration-700 grid grid-rows-[auto_1fr] min-h-screen w-full sec-x-padding fixed top-0 left-0 bg-body-main screen-max-width z-50 ${
             classes || ''
           }`}
           initial={{ opacity: 1 }}
@@ -188,7 +189,7 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
           </div>
 
           {/* menus */}
-          <div className='w-full h-full grid grid-cols-1 md:grid-cols-[1fr,1.25fr]'>
+          <div className='w-full h-full grid grid-cols-1 md:grid-cols-[1fr_1.25fr]'>
             <nav
               aria-label='Site pages'
               className='pt-10 w-full flex flex-col gap-1 md:gap-8 text-montreal-mono'
@@ -239,7 +240,7 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
                     </a>
                   </div>
 
-                  <div className='flex w-full flex-col text-secondary-light gap-2 md:gap-3 '>
+                  <div className='flex w-full flex-col text-muted-light gap-2 md:gap-3 '>
                     <p className='text-[10px] md:text-xs text-montreal-mono'>
                       BASED IN BANGLADESH — WORKING WORLDWIDE
                     </p>
@@ -258,7 +259,7 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
                         ref={timeRef}
                         aria-label='Local time in Bangladesh'
                       >
-                        {new Date().toLocaleTimeString()}
+                        {formatBangladeshTime()}
                       </p>
                     </div>
                   </div>

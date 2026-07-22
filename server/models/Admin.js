@@ -1,15 +1,26 @@
 module.exports = (sequelize, DataTypes) => {
-  const Admin = sequelize.define('admin', {
-    userName: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
+  const Admin = sequelize.define(
+    'admin',
+    {
+      userName: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+        unique: true,
+      },
+      password: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+      sessionVersion: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
     },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-  });
+    {
+      tableName: 'admins',
+    }
+  );
 
   return Admin;
 };

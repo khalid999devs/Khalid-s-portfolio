@@ -109,14 +109,16 @@ const validateFileSignature = async (file) => {
   }
 };
 
-const cleanupRequestUploads = (req) => {
-  getUploadedFiles(req).forEach((file) => {
-    try {
-      deleteFile(toStoredUploadPath(file.path));
-    } catch (error) {
-      console.error('Unable to clean up an invalid upload safely', error);
-    }
-  });
+const cleanupRequestUploads = async (req) => {
+  await Promise.all(
+    getUploadedFiles(req).map(async (file) => {
+      try {
+        await deleteFile(toStoredUploadPath(file.path));
+      } catch (error) {
+        console.error('Unable to clean up an invalid upload safely', error);
+      }
+    })
+  );
 };
 
 const validateUploadedFiles = async (req, _res, next) => {
@@ -135,7 +137,7 @@ const validateUploadedFiles = async (req, _res, next) => {
 
     next();
   } catch (error) {
-    cleanupRequestUploads(req);
+    await cleanupRequestUploads(req);
     throw error;
   }
 };

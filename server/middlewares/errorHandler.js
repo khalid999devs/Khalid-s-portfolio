@@ -10,9 +10,20 @@ const errorHandlerMiddleware = (err, req, res, next) => {
   const isServerError = !err.statusCode || err.statusCode >= 500;
 
   if (isServerError) {
-    // Keep diagnostic details server-side. Never include request bodies here because
-    // they may contain passwords, contact details, or provider credentials.
-    console.error(`${req.method} ${req.originalUrl}`, err);
+    // Log classification and stack locations only. ORM/provider error messages can
+    // contain SQL bindings, contact PII, credentials, or remote response bodies.
+    const stackFrames = typeof err.stack === 'string'
+      ? err.stack
+          .split('\n')
+          .slice(1, 6)
+          .map((frame) => frame.trim())
+      : [];
+    console.error(`${req.method} ${req.originalUrl}`, {
+      code: String(err.code || 'UNEXPECTED').slice(0, 64),
+      name: String(err.name || 'Error').slice(0, 64),
+      stackFrames,
+      statusCode: err.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
+    });
   }
 
   let customError = {

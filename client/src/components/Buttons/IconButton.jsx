@@ -12,7 +12,7 @@ const IconButton = ({
       type='button'
       aria-label={label}
       className={
-        'w-[33px] h-[31px] flex items-center justify-center cursor-pointer text-secondary-light text-xl border-secondary-light border-1 border rounded-[10px] hover:bg-secondary-light transition-all duration-300 hover:text-body-main group ' +
+        'w-[33px] h-[31px] flex items-center justify-center cursor-pointer text-muted-light text-xl border-secondary-light border rounded-[10px] hover:bg-secondary-light transition-all duration-300 hover:text-body-main group ' +
         classes
       }
       onClick={onClick}

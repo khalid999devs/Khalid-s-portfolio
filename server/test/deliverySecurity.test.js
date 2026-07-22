@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const nodemailer = require('nodemailer');
 
 const {
   buildSmsRequest,
@@ -8,7 +9,9 @@ const {
   validateSmsPayload,
 } = require('../utils/sendSMS');
 const {
+  closeMailTransporter,
   getMailConfig,
+  getMailTransporter,
   validateMailData,
 } = require('../utils/sendMail');
 
@@ -104,8 +107,73 @@ test('mail configuration always verifies TLS certificates', () => {
 
   assert.equal(config.transport.secure, false);
   assert.equal(config.transport.requireTLS, true);
+  assert.equal(config.transport.pool, true);
+  assert.equal(config.transport.connectionTimeout, 10_000);
+  assert.equal(config.transport.greetingTimeout, 10_000);
+  assert.equal(config.transport.socketTimeout, 30_000);
+  assert.equal(config.transport.maxConnections, 3);
+  assert.equal(config.transport.maxMessages, 100);
   assert.equal(config.transport.tls.rejectUnauthorized, true);
   assert.equal(config.transport.tls.minVersion, 'TLSv1.2');
+});
+
+test('mail timeout and pool settings are strictly bounded', () => {
+  const environment = {
+    MAIL_HOST: 'smtp.example.test',
+    MAIL_PASS: 'smtp-secret',
+    SERVER_EMAIL: 'sender@example.test',
+  };
+
+  assert.throws(
+    () => getMailConfig({ ...environment, MAIL_SOCKET_TIMEOUT_MS: '0' }),
+    /MAIL_SOCKET_TIMEOUT_MS must be an integer between 1000 and 120000/
+  );
+  assert.throws(
+    () => getMailConfig({ ...environment, MAIL_POOL_MAX_CONNECTIONS: '11' }),
+    /MAIL_POOL_MAX_CONNECTIONS must be an integer between 1 and 10/
+  );
+});
+
+test('mail transport reuses a healthy pool and replaces it after credential rotation', () => {
+  const originalCreateTransport = nodemailer.createTransport;
+  const transports = [];
+  nodemailer.createTransport = (options) => {
+    const transporter = {
+      closeCount: 0,
+      options,
+      close() {
+        this.closeCount += 1;
+      },
+    };
+    transports.push(transporter);
+    return transporter;
+  };
+
+  const environment = {
+    MAIL_HOST: 'smtp.example.test',
+    MAIL_PASS: 'first-secret',
+    SERVER_EMAIL: 'sender@example.test',
+  };
+
+  try {
+    closeMailTransporter();
+    const first = getMailTransporter(getMailConfig(environment).transport);
+    const reused = getMailTransporter(getMailConfig(environment).transport);
+    const rotated = getMailTransporter(
+      getMailConfig({ ...environment, MAIL_PASS: 'rotated-secret' }).transport
+    );
+
+    assert.equal(first, reused);
+    assert.notEqual(rotated, first);
+    assert.equal(transports.length, 2);
+    assert.equal(first.closeCount, 1);
+
+    closeMailTransporter();
+    assert.equal(rotated.closeCount, 1);
+  } finally {
+    closeMailTransporter();
+    nodemailer.createTransport = originalCreateTransport;
+  }
 });
 
 test('mail credentials are evaluated at call time', () => {

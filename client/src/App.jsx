@@ -14,7 +14,9 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [dataError, setDataError] = useState(null);
   const [settings, setSettings] = useState({});
+  const [resumeAvailable, setResumeAvailable] = useState(false);
   const [appData, setAppData] = useState({ projects: [] });
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -23,6 +25,9 @@ const App = () => {
       timeout: 10000,
     };
     let isMounted = true;
+
+    setLoading(true);
+    setDataError(null);
 
     const fetchData = async () => {
       const [settingsResult, projectsResult] = await Promise.allSettled([
@@ -39,6 +44,9 @@ const App = () => {
         settingsResult.value.data?.succeed
       ) {
         setSettings(settingsResult.value.data.result || {});
+        setResumeAvailable(
+          settingsResult.value.data.resumeAvailable === true
+        );
       } else {
         failedRequests.push('settings');
       }
@@ -71,7 +79,7 @@ const App = () => {
       isMounted = false;
       controller.abort();
     };
-  }, []);
+  }, [loadAttempt]);
 
   const contextValue = useMemo(
     () => ({
@@ -79,9 +87,10 @@ const App = () => {
       dataError,
       settings,
       setSettings,
+      resumeAvailable,
       appData,
     }),
-    [loading, dataError, settings, appData]
+    [loading, dataError, settings, resumeAvailable, appData]
   );
 
   return (
@@ -92,16 +101,26 @@ const App = () => {
           <div className='sr-only' role='status' aria-live='polite'>
             {loading ? 'Loading portfolio data.' : ''}
           </div>
-          {dataError && (
-            <div className='sr-only' role='alert'>
-              {dataError}
+          {dataError && !loading && (
+            <div
+              className='pointer-events-auto fixed left-1/2 top-20 z-[60] flex w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 items-center justify-between gap-4 rounded-xl border border-red-400/40 bg-red-950/95 px-4 py-3 text-sm text-primary-main shadow-xl backdrop-blur-md'
+              role='alert'
+            >
+              <span>{dataError} You can retry without leaving this page.</span>
+              <button
+                type='button'
+                className='shrink-0 rounded-lg border border-primary-main/60 px-3 py-1.5 font-medium transition-colors hover:bg-primary-main hover:text-body-main'
+                onClick={() => setLoadAttempt((attempt) => attempt + 1)}
+              >
+                Retry
+              </button>
             </div>
           )}
           <MouseMoveEffect />
-          <Navbar />
-          <div className='pointer-none'>
+          <Navbar resumeAvailable={resumeAvailable} />
+          <main className='pointer-none'>
             <AnimatedOutlet />
-          </div>
+          </main>
           <Footer />
         </div>
       </AppContext.Provider>

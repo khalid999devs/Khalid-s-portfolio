@@ -21,7 +21,7 @@ const Projects = () => {
       left: 0,
       top: 0,
     });
-  }, [projects, loc.pathname]);
+  }, [loc.pathname]);
 
   useEffect(() => {
     if (projects?.length > 0)
@@ -44,8 +44,8 @@ const Projects = () => {
           <div className='flex flex-row flex-wrap gap-3 items-center justify-center md:justify-start'>
             {categories?.map((item, key) => (
               <OutlinedBigIcon
-                classes={`!border-[0.2px] border-opacity-50 !rounded-[3px] capitalize ${
-                  item === targetCat ? '!bg-white !text-black' : ''
+                classes={`border-[0.2px]! border-onPrimary-main/50! rounded-[3px]! capitalize ${
+                  item === targetCat ? 'bg-white! text-black!' : ''
                 }`}
                 text={item}
                 key={key}
@@ -72,7 +72,7 @@ const Projects = () => {
               return (
                 <Link
                   to={`/singleProject/${item.value + '@' + item.id}`}
-                  className='w-full grid border-b-[0.05px] border-opacity-30 border-secondary-light pb-3 gap-6 group cursor-pointer pointer-all'
+                  className='w-full grid border-b-[0.05px] border-secondary-light/30 pb-3 gap-6 group cursor-pointer pointer-all'
                   key={item.id || key}
                 >
                   <div className='w-full h-full rounded-lg overflow-hidden '>
@@ -90,10 +90,10 @@ const Projects = () => {
 
                   <div className='w-full'>
                     <div className='w-full flex justify-between items-center flex-row flex-wrap gap-5'>
-                      <span className='text-[10px] sm:text-xs text-secondary-light opacity-80 uppercase'>
+                      <span className='text-[10px] sm:text-xs text-muted-light opacity-80 uppercase'>
                         PROJECT /{key + 1 < 10 ? `0${key + 1}` : key + 1}
                       </span>
-                      <span className='text-[10px] sm:text-xs text-secondary-light opacity-80 uppercase'>
+                      <span className='text-[10px] sm:text-xs text-muted-light opacity-80 uppercase'>
                         {item.role.join(' — ')}
                       </span>
                     </div>

@@ -82,7 +82,7 @@ test('legacy relative Multer paths are independent of process cwd', () => {
   );
 });
 
-test('deleteFile removes an in-root upload and never accepts an absolute path', () => {
+test('deleteFile removes an in-root upload and never accepts an absolute path', async () => {
   const testDirectory = resolve(
     UPLOADS_ROOT,
     `delete-file-test-${process.pid}-${Date.now()}`
@@ -94,16 +94,16 @@ test('deleteFile removes an in-root upload and never accepts an absolute path', 
 
   try {
     const storedPath = toStoredUploadPath(testFile);
-    assert.equal(deleteFile(storedPath), true);
+    assert.equal(await deleteFile(storedPath), true);
     assert.equal(existsSync(testFile), false);
-    assert.equal(deleteFile(storedPath), false);
-    assert.throws(() => deleteFile(testFile));
+    assert.equal(await deleteFile(storedPath), false);
+    await assert.rejects(deleteFile(testFile));
   } finally {
     rmSync(testDirectory, { recursive: true, force: true });
   }
 });
 
-test('deleteFile rejects an upload path that escapes through a symlink', () => {
+test('deleteFile rejects an upload path that escapes through a symlink', async () => {
   const testDirectory = resolve(
     UPLOADS_ROOT,
     `symlink-test-${process.pid}-${Date.now()}`
@@ -117,7 +117,7 @@ test('deleteFile rejects an upload path that escapes through a symlink', () => {
   symlinkSync(outsideFile, linkPath);
 
   try {
-    assert.throws(() => deleteFile(toStoredUploadPath(linkPath)));
+    await assert.rejects(deleteFile(toStoredUploadPath(linkPath)));
     assert.equal(existsSync(outsideFile), true);
     assert.equal(existsSync(linkPath), true);
   } finally {

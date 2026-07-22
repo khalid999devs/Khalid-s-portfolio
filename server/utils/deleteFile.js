@@ -1,6 +1,6 @@
-const { existsSync, unlinkSync } = require('fs');
+const { unlink } = require('fs/promises');
 const {
-  assertExistingPathIsContained,
+  assertExistingPathIsContainedAsync,
   resolveStoredUploadPath,
 } = require('./uploadPaths');
 
@@ -10,18 +10,21 @@ const {
  * Deliberately does not accept absolute filesystem paths. This keeps callers
  * from turning a database field or request body into an arbitrary unlink.
  */
-const deleteFile = (storedPath) => {
+const deleteFile = async (storedPath) => {
   const resolvedPath = resolveStoredUploadPath(storedPath);
 
-  if (!existsSync(resolvedPath)) {
-    return false;
+  try {
+    // Lexical containment is not enough if an intermediate directory is a
+    // symlink. Verify the existing target's real path before unlinking it.
+    await assertExistingPathIsContainedAsync(resolvedPath);
+    await unlink(resolvedPath);
+    return true;
+  } catch (error) {
+    // Treat a file that disappeared before or during deletion as already
+    // cleaned up. Other errors, especially containment failures, stay loud.
+    if (error?.code === 'ENOENT') return false;
+    throw error;
   }
-
-  // Lexical containment is not enough if an intermediate directory is a
-  // symlink. Verify the existing target's real path before unlinking it.
-  assertExistingPathIsContained(resolvedPath);
-  unlinkSync(resolvedPath);
-  return true;
 };
 
 module.exports = deleteFile;

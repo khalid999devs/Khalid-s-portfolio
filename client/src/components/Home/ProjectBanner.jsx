@@ -6,28 +6,41 @@ import { useEffect, useRef } from 'react';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import useDocumentHeight from '../../hooks/useDocumentHeight';
+import usePrefersReducedMotion from '../../hooks/usePrefersReducedMotion';
 
 const ProjectBanner = () => {
   const projecsParentRef = useRef(null);
   const documentHeight = useDocumentHeight();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
-    if (projecsParentRef.current) {
+    const animationHandles = [];
+
+    if (projecsParentRef.current && !prefersReducedMotion) {
       const animatingElements = [
         ...document.querySelectorAll('.blink-animate'),
       ];
 
       if (animatingElements.length > 0) {
         animatingElements.forEach((ele) => {
-          wordBlinkAnimation(ele, null, projecsParentRef.current, true, false);
+          const handle = wordBlinkAnimation(
+            ele,
+            null,
+            projecsParentRef.current,
+            true,
+            false
+          );
+          if (handle) animationHandles.push(handle);
         });
       }
     }
-  }, []);
+
+    return () => animationHandles.forEach((handle) => handle.kill());
+  }, [prefersReducedMotion]);
 
   useEffect(() => {
     let projectParentScrollTInstance;
-    if (projecsParentRef.current) {
+    if (projecsParentRef.current && !prefersReducedMotion) {
       projectParentScrollTInstance = ScrollTrigger.create({
         trigger: projecsParentRef.current,
         pin: true,
@@ -40,7 +53,7 @@ const ProjectBanner = () => {
     return () => {
       if (projectParentScrollTInstance) projectParentScrollTInstance.kill();
     };
-  }, [documentHeight]);
+  }, [documentHeight, prefersReducedMotion]);
 
   return (
     <div
@@ -87,7 +100,11 @@ const ProjectBanner = () => {
         </div>
       </div>
 
-      <div className='absolute left-1/2 bottom-8 -translate-x-1/2 -translate-y-1/2'>
+      <div
+        className={`absolute left-1/2 bottom-8 -translate-x-1/2 -translate-y-1/2 ${
+          prefersReducedMotion ? 'hidden' : ''
+        }`}
+      >
         <img
           src={ScrollMouseAnime}
           className='w-10 opacity-20'

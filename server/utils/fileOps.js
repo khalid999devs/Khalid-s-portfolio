@@ -1,14 +1,14 @@
 const deleteFile = require('./deleteFile');
 const { toStoredUploadPath } = require('./uploadPaths');
 
-const deleteMultipleFiles = (files) => {
-  files.forEach((file) => {
+const deleteMultipleFiles = async (files) => {
+  await Promise.all(files.map((file) => {
     if (file.path) {
-      deleteFile(toStoredUploadPath(file.path));
-    } else if (file.url) {
-      deleteFile(file.url);
+      return deleteFile(toStoredUploadPath(file.path));
     }
-  });
+    if (file.url) return deleteFile(file.url);
+    return false;
+  }));
 };
 
 const addFileToStructure = (pathParts, file, currentNode) => {

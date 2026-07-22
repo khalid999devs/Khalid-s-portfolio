@@ -7,6 +7,7 @@ const {
   deleteProjectContents,
   deleteProject,
   reorderProjects,
+  validateProjectIdParam,
 } = require('../controllers/projects');
 const adminValidate = require('../middlewares/adminTokenVerify');
 const upload = require('../middlewares/uploadFile');
@@ -25,22 +26,39 @@ router.post('/create', adminValidate, createProject);
 router.put(
   '/update-content/:id',
   adminValidate,
+  validateProjectIdParam,
   upload.fields(projectUploadFields),
   upload.validateUploadedFiles,
   updateProjectContents
 );
 
-router.patch('/edit-infos/:id', adminValidate, editProjectInfos);
+router.patch(
+  '/edit-infos/:id',
+  adminValidate,
+  validateProjectIdParam,
+  editProjectInfos
+);
 router.patch('/reorder', adminValidate, reorderProjects);
 router.patch(
   '/edit-contents/:id',
   adminValidate,
+  validateProjectIdParam,
   upload.fields(projectUploadFields),
   upload.validateUploadedFiles,
   editProjectContents
 );
-router.patch('/delete-contents/:id', adminValidate, deleteProjectContents);
+router.patch(
+  '/delete-contents/:id',
+  adminValidate,
+  validateProjectIdParam,
+  deleteProjectContents
+);
 
-router.delete('/delete/:id', adminValidate, deleteProject);
+router.delete(
+  '/delete/:id',
+  adminValidate,
+  validateProjectIdParam,
+  deleteProject
+);
 
 module.exports = router;

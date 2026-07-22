@@ -16,6 +16,7 @@ const cookieSecret = 'cookie-secret-'.padEnd(40, 'b');
 
 const createEnvironment = (overrides = {}) => ({
   ADMIN_SECRET: adminSecret,
+  ADMIN_USERNAME: 'portfolio-admin',
   COOKIE_SECRET: cookieSecret,
   NODE_ENV: 'test',
   REMOTE_CLIENT_APP: 'http://portfolio.example.test',
@@ -81,6 +82,13 @@ test('proxy and rate-limit settings accept only bounded decimal integers', () =>
       ),
     /ADMIN_LOGIN_RATE_LIMIT_MAX_REQUESTS must be an integer between 1 and 10000/
   );
+  assert.throws(
+    () =>
+      validateRuntimeConfig(
+        createEnvironment({ SHUTDOWN_TIMEOUT_MS: '999' })
+      ),
+    /SHUTDOWN_TIMEOUT_MS must be an integer between 1000 and 60000/
+  );
 
   const config = validateRuntimeConfig(
     createEnvironment({
@@ -93,6 +101,7 @@ test('proxy and rate-limit settings accept only bounded decimal integers', () =>
   assert.equal(config.trustProxyHops, 2);
   assert.equal(config.rateLimits.api.limit, 25);
   assert.equal(config.rateLimits.contactSubmission.windowMs, 60_000);
+  assert.equal(config.shutdownTimeoutMs, 10_000);
 });
 
 test('browser origins reject non-HTTP protocols and embedded credentials', () => {
@@ -236,6 +245,7 @@ test('login and contact submissions have independent stricter limiters', async (
     adminLogin: { limit: 1, windowMs: 60_000 },
     api: { limit: 100, windowMs: 60_000 },
     contactSubmission: { limit: 1, windowMs: 60_000 },
+    readiness: { limit: 100, windowMs: 60_000 },
   });
   const app = express();
 

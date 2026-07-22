@@ -17,10 +17,15 @@ const requireAdminSecret = () => {
   return jwtSecret;
 };
 
-const createAdminJWT = ({ id, userName }) =>
-  sign(
+const createAdminJWT = ({ id, sessionVersion, userName }) => {
+  if (!Number.isSafeInteger(sessionVersion) || sessionVersion < 0) {
+    throw new Error('A valid administrator session version is required');
+  }
+
+  return sign(
     {
       id,
+      sessionVersion,
       userName,
       role: 'admin',
     },
@@ -33,6 +38,7 @@ const createAdminJWT = ({ id, userName }) =>
       subject: String(id),
     }
   );
+};
 
 const getAdminCookieOptions = () => ({
   httpOnly: true,

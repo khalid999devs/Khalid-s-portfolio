@@ -9,6 +9,9 @@ const CONTACT_FIELDS = new Set([
   'message',
 ]);
 const MESSAGE_QUERY_FIELDS = new Set(['page', 'limit']);
+const CONTACT_REPLY_FIELDS = new Set(['id', 'text']);
+const CUSTOM_EMAIL_FIELDS = new Set(['email', 'name', 'subject', 'text']);
+const CUSTOM_SMS_FIELDS = new Set(['message', 'phone']);
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 const MESSAGE_CONTROL_CHARACTERS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 
@@ -103,6 +106,79 @@ const normalizeMessage = (value) => {
   return normalized;
 };
 
+const parseContactId = (value) => {
+  let contactId = Number.NaN;
+
+  if (typeof value === 'number' && Number.isSafeInteger(value)) {
+    contactId = value;
+  } else if (typeof value === 'string' && /^[1-9]\d*$/.test(value)) {
+    contactId = Number(value);
+  }
+
+  if (!Number.isSafeInteger(contactId) || contactId < 1) {
+    throw new BadRequestError('A valid contact ID is required.');
+  }
+
+  return contactId;
+};
+
+const normalizeEmailDeliveryRequest = (mode, body) => {
+  assertObject(body, 'Request body');
+
+  if (mode === 'contact') {
+    rejectUnknownFields(body, CONTACT_REPLY_FIELDS);
+    return {
+      contactId: parseContactId(body.id),
+      email: null,
+      name: null,
+      subject: null,
+      text: normalizeMessage(body.text),
+    };
+  }
+
+  if (mode !== 'custom' && mode !== 'newsletter') {
+    throw new BadRequestError('Unsupported email delivery mode.');
+  }
+
+  rejectUnknownFields(body, CUSTOM_EMAIL_FIELDS);
+  const email = normalizeEmail(body.email);
+  if (!email) {
+    throw new BadRequestError('email must be a valid email address.');
+  }
+
+  return {
+    contactId: null,
+    email,
+    name: normalizeSingleLine(body.name, 'name', {
+      max: 100,
+      optional: true,
+    }),
+    subject: normalizeSingleLine(body.subject, 'subject', {
+      min: 1,
+      max: 200,
+    }),
+    text: normalizeMessage(body.text),
+  };
+};
+
+const normalizeSmsDeliveryRequest = (mode, body) => {
+  if (mode !== 'custom') {
+    throw new BadRequestError('Unsupported SMS delivery mode.');
+  }
+
+  assertObject(body, 'Request body');
+  rejectUnknownFields(body, CUSTOM_SMS_FIELDS);
+  const message = normalizeMessage(body.message);
+  if (message.length > 1_000) {
+    throw new BadRequestError('message must be between 1 and 1000 characters.');
+  }
+
+  return {
+    message,
+    phone: normalizePhone(body.phone),
+  };
+};
+
 const normalizeContactMessage = (body) => {
   assertObject(body, 'Request body');
   rejectUnknownFields(body, CONTACT_FIELDS);
@@ -149,8 +225,10 @@ const parseMessageListQuery = (query = {}) => {
 
 module.exports = {
   normalizeContactMessage,
+  normalizeEmailDeliveryRequest,
   normalizeEmail,
   normalizeMessage,
   normalizePhone,
+  normalizeSmsDeliveryRequest,
   parseMessageListQuery,
 };

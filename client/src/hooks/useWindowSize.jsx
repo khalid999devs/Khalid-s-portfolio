@@ -1,21 +1,31 @@
 import { useState, useEffect } from 'react';
 
 const useWindowSize = () => {
-  const [isSizeChanged, setIsSizeChanged] = useState(false);
+  const [windowSize, setWindowSize] = useState(() =>
+    typeof window === 'undefined'
+      ? '0x0'
+      : `${window.innerWidth}x${window.innerHeight}`
+  );
 
   useEffect(() => {
+    let animationFrameId;
+
     const handleResize = () => {
-      setIsSizeChanged((prevState) => !prevState);
+      window.cancelAnimationFrame(animationFrameId);
+      animationFrameId = window.requestAnimationFrame(() => {
+        setWindowSize(`${window.innerWidth}x${window.innerHeight}`);
+      });
     };
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize, { passive: true });
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      window.cancelAnimationFrame(animationFrameId);
     };
   }, []);
 
-  return isSizeChanged;
+  return windowSize;
 };
 
 export default useWindowSize;

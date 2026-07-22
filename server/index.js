@@ -6,6 +6,20 @@ const cors = require('cors');
 const { rateLimit } = require('express-rate-limit');
 const helmet = require('helmet');
 const { UnauthorizedError } = require('./errors');
+const {
+  assertAdminAccountReady,
+  assertDatabaseReady,
+  assertSettingsSingletonReady,
+} = require('./utils/databaseReadiness');
+const {
+  normalizeAdminUserName,
+  parseBcryptCost,
+} = require('./utils/adminAccount');
+const {
+  closeDatabaseConnection,
+  createShutdownManager,
+} = require('./utils/serverLifecycle');
+const { closeMailTransporter } = require('./utils/sendMail');
 
 const MINIMUM_SECRET_LENGTH = 32;
 const ONE_MINUTE_MS = 60 * 1000;
@@ -77,7 +91,7 @@ const validateRuntimeConfig = (env = process.env) => {
   const requiredVariables = ['ADMIN_SECRET', 'COOKIE_SECRET', 'NODE_ENV'];
 
   if (isProduction) {
-    requiredVariables.push('REMOTE_CLIENT_APP');
+    requiredVariables.push('ADMIN_USERNAME', 'REMOTE_CLIENT_APP');
 
     if (!env.DATABASE_URL?.trim()) {
       requiredVariables.push('DB_HOST', 'DB_NAME', 'DB_PASS', 'DB_USER');
@@ -96,6 +110,13 @@ const validateRuntimeConfig = (env = process.env) => {
 
   if (!['development', 'production', 'test'].includes(env.NODE_ENV)) {
     throw new Error('NODE_ENV must be development, production, or test');
+  }
+
+  if (
+    env.RESUME_FILE_PATH?.trim() &&
+    !path.isAbsolute(env.RESUME_FILE_PATH.trim())
+  ) {
+    throw new Error('RESUME_FILE_PATH must be an absolute path');
   }
 
   for (const variableName of ['ADMIN_SECRET', 'COOKIE_SECRET']) {
@@ -131,6 +152,30 @@ const validateRuntimeConfig = (env = process.env) => {
     minimum: 0,
     maximum: 10,
   });
+  const shutdownTimeoutMs = parseBoundedInteger(
+    env,
+    'SHUTDOWN_TIMEOUT_MS',
+    {
+      defaultValue: 10_000,
+      minimum: 1_000,
+      maximum: 60_000,
+    }
+  );
+  const readinessCacheMs = parseBoundedInteger(
+    env,
+    'READINESS_CACHE_MS',
+    {
+      defaultValue: 5_000,
+      minimum: 100,
+      maximum: ONE_MINUTE_MS,
+    }
+  );
+  const adminUserName = env.ADMIN_USERNAME?.trim()
+    ? normalizeAdminUserName(env.ADMIN_USERNAME)
+    : null;
+  const adminPasswordBcryptCost = parseBcryptCost(
+    env.ADMIN_PASSWORD_BCRYPT_COST
+  );
 
   const rateLimits = {
     api: {
@@ -185,14 +230,34 @@ const validateRuntimeConfig = (env = process.env) => {
         }
       ),
     },
+    readiness: {
+      windowMs: parseBoundedInteger(env, 'READINESS_RATE_LIMIT_WINDOW_MS', {
+        defaultValue: 15 * ONE_MINUTE_MS,
+        minimum: 1000,
+        maximum: 24 * ONE_HOUR_MS,
+      }),
+      limit: parseBoundedInteger(
+        env,
+        'READINESS_RATE_LIMIT_MAX_REQUESTS',
+        {
+          defaultValue: 1_800,
+          minimum: 1,
+          maximum: 100_000,
+        }
+      ),
+    },
   };
 
   return {
+    adminPasswordBcryptCost,
+    adminUserName,
     allowedOrigins,
     cookieSecret: env.COOKIE_SECRET,
     isProduction,
     port,
     rateLimits,
+    readinessCacheMs,
+    shutdownTimeoutMs,
     trustProxyHops,
   };
 };
@@ -277,9 +342,71 @@ const createRateLimiters = (rateLimits) => ({
     ...rateLimits.contactSubmission,
     message: 'Too many contact submissions. Please try again later.',
   }),
+  readiness: createLimiter({
+    ...rateLimits.readiness,
+    message: 'Too many readiness probes. Please try again later.',
+  }),
 });
 
-const createApp = (env = process.env, runtimeConfig) => {
+const createHealthRouter = ({
+  cacheMs = 0,
+  readinessCheck = async () => {
+    throw new Error('Readiness check is not configured');
+  },
+} = {}) => {
+  const router = express.Router();
+  let cachedReadiness;
+  let cacheExpiresAt = 0;
+  let readinessInFlight;
+
+  const getReadiness = () => {
+    const now = Date.now();
+    if (cachedReadiness !== undefined && now < cacheExpiresAt) {
+      return Promise.resolve(cachedReadiness);
+    }
+    if (readinessInFlight) return readinessInFlight;
+
+    readinessInFlight = Promise.resolve()
+      .then(readinessCheck)
+      .then(
+        () => true,
+        () => false
+      )
+      .then((isReady) => {
+        cachedReadiness = isReady;
+        cacheExpiresAt = Date.now() + cacheMs;
+        return isReady;
+      })
+      .finally(() => {
+        readinessInFlight = undefined;
+      });
+
+    return readinessInFlight;
+  };
+
+  router.use((_req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+  });
+  router.get('/live', (_req, res) => {
+    res.json({ status: 'ok' });
+  });
+  router.get('/ready', async (_req, res) => {
+    if (await getReadiness()) {
+      res.json({ status: 'ready' });
+    } else {
+      res.status(503).json({ status: 'unavailable' });
+    }
+  });
+
+  return router;
+};
+
+const createApp = (
+  env = process.env,
+  runtimeConfig,
+  { readinessCheck } = {}
+) => {
   const config = runtimeConfig || validateRuntimeConfig(env);
   const app = express();
   const limiters = createRateLimiters(config.rateLimits);
@@ -289,6 +416,14 @@ const createApp = (env = process.env, runtimeConfig) => {
   app.set('query parser', 'simple');
   app.set('trust proxy', config.trustProxyHops);
   app.use(helmet(createHelmetOptions(config.isProduction)));
+  app.use('/health/ready', limiters.readiness);
+  app.use(
+    '/health',
+    createHealthRouter({
+      cacheMs: config.readinessCacheMs,
+      readinessCheck,
+    })
+  );
   app.use(cors(createCorsOptions(config.allowedOrigins)));
   app.use('/api', createUnsafeRequestOriginGuard(config.allowedOrigins));
 
@@ -333,19 +468,86 @@ const createApp = (env = process.env, runtimeConfig) => {
   return app;
 };
 
-const startServer = async () => {
-  const runtimeConfig = validateRuntimeConfig(process.env);
-  const app = createApp(process.env, runtimeConfig);
-  const db = require('./models');
+const listenForConnections = (app, port, logger = console) =>
+  new Promise((resolve, reject) => {
+    const server = app.listen(port);
+    const handleError = (error) => {
+      server.off('listening', handleListening);
+      reject(error);
+    };
+    const handleListening = () => {
+      server.off('error', handleError);
+      logger.log(`server is running on port ${port}...`);
+      resolve(server);
+    };
 
-  await db.sequelize.sync();
-  console.log('database connected');
-
-  const server = app.listen(runtimeConfig.port, () => {
-    console.log(`server is running on port ${runtimeConfig.port}...`);
+    server.once('error', handleError);
+    server.once('listening', handleListening);
   });
 
-  return { app, server };
+const startServer = async ({
+  env = process.env,
+  loadDatabase = () => require('./models'),
+  logger = console,
+  processTarget = process,
+} = {}) => {
+  const runtimeConfig = validateRuntimeConfig(env);
+  const db = loadDatabase();
+  const lifecycleState = { isShuttingDown: false };
+
+  try {
+    await assertDatabaseReady(db.sequelize);
+    if (runtimeConfig.isProduction) {
+      await assertAdminAccountReady(
+        db.sequelize,
+        runtimeConfig.adminUserName,
+        runtimeConfig.adminPasswordBcryptCost
+      );
+      await assertSettingsSingletonReady(db.sequelize);
+    }
+    logger.log('database connected and migrations are current');
+
+    const app = createApp(env, runtimeConfig, {
+      readinessCheck: async () => {
+        if (lifecycleState.isShuttingDown) {
+          throw new Error('Server is shutting down');
+        }
+        await db.sequelize.authenticate();
+      },
+    });
+    const server = await listenForConnections(
+      app,
+      runtimeConfig.port,
+      logger
+    );
+    const shutdownManager = createShutdownManager({
+      closeMailTransporter,
+      lifecycleState,
+      logger,
+      processTarget,
+      sequelize: db.sequelize,
+      server,
+      timeoutMs: runtimeConfig.shutdownTimeoutMs,
+    });
+
+    return {
+      app,
+      server,
+      shutdown: shutdownManager.shutdown,
+    };
+  } catch (error) {
+    try {
+      closeMailTransporter();
+    } catch (_closeError) {
+      // Preserve the original startup failure. There is no safe recovery path
+      // for a mail-pool close error while startup itself is already failing.
+    }
+    await closeDatabaseConnection(
+      db.sequelize,
+      runtimeConfig.shutdownTimeoutMs
+    ).catch(() => {});
+    throw error;
+  }
 };
 
 if (require.main === module) {
@@ -357,10 +559,14 @@ if (require.main === module) {
 
 module.exports = {
   createApp,
+  createHealthRouter,
   createHelmetOptions,
   createRateLimiters,
   createUnsafeRequestOriginGuard,
   parseAllowedOrigins,
+  assertDatabaseReady,
+  assertSettingsSingletonReady,
+  listenForConnections,
   startServer,
   validateRuntimeConfig,
 };

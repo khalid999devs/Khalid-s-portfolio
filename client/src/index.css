@@ -1,6 +1,23 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@theme {
+  --color-primary-main: #ffffff;
+  --color-primary-dark: #2f2e31;
+  --color-onPrimary-main: #d5d5d5;
+  --color-onPrimary-dark: #bcbcbc;
+  --color-secondary-main: #6b6b6c;
+  --color-secondary-light: #919191;
+  --color-secondary-dark: #8e8e8e;
+  --color-muted-main: #a0a0a2;
+  --color-muted-light: #b4b4b6;
+  --color-muted-dark: #a8a8aa;
+  --color-body-main: #161616;
+
+  --breakpoint-mds: 770px;
+  --breakpoint-mdl: 860px;
+  --breakpoint-2xl: 1380px;
+  --breakpoint-3xl: 1520px;
+}
 
 @font-face {
   font-family: 'PP Neue Montreal Mono';
@@ -121,7 +138,7 @@ canvas {
 @layer base {
   * {
     scrollbar-width: thin;
-    scrollbar-color: theme('colors.secondary.main') theme('colors.body.main');
+    scrollbar-color: var(--color-secondary-main) var(--color-body-main);
   }
 
   *::-webkit-scrollbar {
@@ -130,17 +147,17 @@ canvas {
   }
 
   *::-webkit-scrollbar-track {
-    background: theme('colors.body.main');
+    background: var(--color-body-main);
   }
 
   *::-webkit-scrollbar-thumb {
-    background: theme('colors.secondary.main');
+    background: var(--color-secondary-main);
     border-radius: 6px;
-    border: 3px solid theme('colors.body.main');
+    border: 3px solid var(--color-body-main);
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background: theme('colors.secondary.light');
+    background: var(--color-secondary-light);
   }
 }
 
@@ -162,30 +179,6 @@ canvas {
     @apply h-[calc(100vh-60px)];
   }
 
-  .btn {
-    @apply px-5 py-2 rounded-3xl bg-blue my-5 hover:bg-transparent border border-transparent hover:border hover:text-blue hover:border-blue;
-  }
-
-  .color-container {
-    @apply flex items-center justify-center px-4 py-4 rounded-full bg-gray-300 backdrop-blur;
-  }
-
-  .size-btn-container {
-    @apply flex items-center justify-center p-1 rounded-full bg-gray-300 backdrop-blur ml-3 gap-1;
-  }
-
-  .size-btn {
-    @apply w-10 h-10 text-sm flex justify-center items-center bg-white text-black rounded-full transition-all;
-  }
-
-  .common-padding {
-    @apply sm:py-32 py-20 sm:px-10 px-5;
-  }
-
-  .section-heading {
-    @apply text-gray lg:text-6xl md:text-5xl text-3xl lg:mb-0 mb-5 font-medium opacity-0 translate-y-20;
-  }
-
   .pointer-none {
     @apply pointer-events-none;
   }
@@ -195,15 +188,11 @@ canvas {
   }
 
   .page-blocks-container {
-    @apply fixed top-0 left-0 w-[100vw] h-screen flex flex-col pointer-events-none z-50;
-  }
-
-  .row {
-    @apply flex-1 w-full flex;
+    @apply fixed inset-0 w-full h-dvh flex pointer-events-none z-50;
   }
 
   .block-motion {
-    @apply relative flex-1 bg-onPrimary-main -m-[0.25px];
+    @apply relative w-full h-full bg-onPrimary-main;
   }
 
   .transition-in .block-motion {
@@ -263,14 +252,14 @@ canvas {
 }
 
 /* cursor animation */
-.block {
+.cursor-grid-cell {
   width: 50px;
   height: 50px;
   border: 0.01px solid rgba(255, 255, 255, 0.005);
   transition: border-color 0.3s ease;
 }
 
-.highlight {
+.cursor-grid-highlight {
   border-color: rgba(255, 255, 255, 0.3);
 }
 

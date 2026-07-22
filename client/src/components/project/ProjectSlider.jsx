@@ -28,6 +28,12 @@ const ProjectSlider = ({ sliderContents }) => {
 
       if (scrollTriggerRef.current) {
         scrollTriggerRef.current.kill();
+        scrollTriggerRef.current = null;
+      }
+
+      if (!Number.isFinite(totalWidth) || totalWidth <= 0) {
+        gsap.set(slider, { x: 0 });
+        return undefined;
       }
 
       const scrollTween = gsap.to(slider, {
@@ -72,7 +78,7 @@ const ProjectSlider = ({ sliderContents }) => {
         {sliderContents?.map((item, index) => (
           <div
             key={item.id}
-            className='max-w-[98%] lg:max-w-[80%] rounded-[18px] h-auto flex-shrink-0 pointer-all overflow-hidden bg-body-main'
+            className='max-w-[98%] lg:max-w-[80%] rounded-[18px] h-auto shrink-0 pointer-all overflow-hidden bg-body-main'
           >
             <a
               href={reqFileWrapper(item?.url)}
@@ -96,7 +102,7 @@ const ProjectSlider = ({ sliderContents }) => {
         {sliderContents?.map((item, index) => (
           <div
             key={item.id}
-            className='w-full rounded-[18px] h-auto flex-shrink-0 pointer-all overflow-hidden bg-body-main'
+            className='w-full rounded-[18px] h-auto shrink-0 pointer-all overflow-hidden bg-body-main'
           >
             <a
               href={reqFileWrapper(item?.url)}

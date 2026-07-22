@@ -46,3 +46,36 @@ test('technology settings accept a stored JSON representation', () => {
 
   assert.deepEqual({ ...technologies }, { database: ['MySQL'] });
 });
+
+test('technology settings normalize Unicode and reject control characters', () => {
+  const technologies = normalizeTechnologies({
+    'Cafe\u0301': [' Re\u0301act '],
+  });
+
+  assert.deepEqual({ ...technologies }, { Café: ['Réact'] });
+  assert.throws(
+    () => normalizeTechnologies({ 'front\nend': ['React'] }),
+    /group names are invalid/
+  );
+  assert.throws(
+    () => normalizeTechnologies({ frontend: ['React\u0000JS'] }),
+    /between 1 and 100 characters/
+  );
+});
+
+test('technology settings reject a serialized value larger than MySQL TEXT', () => {
+  const technologies = Object.fromEntries(
+    Array.from({ length: 50 }, (_, groupIndex) => [
+      `group-${groupIndex}`,
+      Array.from(
+        { length: 100 },
+        (_, itemIndex) => `technology-${groupIndex}-${itemIndex}-xxxxxxxx`
+      ),
+    ])
+  );
+
+  assert.throws(
+    () => normalizeTechnologies(technologies),
+    /storage limit/
+  );
+});

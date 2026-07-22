@@ -29,10 +29,10 @@ const AdminNav = () => {
             key={key}
             to={item.path}
             className={({ isActive }) =>
-              `py-2.5 px-4 flex items-center gap-3 group duration-300 transition-all text-lg text-secondary-light w-full group hover:bg-primary-dark hover:text-onPrimary-main rounded-lg ${
+              `py-2.5 px-4 flex items-center gap-3 group duration-300 transition-all text-lg text-muted-light w-full group hover:bg-primary-dark hover:text-onPrimary-main rounded-lg ${
                 isActive &&
                 !(window.location.pathname !== '/admin' && item.path === '') &&
-                'bg-primary-dark !text-onPrimary-main'
+                'bg-primary-dark text-onPrimary-main!'
               }`
             }
           >
@@ -47,7 +47,7 @@ const AdminNav = () => {
       <div>
         <button
           type='button'
-          className='py-2.5 px-4 flex items-center gap-3 group duration-300 transition-all text-lg text-secondary-light w-full group hover:bg-primary-dark hover:text-onPrimary-main rounded-lg'
+          className='py-2.5 px-4 flex items-center gap-3 group duration-300 transition-all text-lg text-muted-light w-full group hover:bg-primary-dark hover:text-onPrimary-main rounded-lg'
           onClick={handleAdminLogOut}
         >
           <MdLogout

@@ -42,32 +42,59 @@ const Hero = () => {
   const [showTooltip, setShowTooltip] = useState(false);
   const [sceneStatus, setSceneStatus] = useState('checking');
 
-  const { isActive, isDesktop, isLoaded, setIsLoaded, handleClick } =
-    useMichibotInteraction(botContainerRef, heroRef);
+  const {
+    isActive,
+    isDesktop,
+    isLoaded,
+    prefersReducedMotion,
+    setIsLoaded,
+    handleClick,
+  } = useMichibotInteraction(botContainerRef, heroRef);
 
   const handleSceneLoad = useCallback(() => {
     setIsLoaded(true);
   }, [setIsLoaded]);
 
   useEffect(() => {
+    const animationHandles = [];
+
     if (nameTitleRef.current) {
-      textBlinkAnimateByWord(nameTitleRef.current);
+      const handle = textBlinkAnimateByWord(nameTitleRef.current);
+      if (handle) animationHandles.push(handle);
     }
     if (developerTitleRef.current) {
-      textBlinkAnimation(developerTitleRef.current);
+      const handle = textBlinkAnimation(developerTitleRef.current);
+      if (handle) animationHandles.push(handle);
     }
     if (heroRef.current) {
       if (countryRef.current) {
-        wordBlinkAnimation(countryRef.current, null, heroRef.current, true);
+        const handle = wordBlinkAnimation(
+          countryRef.current,
+          null,
+          heroRef.current,
+          true
+        );
+        if (handle) animationHandles.push(handle);
       }
       if (passionRef.current) {
-        wordBlinkAnimation(passionRef.current, null, heroRef.current, true);
+        const handle = wordBlinkAnimation(
+          passionRef.current,
+          null,
+          heroRef.current,
+          true
+        );
+        if (handle) animationHandles.push(handle);
       }
     }
+
+    return () => animationHandles.forEach((handle) => handle.kill());
   }, []);
 
   useEffect(() => {
-    if (!supportsWebGL()) {
+    // The decorative model is intentionally desktop-only and motion-sensitive.
+    // Avoid downloading ~2 MB of deferred 3D code/assets for mobile and
+    // reduced-motion users who cannot use the interaction.
+    if (!isDesktop || prefersReducedMotion || !supportsWebGL()) {
       setSceneStatus('unavailable');
       return undefined;
     }
@@ -97,17 +124,17 @@ const Hero = () => {
         window.clearTimeout(fallbackTimerId);
       }
     };
-  }, []);
+  }, [isDesktop, prefersReducedMotion]);
 
   return (
     <div
       ref={heroRef}
       className='min-h-screen body-max-width sec-inner-x-padding grid items-stretch gap-4 w-full pt-[160px] pb-2'
     >
-      <div className='flex relative items-center justify-between mt- w-full'>
+      <div className='flex relative items-center justify-between w-full'>
         <p
           ref={countryRef}
-          className='hidden sm:inline sm:text-[10px] md:text-xs text-montreal-mono text-secondary-light uppercase pointer-all'
+          className='hidden sm:inline sm:text-[10px] md:text-xs text-montreal-mono text-muted-light uppercase pointer-all'
         >
           Based in Bangladesh
         </p>
@@ -120,9 +147,13 @@ const Hero = () => {
             <p className='text-lg xl:text-xl capitalize'>Hi There</p>
           </div>
           <div className='w-full min-h-[20px] flex mt-12 relative'>
-            <div
+            <button
+              type='button'
               ref={botContainerRef}
-              className={`absolute w-[350px] h-[300px] left-[100%] -translate-x-1/2 transition-all duration-300 ${
+              aria-label='Toggle the interactive Michi Bot'
+              aria-pressed={isActive}
+              disabled={!isDesktop || !isLoaded || prefersReducedMotion}
+              className={`pointer-all absolute w-[350px] h-[300px] left-[100%] -translate-x-1/2 transition-all duration-300 disabled:pointer-events-none ${
                 isDesktop && isLoaded ? 'cursor-pointer' : ''
               } ${isActive ? 'z-50 michibot-active' : 'z-40'}`}
               onClick={handleClick}
@@ -146,12 +177,12 @@ const Hero = () => {
               ) : (
                 <BotPlaceholder />
               )}
-            </div>
+            </button>
           </div>
         </div>
         <p
           ref={passionRef}
-          className='hidden sm:inline sm:text-[11px] text-xs text-montreal-mono text-secondary-light uppercase pointer-all'
+          className='hidden sm:inline sm:text-[11px] text-xs text-montreal-mono text-muted-light uppercase pointer-all'
         >
           Passionate Programmer
         </p>

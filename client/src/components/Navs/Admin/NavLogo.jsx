@@ -8,9 +8,13 @@ const NavLogo = ({ onClick }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let animationHandle;
+
     if (logoRef.current) {
-      textBlinkAnimation(logoRef.current);
+      animationHandle = textBlinkAnimation(logoRef.current);
     }
+
+    return () => animationHandle?.kill();
   }, [navigate]);
 
   return (
@@ -29,7 +33,7 @@ const NavLogo = ({ onClick }) => {
       ></span>
       <span
         ref={logoRef}
-        className='text-onPrimary-main !text-pp-eiko uppercase text-md'
+        className='text-onPrimary-main text-pp-eiko uppercase text-base'
         style={{
           fontFamily: 'PP Eiko',
         }}

@@ -29,16 +29,22 @@ const adminValidate = async (req, res, next) => {
   if (
     validAdmin.role !== 'admin' ||
     !Number.isInteger(validAdmin.id) ||
+    !Number.isSafeInteger(validAdmin.sessionVersion) ||
+    validAdmin.sessionVersion < 0 ||
     validAdmin.sub !== String(validAdmin.id)
   ) {
     throw new UnauthenticatedError('Invalid or expired admin session');
   }
 
   const existingAdmin = await Admin.findByPk(validAdmin.id, {
-    attributes: ['id', 'userName'],
+    attributes: ['id', 'sessionVersion', 'userName'],
   });
 
-  if (!existingAdmin || existingAdmin.userName !== validAdmin.userName) {
+  if (
+    !existingAdmin ||
+    existingAdmin.userName !== validAdmin.userName ||
+    existingAdmin.sessionVersion !== validAdmin.sessionVersion
+  ) {
     throw new UnauthenticatedError('Invalid or expired admin session');
   }
 

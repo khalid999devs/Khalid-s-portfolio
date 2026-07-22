@@ -14,6 +14,7 @@ const ProjectTitles = ({
   categories,
   handleCreateProject,
   handleUpdateProjectInfos,
+  disabled,
 }) => {
   const [titlesData, setTitlesData] = useState({
     title: '',
@@ -87,7 +88,7 @@ const ProjectTitles = ({
     <div className='grid gap-8 col-span-10 lg:col-span-7'>
       <div className='box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8 pb-11'>
         <div className='grid gap-8'>
-          <h1 className='text-md'>Please enter following information</h1>
+          <h1 className='text-base'>Please enter following information</h1>
           <div className='grid gap-6'>
             <div className='grid gap-8 w-full md:grid-cols-2'>
               <Input
@@ -122,7 +123,7 @@ const ProjectTitles = ({
 
             <div className='grid gap-3 h-min'>
               <div>
-                <h2 className='text-secondary-light text-sm'>Role</h2>
+                <h2 className='text-muted-light text-sm'>Role</h2>
               </div>
 
               <FormIconLists
@@ -192,7 +193,7 @@ const ProjectTitles = ({
                           key={key}
                           className={`w-full py-3 px-3 ${
                             key + 1 != filteredCategories.length
-                              ? 'border-b border-b-1 border-b-primary-main border-opacity-30'
+                              ? 'border-b border-b-primary-main/30'
                               : ''
                           } capitalize cursor-pointer transition-all duration-300 hover:bg-neutral-700 text-sm text-left`}
                           onClick={() => {
@@ -229,6 +230,7 @@ const ProjectTitles = ({
       <div className='flex w-full items-end justify-end'>
         <div className='flex items-center gap-3 justify-center'>
           <PrimaryButton
+            disabled={disabled}
             // state='small'
             text={mode === 'create' ? 'Create Project' : 'NEXT PAGE'}
             Icon={mode === 'create' ? MdDone : null}
@@ -241,6 +243,7 @@ const ProjectTitles = ({
           />
           {mode === 'edit' && (
             <PrimaryButton
+              disabled={disabled}
               // state='small'
               text={'UPDATE'}
               Icon={IoArrowUp}
@@ -261,22 +264,16 @@ ProjectTitles.propTypes = {
     title: PropTypes.string,
     subtitle: PropTypes.string,
     overview: PropTypes.string,
-    role: PropTypes.string,
+    role: PropTypes.arrayOf(PropTypes.string),
     category: PropTypes.string,
     date: PropTypes.string,
     locationYear: PropTypes.string,
   }),
   setFormMode: PropTypes.func,
-  categories: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.number,
-      name: PropTypes.string,
-      length: PropTypes.number,
-      filter: PropTypes.func,
-    })
-  ),
+  categories: PropTypes.arrayOf(PropTypes.string),
   handleCreateProject: PropTypes.func,
   handleUpdateProjectInfos: PropTypes.func,
+  disabled: PropTypes.bool,
 };
 
 export default ProjectTitles;

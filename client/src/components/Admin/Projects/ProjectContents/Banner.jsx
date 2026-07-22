@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react';
 import ImgFileUploader from '../../../utils/ImgFileUploader';
 import PropTypes from 'prop-types';
 
-const Banner = ({ projectData, handleSubmit, mode, handleDelete }) => {
+const Banner = ({
+  projectData,
+  handleSubmit,
+  mode,
+  handleDelete,
+  disabled,
+}) => {
   const [banner, setBanner] = useState({});
 
   useEffect(() => {
@@ -14,23 +20,26 @@ const Banner = ({ projectData, handleSubmit, mode, handleDelete }) => {
   return (
     <div className='box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8 col-span-10 lg:col-span-4'>
       <div className='flex flex-col w-full gap-3 h-full'>
-        <h3 className='text-secondary-light font-medium opacity-90 text-sm h-min'>
+        <h3 className='text-muted-light font-medium opacity-90 text-sm h-min'>
           Project Banner
         </h3>
         <div className='h-full w-full'>
           <ImgFileUploader
             dragActiveText={'Drop Banner Image here!'}
             fileImg={banner}
-            onLoad={(file) => {
-              setBanner(file);
-              handleSubmit({ bannerImg: file }, 'bannerImg');
+            onLoad={async (file) => {
+              if (await handleSubmit({ bannerImg: file }, 'bannerImg')) {
+                setBanner(file);
+              }
             }}
             mode={mode}
             clearFileImg={() => {
-              handleDelete('bannerImg');
-              setBanner({});
+              handleDelete('bannerImg').then((deleted) => {
+                if (deleted) setBanner({});
+              });
             }}
             type='single'
+            disabled={disabled}
           />
         </div>
       </div>
@@ -47,6 +56,7 @@ Banner.propTypes = {
   handleSubmit: PropTypes.func,
   mode: PropTypes.string,
   handleDelete: PropTypes.func,
+  disabled: PropTypes.bool,
 };
 
 export default Banner;

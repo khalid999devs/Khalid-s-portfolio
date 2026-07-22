@@ -9,6 +9,8 @@ const {
 } = require('../controllers/contact');
 const {
   normalizeContactMessage,
+  normalizeEmailDeliveryRequest,
+  normalizeSmsDeliveryRequest,
   parseMessageListQuery,
 } = require('../utils/contactValidation');
 const { htmlCreator } = require('../utils/htmlTemplates');
@@ -224,11 +226,99 @@ test('contact replies reject ambiguous IDs and oversized content before sending'
         params: { mode: 'custom' },
         body: {
           email: 'recipient@example.com',
+          subject: 'Subject',
           text: 'x'.repeat(5_001),
         },
       },
       {}
     ),
     /between 1 and 5000/
+  );
+});
+
+test('outbound email requests are mode-specific, normalized, and bounded', () => {
+  assert.deepEqual(
+    normalizeEmailDeliveryRequest('custom', {
+      email: 'Ada@Example.COM',
+      name: '  Ada   Lovelace ',
+      subject: '  Portfolio enquiry ',
+      text: ' Hello\r\nWorld ',
+    }),
+    {
+      contactId: null,
+      email: 'Ada@example.com',
+      name: 'Ada Lovelace',
+      subject: 'Portfolio enquiry',
+      text: 'Hello\nWorld',
+    }
+  );
+
+  assert.deepEqual(
+    normalizeEmailDeliveryRequest('contact', { id: '42', text: ' Reply ' }),
+    {
+      contactId: 42,
+      email: null,
+      name: null,
+      subject: null,
+      text: 'Reply',
+    }
+  );
+
+  assert.throws(
+    () =>
+      normalizeEmailDeliveryRequest('custom', {
+        email: 'recipient@example.com',
+        subject: 'Hello\nBcc: hidden@example.com',
+        text: 'Message',
+      }),
+    /subject must be valid text/
+  );
+  assert.throws(
+    () =>
+      normalizeEmailDeliveryRequest('contact', {
+        id: 1,
+        text: 'Reply',
+        email: 'ignored@example.com',
+      }),
+    /Unexpected field: email/
+  );
+  assert.throws(
+    () => normalizeEmailDeliveryRequest('custom'),
+    /Request body must be an object/
+  );
+});
+
+test('outbound SMS requests reject unknown modes, fields, and oversized text', () => {
+  assert.deepEqual(
+    normalizeSmsDeliveryRequest('custom', {
+      phone: '+880 1712-345678',
+      message: ' Hello ',
+    }),
+    { phone: '01712345678', message: 'Hello' }
+  );
+  assert.throws(
+    () =>
+      normalizeSmsDeliveryRequest('contact', {
+        phone: '01712345678',
+        message: 'Hello',
+      }),
+    /Unsupported SMS delivery mode/
+  );
+  assert.throws(
+    () =>
+      normalizeSmsDeliveryRequest('custom', {
+        phone: '01712345678',
+        message: 'Hello',
+        provider: 'alternate',
+      }),
+    /Unexpected field: provider/
+  );
+  assert.throws(
+    () =>
+      normalizeSmsDeliveryRequest('custom', {
+        phone: '01712345678',
+        message: 'x'.repeat(1_001),
+      }),
+    /between 1 and 1000/
   );
 });

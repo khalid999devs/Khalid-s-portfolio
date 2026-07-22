@@ -25,7 +25,7 @@ import MetaCard from '../components/utils/MetaCard';
 
 const About = () => {
   const [technologies, setTechnologies] = useState([]);
-  const { settings } = useAppContext();
+  const { resumeAvailable, settings } = useAppContext();
   const aboutHeaderRef = useRef(null);
 
   const aboutPageTextRef = useRef(null);
@@ -48,11 +48,13 @@ const About = () => {
       top: 0,
       left: 0,
     });
-  }, [loc.pathname, settings]);
+  }, [loc.pathname]);
 
   useEffect(() => {
+    let headerAnimation;
+
     if (aboutHeaderRef.current) {
-      textBlinkAnimation(aboutHeaderRef.current);
+      headerAnimation = textBlinkAnimation(aboutHeaderRef.current);
     }
     let st1, st2;
 
@@ -82,6 +84,7 @@ const About = () => {
     }, 400);
 
     return () => {
+      headerAnimation?.kill();
       if (st1) {
         st1.kill();
       }
@@ -117,7 +120,7 @@ const About = () => {
             >
               <p
                 ref={aboutPageTextRef}
-                className='text-secondary-main md:text-md xl:text-lg uppercase pointer-all'
+                className='text-muted-main md:text-base xl:text-lg uppercase pointer-all'
                 style={{
                   wordSpacing: '0.15rem',
                 }}
@@ -127,12 +130,14 @@ const About = () => {
                 problems through code and enjoy collaborating with diverse teams
                 to create impactful solutions.
               </p>
-              <div className='w-full justify-start flex md:justify-end items-end pr-1'>
-                <OutlinedBigIcon
-                  text={'DOWNLOAD CV'}
-                  onClick={() => downloadResume()}
-                />
-              </div>
+              {resumeAvailable && (
+                <div className='w-full justify-start flex md:justify-end items-end pr-1'>
+                  <OutlinedBigIcon
+                    text={'DOWNLOAD CV'}
+                    onClick={downloadResume}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -162,7 +167,7 @@ const About = () => {
             <SectionLabel text={'TALKS'} />
             <div className='flex mt-8 gap-12 md:gap-[130px] lg:gap-[140px] flex-col w-full md:min-w-[120px] h-full md:max-w-[350px] lg:max-w-[540px] 3xl:pt-12 3xl:gap-32'>
               <p
-                className='text-secondary-main md:text-md xl:text-lg uppercase indent-14'
+                className='text-muted-main md:text-base xl:text-lg uppercase indent-14'
                 style={{
                   wordSpacing: '0.15rem',
                 }}
@@ -249,7 +254,7 @@ const About = () => {
               className='w-full grid gap-3 group cursor-pointer pointer-all'
             >
               <div className='flex items-start gap-4 justify-between'>
-                <span className='text-secondary-light text-sm text-montreal-mono cursor-pointer pointer-all group-hover:underline'>
+                <span className='text-muted-light text-sm text-montreal-mono cursor-pointer pointer-all group-hover:underline'>
                   {item.company}
                 </span>
                 <span className='text-xs text-onPrimary-dark'>{item.date}</span>
@@ -277,7 +282,7 @@ const About = () => {
               className='w-full grid gap-3 group cursor-pointer pointer-all'
             >
               <div className='flex items-start gap-4 justify-between'>
-                <span className='text-secondary-light text-sm text-montreal-mono cursor-pointer pointer-all group-hover:underline'>
+                <span className='text-muted-light text-sm text-montreal-mono cursor-pointer pointer-all group-hover:underline'>
                   {item.from}
                 </span>
                 <span className='text-xs text-onPrimary-dark'>{item.date}</span>
@@ -300,7 +305,7 @@ const About = () => {
           <React.Fragment key={key}>
             <div className='w-full grid gap-3'>
               <div className='flex items-start gap-4 justify-between'>
-                <span className='text-secondary-light text-sm text-montreal-mono'>
+                <span className='text-muted-light text-sm text-montreal-mono'>
                   {item.degree}
                 </span>
                 <span className='text-xs text-onPrimary-dark'>{item.date}</span>
