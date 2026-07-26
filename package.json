@@ -2,6 +2,7 @@
   "name": "my-portfolio",
   "version": "1.0.0",
   "private": true,
+  "license": "UNLICENSED",
   "description": "Portfolio frontend and API workspace",
   "engines": {
     "node": ">=24 <25",
@@ -13,8 +14,8 @@
     "test": "npm test --prefix server && npm test --prefix client",
     "lint": "npm run lint --prefix client",
     "build": "npm run build --prefix client",
-    "check": "npm run check:syntax --prefix server && npm test --prefix server && npm test --prefix client && npm run lint --prefix client && npm run build --prefix client",
+    "check": "npm run check:syntax --prefix server && npm run test:coverage --prefix server && npm test --prefix client && npm run lint --prefix client && npm run build --prefix client",
     "audit:server": "npm audit --prefix server",
-    "audit:client": "npm audit --prefix client"
+    "audit:client": "npm run audit:dependencies --prefix client"
   }
 }

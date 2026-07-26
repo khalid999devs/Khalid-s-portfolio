@@ -1,8 +1,41 @@
-Creative Commons Attribution-NoDerivatives 4.0 International (CC BY-ND 4.0)
+Copyright (c) 2026 Khalid Ahammed. All rights reserved.
 
-This work is licensed under a Creative Commons Attribution-NoDerivatives 4.0 International License.  
-You may share this work **only in its original form**, with proper credit to the author.  
-Modification, adaptation, or redistribution in altered form is **strictly prohibited**.
+This repository is source-available, not open source. It is published so that
+the author's engineering work can be read and evaluated. No license to use the
+software is granted, whether express or implied, except as stated below.
 
-For full license terms, visit:  
-https://creativecommons.org/licenses/by-nd/4.0/
+PERMITTED
+
+  - Viewing, reading, and referencing this source code for the purpose of
+    evaluating the author's work, or for private study.
+
+NOT PERMITTED WITHOUT PRIOR WRITTEN PERMISSION
+
+  - Copying, modifying, merging, publishing, distributing, sublicensing, or
+    selling this software or any substantial portion of it.
+  - Deploying or hosting this application, in whole or in part, whether
+    modified or unmodified.
+  - Reusing the visual design, layout, written content, project case studies,
+    photography, or other media contained in this repository.
+  - Using the author's name or likeness other than as attribution accompanying
+    permitted evaluation.
+
+THIRD-PARTY MATERIAL
+
+  This repository contains third-party material that this notice does not and
+  cannot relicense. Such material remains under its own terms, which take
+  precedence over this notice. In particular, `client/public/scene.glb`
+  identifies its source model as CC BY-NC 4.0, and the bundled font files
+  remain subject to their respective licenses. Anyone relying on that material
+  must verify its terms independently.
+
+NO WARRANTY
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN
+  ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN
+  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+For permission beyond the scope of this notice, contact the author.
