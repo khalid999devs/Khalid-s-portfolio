@@ -12,7 +12,9 @@
     "start": "node index.js",
     "admin:bootstrap": "node scripts/admin-account.js bootstrap",
     "admin:rotate": "node scripts/admin-account.js rotate",
-    "test": "node --test test/"
+    "test": "node --test test/",
+    "migrate": "node scripts/migrate.js up",
+    "migrate:status": "node scripts/migrate.js status"
   },
   "author": "",
   "license": "ISC",
