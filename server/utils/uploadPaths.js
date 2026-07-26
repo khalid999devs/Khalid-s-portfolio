@@ -3,7 +3,25 @@ const { realpath } = require('fs/promises');
 const { isAbsolute, relative, resolve, sep } = require('path');
 
 const SERVER_ROOT = resolve(__dirname, '..');
-const UPLOADS_ROOT = resolve(SERVER_ROOT, 'uploads');
+
+// Stored database paths stay relative ("uploads/projects/12/..."), so they are
+// host-independent and survive a database dump moving between machines. Only
+// the physical location of the bytes is configurable: point UPLOADS_DIR at a
+// mounted volume or attached disk and the same rows keep resolving. Leaving it
+// unset keeps media beside the application, which is fine for a single box but
+// is lost on any deploy that replaces the directory.
+const resolveUploadsRoot = (environment = process.env) => {
+  const configured = environment.UPLOADS_DIR?.trim();
+  if (!configured) return resolve(SERVER_ROOT, 'uploads');
+
+  if (!isAbsolute(configured)) {
+    throw new Error('UPLOADS_DIR must be an absolute path');
+  }
+
+  return resolve(configured);
+};
+
+const UPLOADS_ROOT = resolveUploadsRoot();
 
 const isOutsideRoot = (root, candidate) => {
   const relativePath = relative(root, candidate);
@@ -20,7 +38,12 @@ const assertStoredUploadPath = (storedPath) => {
     throw new TypeError('Upload path must be a non-empty string');
   }
 
-  if (storedPath !== storedPath.trim() || storedPath.includes('\0')) {
+  if (
+    storedPath !== storedPath.trim() ||
+    storedPath.includes('\0') ||
+    storedPath.includes('?') ||
+    storedPath.includes('#')
+  ) {
     throw new Error('Upload path contains invalid characters');
   }
 
@@ -43,7 +66,13 @@ const assertStoredUploadPath = (storedPath) => {
 const resolveStoredUploadPath = (storedPath) => {
   assertStoredUploadPath(storedPath);
 
-  const resolvedPath = resolve(SERVER_ROOT, ...storedPath.split('/'));
+  // The validator guarantees the first segment is "uploads". Resolve the rest
+  // against the configured root rather than the server directory, so a stored
+  // path keeps pointing at the bytes when media lives on a mounted volume.
+  const resolvedPath = resolve(
+    UPLOADS_ROOT,
+    ...storedPath.split('/').slice(1)
+  );
   if (isOutsideRoot(UPLOADS_ROOT, resolvedPath)) {
     throw new Error('Upload path resolves outside the uploads directory');
   }
@@ -94,14 +123,16 @@ const toStoredUploadPath = (filePath) => {
     throw new Error('Uploaded file path must identify a file');
   }
 
-  return `uploads/${relativePath.split(sep).join('/')}`;
+  const storedPath = `uploads/${relativePath.split(sep).join('/')}`;
+  assertStoredUploadPath(storedPath);
+  return storedPath;
 };
 
 module.exports = {
-  SERVER_ROOT,
   UPLOADS_ROOT,
   assertExistingPathIsContained,
   assertExistingPathIsContainedAsync,
   resolveStoredUploadPath,
+  resolveUploadsRoot,
   toStoredUploadPath,
 };

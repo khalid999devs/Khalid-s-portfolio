@@ -1,24 +1,30 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "",
+  "private": true,
+  "description": "Portfolio API: projects, settings, media, and administrator workflows",
   "main": "index.js",
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=24 <25",
+    "npm": ">=11 <12"
   },
+  "packageManager": "npm@11.16.0",
   "scripts": {
     "admin:bootstrap": "node scripts/admin-account.js bootstrap",
     "admin:rotate": "node scripts/admin-account.js rotate",
     "check:syntax": "find . -path ./node_modules -prune -o -name '*.js' -type f -exec node --check {} \\;",
-    "db:migrate": "sequelize-cli db:migrate",
-    "db:migrate:production": "sequelize-cli db:migrate --env production",
-    "db:migrate:status": "sequelize-cli db:migrate:status",
+    "db:migrate": "node scripts/migrate.js up",
+    "media:verify": "node scripts/media.js verify",
+    "media:orphans": "node scripts/media.js orphans",
+    "db:migrate:production": "node scripts/migrate.js up --env production",
+    "db:migrate:status": "node scripts/migrate.js status",
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-lines=80 --test-coverage-branches=70 --test-coverage-functions=75"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Khalid Ahammed",
+  "license": "UNLICENSED",
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
@@ -33,7 +39,7 @@
     "mysql2": "^3.23.1",
     "nodemailer": "^9.0.3",
     "sequelize": "^6.37.8",
-    "sequelize-cli": "^6.6.5"
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
