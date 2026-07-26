@@ -1,20 +1,40 @@
 import { FaExclamationTriangle } from 'react-icons/fa';
-import { Link, useLocation } from 'react-router-dom';
+import {
+  isRouteErrorResponse,
+  Link,
+  useLocation,
+  useRouteError,
+} from 'react-router-dom';
+import MetaCard from '../components/utils/MetaCard';
 
 const ErrorPage = () => {
   const location = useLocation();
+  const routeError = useRouteError();
   const isServiceError = location.state?.errorType === 'service';
   const retryPath = location.state?.retryPath;
-  const status = isServiceError ? '503' : '404';
+  const routeStatus = isRouteErrorResponse(routeError)
+    ? routeError.status
+    : routeError
+    ? 500
+    : 404;
+  const isNotFound = routeStatus === 404;
+  const status = String(isServiceError ? 503 : routeStatus);
   const heading = isServiceError
     ? 'Portfolio temporarily unavailable'
-    : 'Oops! Page not found';
+    : isNotFound
+    ? 'Oops! Page not found'
+    : 'Something went wrong';
   const description = isServiceError
     ? 'The project could not be loaded because the service did not respond. Please try again.'
-    : 'The page you’re looking for doesn’t exist or might have been moved.';
+    : isNotFound
+    ? 'The page you’re looking for doesn’t exist or might have been moved.'
+    : 'The page could not be displayed safely. Return home and try again.';
 
   return (
     <div className='min-h-screen bg-body-main flex items-center justify-center p-6'>
+      {/* Error states must never be indexed, and must never claim a canonical
+          URL that would invite a crawler back to the failing address. */}
+      <MetaCard title={heading} description={description} noIndex />
       <div className='bg-primary-dark text-primary-main rounded-2xl shadow-xl p-10 max-w-xl w-full text-center'>
         <FaExclamationTriangle
           aria-hidden='true'

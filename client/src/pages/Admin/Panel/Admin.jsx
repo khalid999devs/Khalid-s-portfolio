@@ -4,6 +4,7 @@ import AdminBar from '../../../components/Navs/Admin/AdminBar';
 import AdminNav from '../../../components/Navs/Admin/AdminNav';
 import axios from 'axios';
 import { reqs } from '../../../axios/requests';
+import MetaCard from '../../../components/utils/MetaCard';
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -47,15 +48,16 @@ const Admin = () => {
 
   return (
     <div className='bg-body-main min-h-screen w-full'>
+      <MetaCard title='Administrator' noIndex />
       <AdminBar title={pageTitle} />
       <div className='mt-7 sec-x-padding screen-max-width flex gap-x-10 h-full w-full'>
         <div className='max-w-[185px] w-full min-h-[400px]'>
           <AdminNav />
         </div>
 
-        <div className='w-full min-h-[400px]'>
+        <main className='w-full min-h-[400px]'>
           <Outlet context={{ setPageTitle }} />
-        </div>
+        </main>
       </div>
     </div>
   );

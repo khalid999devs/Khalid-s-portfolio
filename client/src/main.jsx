@@ -1,8 +1,12 @@
 /* eslint-disable react-refresh/only-export-components */
 import { lazy, StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { HelmetProvider } from 'react-helmet-async';
+import {
+  createBrowserRouter,
+  Outlet,
+  RouterProvider,
+  ScrollRestoration,
+} from 'react-router-dom';
 import './axios/global.js';
 import './index.css';
 
@@ -14,7 +18,6 @@ const Home = lazy(() => import('./pages/Home.jsx'));
 const Projects = lazy(() => import('./pages/Projects.jsx'));
 const About = lazy(() => import('./pages/About.jsx'));
 const SingleProject = lazy(() => import('./pages/SingleProject.jsx'));
-const CodingLab = lazy(() => import('./pages/CodingLab.jsx'));
 
 // Admin routes
 const Login = lazy(() => import('./pages/Admin/Auth/Login.jsx'));
@@ -55,74 +58,87 @@ const suspend = (Component, fallback = contentFallback) => (
 
 const router = createBrowserRouter([
   {
-    path: '/',
-    element: suspend(App, fullPageFallback),
-    errorElement: suspend(ErrorPage, fullPageFallback),
+    element: (
+      <>
+        <ScrollRestoration />
+        <Outlet />
+      </>
+    ),
     children: [
       {
-        index: true,
-        element: suspend(Home),
+        path: '/',
+        element: suspend(App, fullPageFallback),
+        errorElement: suspend(ErrorPage, fullPageFallback),
+        children: [
+          {
+            index: true,
+            element: suspend(Home),
+          },
+          {
+            path: 'projects',
+            element: suspend(Projects),
+          },
+          {
+            path: 'about-me',
+            element: suspend(About),
+          },
+          {
+            path: 'singleProject/:value',
+            element: suspend(SingleProject),
+          },
+        ],
       },
       {
-        path: 'projects',
-        element: suspend(Projects),
+        path: '/admin-login',
+        element: suspend(Login, fullPageFallback),
+        errorElement: suspend(ErrorPage, fullPageFallback),
       },
       {
-        path: 'about-me',
-        element: suspend(About),
+        path: '/admin',
+        element: suspend(Admin, fullPageFallback),
+        errorElement: suspend(ErrorPage, fullPageFallback),
+        children: [
+          {
+            index: true,
+            element: suspend(Dashboard),
+          },
+          {
+            path: 'projects',
+            element: suspend(AdminProjects),
+          },
+          {
+            path: 'edit-project/:value',
+            element: suspend(EditProject),
+          },
+          {
+            path: 'add-project',
+            element: suspend(CreateProject),
+          },
+          {
+            path: 'settings',
+            element: suspend(Settings),
+          },
+        ],
       },
       {
-        path: 'singleProject/:value',
-        element: suspend(SingleProject),
+        path: '/error',
+        element: suspend(ErrorPage, fullPageFallback),
       },
+      // Without this, an unmatched URL reached React Router's built-in error
+      // boundary: an unstyled page that still advertised the site's default
+      // title and a canonical link back to the home page. Search engines read
+      // that as a soft 404 and may index the broken URL. The project's own
+      // error page renders a real 404 and withholds both.
       {
-        path: 'coding-lab',
-        element: suspend(CodingLab),
+        path: '*',
+        element: suspend(ErrorPage, fullPageFallback),
       },
     ],
-  },
-  {
-    path: '/admin-login',
-    element: suspend(Login, fullPageFallback),
-    errorElement: suspend(ErrorPage, fullPageFallback),
-  },
-  {
-    path: '/admin',
-    element: suspend(Admin, fullPageFallback),
-    errorElement: suspend(ErrorPage, fullPageFallback),
-    children: [
-      {
-        index: true,
-        element: suspend(Dashboard),
-      },
-      {
-        path: 'projects',
-        element: suspend(AdminProjects),
-      },
-      {
-        path: 'edit-project/:value',
-        element: suspend(EditProject),
-      },
-      {
-        path: 'add-project',
-        element: suspend(CreateProject),
-      },
-      {
-        path: 'settings',
-        element: suspend(Settings),
-      },
-    ],
-  },
-  {
-    path: '/error',
-    element: suspend(ErrorPage, fullPageFallback),
   },
 ]);
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <HelmetProvider>
-      <RouterProvider router={router} />
-    </HelmetProvider>
+    <RouterProvider router={router} />
   </StrictMode>
 );

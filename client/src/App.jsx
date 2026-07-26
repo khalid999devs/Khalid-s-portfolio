@@ -6,7 +6,6 @@ import { reqs } from './axios/requests';
 import MouseMoveEffect from './animations/MouseMoveEffect';
 import AnimatedOutlet from './animations/AnimatedOutlet';
 import { LenisGSAP } from './animations/LenisGSAP';
-import MetaCard from './components/utils/MetaCard';
 
 const AppContext = createContext({});
 
@@ -32,7 +31,7 @@ const App = () => {
     const fetchData = async () => {
       const [settingsResult, projectsResult] = await Promise.allSettled([
         axios.get(reqs.GET_SETTINGS, requestConfig),
-        axios.post(reqs.GET_PROJECT, { mode: 'all' }, requestConfig),
+        axios.get(reqs.GET_PROJECT, requestConfig),
       ]);
 
       if (!isMounted || controller.signal.aborted) return;
@@ -97,7 +96,12 @@ const App = () => {
     <LenisGSAP>
       <AppContext.Provider value={contextValue}>
         <div className='bg-body-main min-h-screen w-full'>
-          <MetaCard />
+          <a
+            href='#main-content'
+            className='sr-only pointer-events-auto fixed left-4 top-4 z-[80] rounded-md bg-primary-main px-4 py-2 text-body-main focus:not-sr-only'
+          >
+            Skip to main content
+          </a>
           <div className='sr-only' role='status' aria-live='polite'>
             {loading ? 'Loading portfolio data.' : ''}
           </div>
@@ -118,7 +122,7 @@ const App = () => {
           )}
           <MouseMoveEffect />
           <Navbar resumeAvailable={resumeAvailable} />
-          <main className='pointer-none'>
+          <main id='main-content' tabIndex='-1' className='pointer-none'>
             <AnimatedOutlet />
           </main>
           <Footer />

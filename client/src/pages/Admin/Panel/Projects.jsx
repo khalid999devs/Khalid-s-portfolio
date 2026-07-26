@@ -22,6 +22,7 @@ import {
   sortableKeyboardCoordinates,
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
+import ProjectDeleteDialog from '../../../components/Admin/Projects/ProjectDeleteDialog.jsx';
 
 const Projects = () => {
   const { setPageTitle } = useOutletContext();
@@ -36,6 +37,7 @@ const Projects = () => {
     state: false,
   });
   const [loading, setLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -50,9 +52,13 @@ const Projects = () => {
 
   const handleDeleteProject = (projectId, projectName) => {
     if (loading) return;
-    deleteProject(projectId, projectName, setLoading, setPopup)
+    setDeleteTarget({ id: projectId, name: projectName });
+  };
+
+  const confirmDeleteProject = ({ id: projectId }) => {
+    deleteProject(projectId, setLoading)
       .then((data) => {
-        if (data.cancelled) return;
+        setDeleteTarget(null);
         setPopup({
           text: data.msg,
           type: 'success',
@@ -63,6 +69,7 @@ const Projects = () => {
         );
       })
       .catch((error) => {
+        setDeleteTarget(null);
         setPopup({
           text: error.msg || 'Something went wrong, please try again.',
           type: 'error',
@@ -198,6 +205,13 @@ const Projects = () => {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      <ProjectDeleteDialog
+        busy={loading}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDeleteProject}
+        project={deleteTarget}
+      />
 
       <Popup
         setPopup={setPopup}

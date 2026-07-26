@@ -6,6 +6,7 @@ import PrimaryButton from '../../../components/Buttons/PrimaryButton';
 import axios from 'axios';
 import { reqs } from '../../../axios/requests';
 import { useNavigate } from 'react-router-dom';
+import MetaCard from '../../../components/utils/MetaCard';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -68,6 +69,7 @@ const Login = () => {
 
   return (
     <div className='min-h-screen'>
+      <MetaCard title='Administrator sign in' noIndex />
       <AdminBar title={'Admin Login'} loginState={true} />
       <div className='max-w-[480px] w-full pt-16 2xl:pt-[150px] m-auto'>
         <form className='grid gap-8' onSubmit={handleSubmit}>
