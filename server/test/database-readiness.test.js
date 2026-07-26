@@ -9,13 +9,39 @@ const {
   assertAdminAccountReady,
   assertDatabaseReady,
   assertSettingsSingletonReady,
+  assertTransactionalTablesReady,
   findMissingMigrations,
   listMigrationFiles,
 } = require('../utils/databaseReadiness');
 
 const baselineMigration = '20260722000000-baseline-schema.js';
+const engineMigration =
+  '20260726000000-ensure-transactional-engines.js';
+const collationMigration =
+  '20260726005000-normalize-charset-collation.js';
+const schemaPreflightMigration =
+  '20260726010000-schema-and-project-data-preflight.js';
+const contactDeliveryMigration =
+  '20260726020000-add-contact-reply-delivery-state.js';
+const migrations = [
+  baselineMigration,
+  engineMigration,
+  collationMigration,
+  schemaPreflightMigration,
+  contactDeliveryMigration,
+];
 
-const createSequelizeStub = ({ applied = [], tables = [] } = {}) => {
+const createSequelizeStub = ({
+  applied = [],
+  tables = [],
+  tableEngines = {
+    SequelizeMeta: 'InnoDB',
+    admins: 'InnoDB',
+    contacts: 'InnoDB',
+    projects: 'InnoDB',
+    settings: 'InnoDB',
+  },
+} = {}) => {
   const calls = [];
   return {
     calls,
@@ -32,34 +58,41 @@ const createSequelizeStub = ({ applied = [], tables = [] } = {}) => {
     },
     async query(sql, options) {
       calls.push({ options, sql });
+      if (sql.includes('information_schema')) {
+        return Object.entries(tableEngines).map(([tableName, engine]) => ({
+          engine,
+          tableName,
+        }));
+      }
       return applied.map((name) => ({ name }));
     },
   };
 };
 
 test('migration manifest contains the formal schema baseline', () => {
-  assert.deepEqual(listMigrationFiles(), [baselineMigration]);
+  assert.deepEqual(listMigrationFiles(), migrations);
   assert.deepEqual(
-    findMissingMigrations([baselineMigration], [baselineMigration]),
+    findMissingMigrations(migrations, migrations),
     []
   );
 });
 
 test('database readiness authenticates and accepts a fully migrated schema', async () => {
   const sequelize = createSequelizeStub({
-    applied: [baselineMigration],
+    applied: migrations,
     tables: [{ tableName: 'SequelizeMeta' }],
   });
 
   const result = await assertDatabaseReady(sequelize);
 
   assert.deepEqual(result, {
-    appliedMigrationCount: 1,
-    expectedMigrationCount: 1,
+    appliedMigrationCount: migrations.length,
+    expectedMigrationCount: migrations.length,
   });
   assert.equal(sequelize.calls[0], 'authenticate');
   assert.equal(sequelize.calls[1], 'showAllTables');
   assert.match(sequelize.calls[2].sql, /FROM `SequelizeMeta`/u);
+  assert.match(sequelize.calls[3].sql, /information_schema/u);
 });
 
 test('database readiness fails closed when migration metadata is absent', async () => {
@@ -75,9 +108,53 @@ test('database readiness fails closed when migration metadata is absent', async 
 test('database readiness lists pending migrations without changing the schema', async () => {
   const sequelize = createSequelizeStub({ tables: ['SequelizeMeta'] });
 
+  // Derived from the manifest so a new migration cannot silently drop out of
+  // the pending list this assertion is meant to protect.
+  const pendingList = migrations.join(', ').replace(/\./gu, '\\.');
+
   await assert.rejects(
     () => assertDatabaseReady(sequelize),
-    new RegExp(`Pending: ${baselineMigration}`)
+    new RegExp(`Pending: ${pendingList}`, 'u')
+  );
+});
+
+test('database readiness rejects a migration history hole', async () => {
+  const sequelize = createSequelizeStub({
+    applied: [engineMigration],
+    tables: ['SequelizeMeta'],
+  });
+
+  await assert.rejects(
+    () => assertDatabaseReady(sequelize),
+    /not a contiguous release prefix/u
+  );
+});
+
+test('database readiness rejects a non-transactional application table', async () => {
+  const sequelize = createSequelizeStub({
+    applied: migrations,
+    tables: ['SequelizeMeta'],
+    tableEngines: {
+      SequelizeMeta: 'InnoDB',
+      admins: 'InnoDB',
+      contacts: 'InnoDB',
+      projects: 'MyISAM',
+      settings: 'InnoDB',
+    },
+  });
+
+  await assert.rejects(
+    () => assertDatabaseReady(sequelize),
+    /Unsafe: projects/u
+  );
+  await assert.rejects(
+    () =>
+      assertTransactionalTablesReady(
+        createSequelizeStub({
+          tableEngines: {},
+        })
+      ),
+    /Unsafe: SequelizeMeta, admins, contacts, projects, settings/u
   );
 });
 
@@ -126,7 +203,7 @@ test('production admin readiness requires one expected, rotated account at the e
   );
 });
 
-test('production settings readiness permits zero or one row and rejects legacy duplicates', async () => {
+test('production settings readiness permits zero or one valid row and rejects legacy duplicates', async () => {
   const sequelizeWithRows = (rows) => ({
     async query(sql) {
       assert.match(sql, /FROM `settings`/u);
@@ -139,7 +216,14 @@ test('production settings readiness permits zero or one row and rejects legacy d
     { settingsId: null }
   );
   assert.deepEqual(
-    await assertSettingsSingletonReady(sequelizeWithRows([{ id: 4 }])),
+    await assertSettingsSingletonReady(
+      sequelizeWithRows([
+        {
+          id: 4,
+          technologies: '{"database":["MySQL"]}',
+        },
+      ])
+    ),
     { settingsId: 4 }
   );
   await assert.rejects(
@@ -149,6 +233,33 @@ test('production settings readiness permits zero or one row and rejects legacy d
       ),
     /Settings inventory is unsafe/u
   );
+});
+
+test('production settings readiness rejects data that the public settings route cannot serve', async () => {
+  const sequelizeWithValue = (technologies) => ({
+    async query(sql) {
+      assert.match(
+        sql,
+        /SELECT `id`, `technologies` FROM `settings`/u
+      );
+      return [{ id: 4, technologies }];
+    },
+  });
+
+  for (const technologies of [
+    null,
+    'not-json',
+    '[]',
+    '{"frontend":["React"," react "]}',
+  ]) {
+    await assert.rejects(
+      () =>
+        assertSettingsSingletonReady(
+          sequelizeWithValue(technologies)
+        ),
+      /Settings technologies data is unsafe/u
+    );
+  }
 });
 
 test('production startup checks the settings singleton before opening HTTP', async () => {
@@ -167,7 +278,16 @@ test('production startup checks the settings singleton before opening HTTP', asy
     },
     async query(sql) {
       if (sql.includes('FROM `SequelizeMeta`')) {
-        return [{ name: baselineMigration }];
+        return migrations.map((name) => ({ name }));
+      }
+      if (sql.includes('information_schema')) {
+        return [
+          'SequelizeMeta',
+          'admins',
+          'contacts',
+          'projects',
+          'settings',
+        ].map((tableName) => ({ engine: 'InnoDB', tableName }));
       }
       if (sql.includes('FROM `admins`')) {
         return [
@@ -196,6 +316,7 @@ test('production startup checks the settings singleton before opening HTTP', asy
           COOKIE_SECRET: 'cookie-secret-'.padEnd(40, 'b'),
           DATABASE_URL:
             'mysql://portfolio:password@db.internal:3306/portfolio',
+          DB_SSL: 'true',
           NODE_ENV: 'production',
           REMOTE_CLIENT_APP: 'https://portfolio.example.test',
         },

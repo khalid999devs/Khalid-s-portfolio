@@ -4,6 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { getRounds } = require('bcryptjs');
 const { QueryTypes } = require('sequelize');
+const {
+  parseStoredTechnologies,
+} = require('./technologySettings');
 
 const DEFAULT_MIGRATIONS_DIRECTORY = path.resolve(
   __dirname,
@@ -11,6 +14,13 @@ const DEFAULT_MIGRATIONS_DIRECTORY = path.resolve(
 );
 const MIGRATION_FILE_PATTERN = /^\d{14}[\w-]*\.js$/;
 const MIGRATION_METADATA_TABLE = 'SequelizeMeta';
+const TRANSACTIONAL_TABLES = Object.freeze([
+  MIGRATION_METADATA_TABLE,
+  'admins',
+  'contacts',
+  'projects',
+  'settings',
+]);
 
 const normalizeTableName = (table) => {
   if (typeof table === 'string') return table;
@@ -36,6 +46,50 @@ const findMissingMigrations = (expectedMigrations, appliedMigrations) => {
 const findUnexpectedMigrations = (expectedMigrations, appliedMigrations) => {
   const expected = new Set(expectedMigrations);
   return appliedMigrations.filter((migration) => !expected.has(migration));
+};
+
+const assertMigrationHistoryIsPrefix = (
+  expectedMigrations,
+  appliedMigrations
+) => {
+  const firstMismatch = appliedMigrations.findIndex(
+    (migration, index) => expectedMigrations[index] !== migration
+  );
+  if (firstMismatch !== -1) {
+    throw new Error(
+      'Database migration history is not a contiguous release prefix; ' +
+        `expected ${expectedMigrations[firstMismatch] || 'no migration'} at ` +
+        `position ${firstMismatch + 1}, found ${appliedMigrations[firstMismatch]}`
+    );
+  }
+};
+
+const assertTransactionalTablesReady = async (sequelize) => {
+  const rows = await sequelize.query(
+    'SELECT `TABLE_NAME` AS `tableName`, `ENGINE` AS `engine` ' +
+      'FROM `information_schema`.`TABLES` ' +
+      'WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` IN (:tableNames)',
+    {
+      replacements: { tableNames: TRANSACTIONAL_TABLES },
+      type: QueryTypes.SELECT,
+    }
+  );
+  const engines = new Map(
+    rows.map((row) => [
+      String(row.tableName),
+      String(row.engine || '').toLowerCase(),
+    ])
+  );
+  const unsafeTables = TRANSACTIONAL_TABLES.filter(
+    (tableName) => engines.get(tableName) !== 'innodb'
+  );
+
+  if (unsafeTables.length) {
+    throw new Error(
+      'Database tables are missing or non-transactional; run npm run db:migrate. Unsafe: ' +
+        unsafeTables.join(', ')
+    );
+  }
 };
 
 const assertAdminAccountReady = async (
@@ -78,7 +132,7 @@ const assertAdminAccountReady = async (
 
 const assertSettingsSingletonReady = async (sequelize) => {
   const rows = await sequelize.query(
-    'SELECT `id` FROM `settings` ORDER BY `id` ASC LIMIT 2',
+    'SELECT `id`, `technologies` FROM `settings` ORDER BY `id` ASC LIMIT 2',
     { type: QueryTypes.SELECT }
   );
 
@@ -86,6 +140,16 @@ const assertSettingsSingletonReady = async (sequelize) => {
     throw new Error(
       'Settings inventory is unsafe; reconcile legacy rows so at most one settings record remains'
     );
+  }
+
+  if (rows.length === 1) {
+    try {
+      parseStoredTechnologies(rows[0].technologies);
+    } catch (_error) {
+      throw new Error(
+        'Settings technologies data is unsafe; reconcile the stored value before production startup'
+      );
+    }
   }
 
   return { settingsId: rows[0]?.id ?? null };
@@ -125,6 +189,18 @@ const assertDatabaseReady = async (
     migrationRows.map((row) => row.name)
   );
 
+  if (unexpectedMigrations.length) {
+    throw new Error(
+      'Database migration history is newer or unrecognized for this release: ' +
+        unexpectedMigrations.join(', ')
+    );
+  }
+
+  assertMigrationHistoryIsPrefix(
+    expectedMigrations,
+    migrationRows.map((row) => row.name)
+  );
+
   if (missingMigrations.length) {
     throw new Error(
       'Database has pending migrations; run npm run db:migrate. Pending: ' +
@@ -132,12 +208,7 @@ const assertDatabaseReady = async (
     );
   }
 
-  if (unexpectedMigrations.length) {
-    throw new Error(
-      'Database migration history is newer or unrecognized for this release: ' +
-        unexpectedMigrations.join(', ')
-    );
-  }
+  await assertTransactionalTablesReady(sequelize);
 
   return {
     appliedMigrationCount: migrationRows.length,
@@ -148,9 +219,12 @@ const assertDatabaseReady = async (
 module.exports = {
   DEFAULT_MIGRATIONS_DIRECTORY,
   MIGRATION_METADATA_TABLE,
+  TRANSACTIONAL_TABLES,
   assertAdminAccountReady,
   assertDatabaseReady,
+  assertMigrationHistoryIsPrefix,
   assertSettingsSingletonReady,
+  assertTransactionalTablesReady,
   findMissingMigrations,
   findUnexpectedMigrations,
   listMigrationFiles,

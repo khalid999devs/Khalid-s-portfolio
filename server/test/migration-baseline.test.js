@@ -140,9 +140,11 @@ test('baseline creates the complete schema for a fresh database', async () => {
 
 test('fresh migration column definitions stay aligned with Sequelize models', () => {
   const tableSchemas = migration._private.schemas(Sequelize);
+  // `contacts` is intentionally absent: the table and its migrations remain as
+  // immutable history, but no model maps to it now that the public contact
+  // intake and stored inbox are gone.
   const modelsByTable = {
     admins: db.Admin,
-    contacts: db.Contact,
     projects: db.projects,
     settings: db.settings,
   };
@@ -150,7 +152,10 @@ test('fresh migration column definitions stay aligned with Sequelize models', ()
   for (const [tableName, model] of Object.entries(modelsByTable)) {
     const schema = tableSchemas[tableName];
     assert.equal(model.getTableName(), tableName);
-    assert.deepEqual(Object.keys(schema), Object.keys(model.rawAttributes));
+    assert.deepEqual(
+      Object.keys(schema),
+      Object.keys(model.rawAttributes)
+    );
 
     for (const [columnName, definition] of Object.entries(schema)) {
       const modelAttribute = model.rawAttributes[columnName];
