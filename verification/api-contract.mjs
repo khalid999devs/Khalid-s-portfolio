@@ -108,6 +108,26 @@ const normalize = (value) => {
 const SERVER_DIR = join(HERE, '..', 'server');
 let child = null;
 
+/**
+ * `GET /api/settings/download-resume` streams a file from the uploads volume,
+ * which is not in version control. Without a fixture the baseline would be the
+ * missing-file branch, and the contract would silently stop covering the path
+ * that actually runs in production. Create a minimal valid PDF if absent.
+ */
+const ensureResumeFixture = async () => {
+  const dir = join(SERVER_DIR, 'uploads', 'assets');
+  const file = join(dir, 'Resume_Khalid_Ahammed.pdf');
+  if (existsSync(file)) return;
+  await mkdir(dir, { recursive: true });
+  await writeFile(
+    file,
+    '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n' +
+      '2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n' +
+      '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]>>endobj\n' +
+      'trailer<</Root 1 0 R>>\n%%EOF\n'
+  );
+};
+
 const waitForReady = async (attempts = 40) => {
   for (let i = 0; i < attempts; i++) {
     try {
@@ -131,7 +151,10 @@ const supervise = process.argv.includes('--serve');
 
 const record = async () => {
   const results = {};
-  if (supervise) await startServer();
+  if (supervise) {
+    await ensureResumeFixture();
+    await startServer();
+  }
 
   for (const [method, path, body, kind] of REQUESTS) {
     const key = label(method, path, body);

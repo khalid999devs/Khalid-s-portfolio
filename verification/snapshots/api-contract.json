@@ -10,8 +10,13 @@
     "survived": true
   },
   "GET /api/settings/download-resume": {
-    "error": "fetch failed",
-    "survived": false
+    "status": 200,
+    "contentType": "application/pdf",
+    "securityHeaders": [
+      "cache-control"
+    ],
+    "body": "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n",
+    "survived": true
   },
   "POST /api/projects {\"mode\":\"all\"}": {
     "status": 200,
@@ -334,12 +339,12 @@
     "survived": true
   },
   "POST /api/admin/reg {\"userName\":\"contract-probe\",\"password\":\"x\"}": {
-    "status": 201,
+    "status": 200,
     "contentType": "application/json",
     "securityHeaders": [],
     "body": {
-      "msg": "Admin User Created",
-      "succeed": true
+      "msg": "account already exist",
+      "succeed": false
     },
     "kind": "probe",
     "survived": true
