@@ -168,9 +168,7 @@ if (require.main === module) {
 }
 
 module.exports = {
-  MAXIMUM_STDIN_BYTES,
   parseCommand,
-  readPassword,
   readStandardInputSecret,
   run,
   secretsMatch,
