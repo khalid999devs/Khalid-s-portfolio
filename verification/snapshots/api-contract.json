@@ -1,0 +1,357 @@
+{
+  "GET /api/settings": {
+    "status": 200,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "Successfully fetched settings!",
+      "succeed": true
+    },
+    "survived": true
+  },
+  "GET /api/settings/download-resume": {
+    "error": "fetch failed",
+    "survived": false
+  },
+  "POST /api/projects {\"mode\":\"all\"}": {
+    "status": 200,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "Successfully fetched project data!",
+      "result": [
+        {
+          "bannerImg": "uploads/projects/test-1/bannerImg/bannerImg_test-1@1763028150585.jpeg",
+          "category": "website",
+          "codeLink": null,
+          "createdAt": "<createdAt>",
+          "date": "2024 July",
+          "displayOrder": 0,
+          "id": "<id>",
+          "role": [
+            "Developer"
+          ],
+          "siteLink": null,
+          "subtitle": "testy",
+          "thumbnailContents": [
+            {
+              "id": "<id>",
+              "serverThumb": {
+                "destination": "uploads/projects/test-1/thumbnailContents",
+                "encoding": "7bit",
+                "fieldname": "thumbnailContents",
+                "filename": "thumbnailContents_test-1@1763028406960.jpeg",
+                "mimetype": "image/jpeg",
+                "originalname": "pexels-pixabay-45853.jpg",
+                "path": "uploads/projects/test-1/thumbnailContents/thumbnailContents_test-1@1763028406960.jpeg",
+                "size": 1368245
+              },
+              "url": "uploads/projects/test-1/thumbnailContents/thumbnailContents_test-1@1763028406960.jpeg"
+            }
+          ],
+          "title": "Test 1",
+          "value": "test-1"
+        },
+        {
+          "bannerImg": "uploads/projects/lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum/bannerImg/bannerImg_lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum@1763028296249.jpeg",
+          "category": "app",
+          "codeLink": null,
+          "createdAt": "<createdAt>",
+          "date": "2025 Feb",
+          "displayOrder": 1,
+          "id": "<id>",
+          "role": [
+            "Developer"
+          ],
+          "siteLink": null,
+          "subtitle": "he,,o",
+          "thumbnailContents": [
+            {
+              "id": "<id>",
+              "serverThumb": {
+                "destination": "uploads/projects/lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum/thumbnailContents",
+                "encoding": "7bit",
+                "fieldname": "thumbnailContents",
+                "filename": "thumbnailContents_lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum@1763028432562.jpeg",
+                "mimetype": "image/jpeg",
+                "originalname": "pexels-pixabay-414860.jpg",
+                "path": "uploads/projects/lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum/thumbnailContents/thumbnailContents_lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum@1763028432562.jpeg",
+                "size": 724375
+              },
+              "url": "uploads/projects/lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum/thumbnailContents/thumbnailContents_lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum@1763028432562.jpeg"
+            }
+          ],
+          "title": "Lorem ipsum donor sit amet ikru kemo loro iemm lorem ipsum",
+          "value": "lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum"
+        }
+      ],
+      "succeed": true
+    },
+    "survived": true
+  },
+  "POST /api/projects {\"mode\":\"cat\"}": {
+    "status": 200,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "Successfully fetched project data!",
+      "result": [
+        "website",
+        "app"
+      ],
+      "succeed": true
+    },
+    "survived": true
+  },
+  "POST /api/projects {\"mode\":\"single\",\"projectId\":1}": {
+    "status": 200,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "Successfully fetched project data!",
+      "result": {
+        "bannerImg": "uploads/projects/test-1/bannerImg/bannerImg_test-1@1763028150585.jpeg",
+        "category": "website",
+        "codeLink": null,
+        "createdAt": "<createdAt>",
+        "date": "2024 July",
+        "designLink": null,
+        "displayOrder": 0,
+        "id": "<id>",
+        "locationYear": "Bangladesh © 2025",
+        "overview": "new",
+        "role": [
+          "Developer"
+        ],
+        "siteLink": null,
+        "sliderContents": [],
+        "subtitle": "testy",
+        "techStack": [],
+        "thumbnailContents": [
+          {
+            "id": "<id>",
+            "serverThumb": {
+              "destination": "uploads/projects/test-1/thumbnailContents",
+              "encoding": "7bit",
+              "fieldname": "thumbnailContents",
+              "filename": "thumbnailContents_test-1@1763028406960.jpeg",
+              "mimetype": "image/jpeg",
+              "originalname": "pexels-pixabay-45853.jpg",
+              "path": "uploads/projects/test-1/thumbnailContents/thumbnailContents_test-1@1763028406960.jpeg",
+              "size": 1368245
+            },
+            "url": "uploads/projects/test-1/thumbnailContents/thumbnailContents_test-1@1763028406960.jpeg"
+          }
+        ],
+        "title": "Test 1",
+        "updatedAt": "<updatedAt>",
+        "value": "test-1",
+        "videos": []
+      },
+      "succeed": true
+    },
+    "survived": true
+  },
+  "POST /api/projects {\"mode\":\"single\"}": {
+    "status": 400,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "Project Id must be provided!"
+    },
+    "survived": true
+  },
+  "POST /api/projects {\"mode\":\"nonsense\"}": {
+    "status": 200,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "Successfully fetched project data!",
+      "succeed": true
+    },
+    "survived": true
+  },
+  "POST /api/projects": {
+    "status": 200,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "Successfully fetched project data!",
+      "succeed": true
+    },
+    "survived": true
+  },
+  "GET /api/nope": {
+    "status": 404,
+    "contentType": "text/html",
+    "securityHeaders": [],
+    "body": "Route does not exist",
+    "survived": true
+  },
+  "GET /nope": {
+    "status": 404,
+    "contentType": "text/html",
+    "securityHeaders": [],
+    "body": "Route does not exist",
+    "survived": true
+  },
+  "GET /api/admin": {
+    "status": 403,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "admin not logged in"
+    },
+    "survived": true
+  },
+  "GET /api/admin/auth": {
+    "status": 403,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "admin not logged in"
+    },
+    "survived": true
+  },
+  "GET /api/contact/messages": {
+    "status": 403,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "admin not logged in"
+    },
+    "survived": true
+  },
+  "POST /api/projects/create {\"title\":\"x\"}": {
+    "status": 403,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "admin not logged in"
+    },
+    "survived": true
+  },
+  "PATCH /api/projects/reorder {\"order\":[]}": {
+    "status": 403,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "admin not logged in"
+    },
+    "survived": true
+  },
+  "PATCH /api/projects/edit-infos/1 {\"title\":\"x\"}": {
+    "status": 403,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "admin not logged in"
+    },
+    "survived": true
+  },
+  "PATCH /api/projects/delete-contents/1 {\"mode\":\"videos\"}": {
+    "status": 403,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "admin not logged in"
+    },
+    "survived": true
+  },
+  "DELETE /api/projects/delete/999999": {
+    "status": 403,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "admin not logged in"
+    },
+    "survived": true
+  },
+  "POST /api/settings/add": {
+    "status": 403,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "admin not logged in"
+    },
+    "survived": true
+  },
+  "PATCH /api/settings/edit/1": {
+    "status": 403,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "admin not logged in"
+    },
+    "survived": true
+  },
+  "POST /api/contact/emailToClient/custom": {
+    "status": 403,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "admin not logged in"
+    },
+    "survived": true
+  },
+  "POST /api/contact/smsToClient/custom": {
+    "status": 403,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "admin not logged in"
+    },
+    "survived": true
+  },
+  "POST /api/admin/login": {
+    "status": 400,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "Username or Password should not be empty"
+    },
+    "survived": true
+  },
+  "POST /api/admin/login {\"userName\":\"nope\",\"password\":\"nope\"}": {
+    "status": 404,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "nope does not exist"
+    },
+    "survived": true
+  },
+  "GET /api/admin/logout": {
+    "status": 200,
+    "contentType": "application/json",
+    "securityHeaders": [
+      "set-cookie"
+    ],
+    "body": {
+      "msg": "logout succes",
+      "succeed": true
+    },
+    "survived": true
+  },
+  "POST /api/admin/reg {\"userName\":\"contract-probe\",\"password\":\"x\"}": {
+    "status": 201,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "Admin User Created",
+      "succeed": true
+    },
+    "kind": "probe",
+    "survived": true
+  },
+  "POST /api/admin/reg": {
+    "status": 400,
+    "contentType": "application/json",
+    "securityHeaders": [],
+    "body": {
+      "msg": "Username or Password should not be empty"
+    },
+    "kind": "probe",
+    "survived": true
+  }
+}
