@@ -10,7 +10,9 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "admin:bootstrap": "node scripts/admin-account.js bootstrap",
+    "admin:rotate": "node scripts/admin-account.js rotate",
+    "test": "node --test test/"
   },
   "author": "",
   "license": "ISC",

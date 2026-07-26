@@ -54,7 +54,11 @@ const REQUESTS = [
 
   // Must all reject when logged out. If any of these ever answers 200, the
   // authentication boundary has been broken.
-  ['GET', '/api/admin'],
+  //
+  // `GET /api/admin` listed every administrator username. No client code has
+  // ever called it, so Phase 2 removed the route entirely; it is a probe
+  // because 403 -> 404 is the intended outcome.
+  ['GET', '/api/admin', undefined, 'probe'],
   ['GET', '/api/admin/auth'],
   ['GET', '/api/contact/messages'],
   ['POST', '/api/projects/create', { title: 'x' }],
@@ -68,7 +72,10 @@ const REQUESTS = [
   ['POST', '/api/contact/smsToClient/custom', {}],
 
   ['POST', '/api/admin/login', {}],
-  ['POST', '/api/admin/login', { userName: 'nope', password: 'nope' }],
+  // S12. Used to answer 404 "<name> does not exist" for an unknown username
+  // while a wrong password answered 401, revealing which usernames are real.
+  // Both now fail identically.
+  ['POST', '/api/admin/login', { userName: 'nope', password: 'nope' }, 'probe'],
   ['GET', '/api/admin/logout'],
 
   // S1. Currently answers 201 and hands out a working admin account.

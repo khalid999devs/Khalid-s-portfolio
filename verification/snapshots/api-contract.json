@@ -201,12 +201,11 @@
     "survived": true
   },
   "GET /api/admin": {
-    "status": 403,
-    "contentType": "application/json",
+    "status": 404,
+    "contentType": "text/html",
     "securityHeaders": [],
-    "body": {
-      "msg": "admin not logged in"
-    },
+    "body": "Route does not exist",
+    "kind": "probe",
     "survived": true
   },
   "GET /api/admin/auth": {
@@ -318,12 +317,13 @@
     "survived": true
   },
   "POST /api/admin/login {\"userName\":\"nope\",\"password\":\"nope\"}": {
-    "status": 404,
+    "status": 401,
     "contentType": "application/json",
     "securityHeaders": [],
     "body": {
-      "msg": "nope does not exist"
+      "msg": "Wrong username and password combination"
     },
+    "kind": "probe",
     "survived": true
   },
   "GET /api/admin/logout": {
@@ -339,23 +339,18 @@
     "survived": true
   },
   "POST /api/admin/reg {\"userName\":\"contract-probe\",\"password\":\"x\"}": {
-    "status": 200,
-    "contentType": "application/json",
+    "status": 404,
+    "contentType": "text/html",
     "securityHeaders": [],
-    "body": {
-      "msg": "account already exist",
-      "succeed": false
-    },
+    "body": "Route does not exist",
     "kind": "probe",
     "survived": true
   },
   "POST /api/admin/reg": {
-    "status": 400,
-    "contentType": "application/json",
+    "status": 404,
+    "contentType": "text/html",
     "securityHeaders": [],
-    "body": {
-      "msg": "Username or Password should not be empty"
-    },
+    "body": "Route does not exist",
     "kind": "probe",
     "survived": true
   }
