@@ -1,5 +1,9 @@
-export const serverOrigin = 'http://localhost:8000';
-// export const serverOrigin = 'https://api.khalidahammed.com';
+// The API origin used to be a hardcoded constant with the production URL sitting
+// commented out beneath it, so every deploy required hand-editing this file and
+// the committed state always pointed at localhost. Set VITE_API_URL at build
+// time instead; the fallback preserves the previous local-development default.
+export const serverOrigin =
+  import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const reqFileWrapper = (src) => {
   if (!src) return null;

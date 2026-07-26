@@ -15,9 +15,29 @@ const BASE = join(HERE, 'output', 'baseline');
 const CAND = join(HERE, 'output', 'candidate');
 const DIFF = join(HERE, 'output', 'diff');
 
-// Zero. Not "small". A tolerance here is a licence for drift to accumulate
-// across phases, and each phase would individually look clean.
+// Zero. Not "small". A count tolerance here would be a licence for drift to
+// accumulate across phases while each one individually looked clean.
 const ALLOWED_DIFFERING_PIXELS = 0;
+
+/**
+ * Per-pixel perceptual threshold (normalized YIQ distance), not a count.
+ *
+ * Chromium's glyph rasterisation is not bit-exact between runs: a control
+ * experiment — the same build captured twice with no code change — produced a
+ * single pixel differing by 2/255 against the #161616 background, at a text
+ * edge. Left at 0 the gate reports that as a failure, and a gate that cries
+ * wolf gets ignored, which is the actual danger here.
+ *
+ * 0.02 discards deltas far below perceptibility while still failing on any real
+ * change: a moved element, a changed font, or a different colour shifts pixels
+ * by far more than this, and shifts thousands of them.
+ *
+ * Colour specifically is NOT left to this threshold. `styles.json` records
+ * `color` and `background-color` as exact strings for every probed element and
+ * is compared with no tolerance at all, so a #161616 → #171717 theme change
+ * fails on the style gate even though it would slip under this one.
+ */
+const PIXEL_THRESHOLD = 0.02;
 
 const readJson = async (file) => JSON.parse(await readFile(file, 'utf8'));
 
@@ -56,7 +76,7 @@ for (const name of new Set([...baseShots, ...candShots])) {
 
   const diff = new PNG({ width: a.width, height: a.height });
   const differing = pixelmatch(a.data, b.data, diff.data, a.width, a.height, {
-    threshold: 0,
+    threshold: PIXEL_THRESHOLD,
     includeAA: true,
   });
 

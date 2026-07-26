@@ -77,8 +77,18 @@ that would have caught the bot silently degrading to a static image.
 upgrade. Holding the delivery layer fixed means any pixel difference is
 attributable to the build, not the previewer.
 
-**Zero tolerance, not "small".** A per-phase tolerance is a licence for drift to
-accumulate across phases while each one individually looks clean.
+**Zero differing pixels, with a perceptual floor.** No count tolerance — a
+per-phase allowance is a licence for drift to accumulate while each phase looks
+clean individually. But the per-pixel comparison uses a small perceptual
+threshold (0.02 YIQ), because Chromium's glyph rasterisation is not bit-exact:
+a control run of the same build captured twice produced one pixel differing by
+2/255 at a text edge. A gate that cries wolf gets ignored, which is the real
+danger.
+
+Colour is deliberately not left to that threshold. `styles.json` records `color`
+and `background-color` as exact strings and is compared with no tolerance at
+all, so a `#161616` → `#171717` change fails on the style gate even though it
+would slip under the pixel one.
 
 ## Refreshing fixtures
 
