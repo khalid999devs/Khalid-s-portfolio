@@ -11,25 +11,95 @@ import { MdOutlineArrowRightAlt } from 'react-icons/md';
 import { BiSolidRightArrow } from 'react-icons/bi';
 import { OutlinedSmallButton } from '../Buttons/OutlinedButton';
 import { isUpwork } from '../../config';
+import { formatBangladeshTime } from '../../utils/bangladeshTime';
 import gsap from 'gsap';
 import PropTypes from 'prop-types';
+import usePrefersReducedMotion from '../../hooks/usePrefersReducedMotion';
 
-const calculateRandomBlockDelay = (rowIndex, totalRows) => {
-  const blockDelay = Math.random() * 0.5;
-  const rowDelay = (totalRows - rowIndex - 1) * 0.05;
-  return blockDelay + rowDelay;
-};
-
-const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
+const PageNav = ({
+  isPageMenu,
+  isMenuPresent,
+  setIsPageMenu,
+  classes,
+  triggerRef,
+  onExitComplete,
+}) => {
   const timeRef = useRef(null);
   const contactTitleRef = useRef(null);
+  const menuRef = useRef(null);
+  const closeButtonRef = useRef(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  useEffect(() => {
+    if (!isMenuPresent) return undefined;
+
+    const triggerElement = triggerRef?.current;
+    const menuElement = menuRef.current;
+    const previousBodyOverflow = document.body.style.overflow;
+    const backgroundElements = menuElement?.parentElement
+      ? Array.from(menuElement.parentElement.children).filter(
+          (element) =>
+            element !== menuElement &&
+            !element.classList.contains('page-blocks-container')
+        )
+      : [];
+    const backgroundState = backgroundElements.map((element) => ({
+      element,
+      inert: element.inert,
+      ariaHidden: element.getAttribute('aria-hidden'),
+    }));
+
+    document.body.style.overflow = 'hidden';
+    backgroundElements.forEach((element) => {
+      element.inert = true;
+      element.setAttribute('aria-hidden', 'true');
+    });
+    closeButtonRef.current?.focus();
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsPageMenu(false);
+        return;
+      }
+
+      if (event.key !== 'Tab' || !menuRef.current) return;
+
+      const focusableElements = menuRef.current.querySelectorAll(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement?.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousBodyOverflow;
+      backgroundState.forEach(({ element, inert, ariaHidden }) => {
+        element.inert = inert;
+        if (ariaHidden === null) element.removeAttribute('aria-hidden');
+        else element.setAttribute('aria-hidden', ariaHidden);
+      });
+      triggerElement?.focus();
+    };
+  }, [isMenuPresent, setIsPageMenu, triggerRef]);
 
   useEffect(() => {
     let iid;
     const timeContainer = timeRef.current;
     if (timeContainer) {
       iid = setInterval(() => {
-        timeContainer.innerText = new Date().toLocaleTimeString();
+        timeContainer.innerText = formatBangladeshTime();
       }, 1000);
     }
 
@@ -41,6 +111,8 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
   }, [isPageMenu]);
 
   useEffect(() => {
+    if (!isPageMenu || prefersReducedMotion) return undefined;
+
     const animations = [];
 
     if (contactTitleRef.current) {
@@ -60,7 +132,10 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
       animations.push(anim);
     }
 
-    const pageNavLinks = gsap.utils.toArray('.page-nav-links');
+    const pageNavLinks = gsap.utils.toArray(
+      '.page-nav-links',
+      menuRef.current
+    );
     if (pageNavLinks.length) {
       const anim = gsap.fromTo(
         pageNavLinks,
@@ -88,23 +163,34 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
         }
       });
     };
-  }, [isPageMenu]);
+  }, [isPageMenu, prefersReducedMotion]);
 
   const handleHamburgerClick = () => {
     setIsPageMenu(false);
   };
 
   return (
-    <AnimatePresence key={5435342}>
+    <AnimatePresence onExitComplete={onExitComplete}>
       {/* PageNav menu with sliding animation */}
       {isPageMenu && (
         <motion.div
-          className={`transition-all duration-700 grid grid-rows-[auto,1fr] min-h-screen w-full sec-x-padding fixed top-0 left-0 bg-body-main screen-max-width z-50 ${classes}`}
-          initial={{ opacity: 1 }}
+          ref={menuRef}
+          id='site-menu'
+          role='dialog'
+          aria-modal='true'
+          aria-label='Site menu'
+          className={`transition-all duration-700 grid grid-rows-[auto_minmax(0,1fr)] h-dvh overflow-y-auto overscroll-contain w-full sec-x-padding fixed top-0 left-0 bg-body-main screen-max-width z-50 ${
+            classes || ''
+          }`}
+          initial={prefersReducedMotion ? false : { opacity: 1 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transform: 'translateY(100%)' }}
+          exit={
+            prefersReducedMotion
+              ? { opacity: 0 }
+              : { opacity: 0, transform: 'translateY(100%)' }
+          }
           transition={{
-            duration: 1,
+            duration: prefersReducedMotion ? 0 : 1,
             ease: 'easeInOut',
           }}
         >
@@ -113,7 +199,6 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
             <div>
               <NavLogo
                 onClick={() => {
-                  document.body.style.overflowY = 'scroll';
                   setIsPageMenu(false); // Close menu on logo click
                 }}
               />
@@ -121,19 +206,31 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
 
             <div className='flex items-center text-sm'>
               {/* hamburger */}
-              <div
+              <button
+                ref={closeButtonRef}
+                type='button'
+                aria-label='Close site menu'
                 className='w-8 min-h-8 h-fit relative cursor-pointer opacity-80 duration-500 hover:opacity-100'
                 onClick={handleHamburgerClick}
               >
-                <span className='w-full h-[1px] bg-onPrimary-dark absolute top-1/2 left-0 -translate-y-1/2 -rotate-45'></span>
-                <span className='w-full h-[1px] bg-onPrimary-dark absolute top-1/2 left-0 -translate-y-1/2 rotate-45'></span>
-              </div>
+                <span
+                  aria-hidden='true'
+                  className='w-full h-[1px] bg-onPrimary-dark absolute top-1/2 left-0 -translate-y-1/2 -rotate-45'
+                ></span>
+                <span
+                  aria-hidden='true'
+                  className='w-full h-[1px] bg-onPrimary-dark absolute top-1/2 left-0 -translate-y-1/2 rotate-45'
+                ></span>
+              </button>
             </div>
           </div>
 
           {/* menus */}
-          <div className='w-full h-full grid grid-cols-1 md:grid-cols-[1fr,1.25fr]'>
-            <div className='pt-10 w-full flex flex-col gap-1 md:gap-8 text-montreal-mono'>
+          <div className='w-full h-full grid grid-cols-1 md:grid-cols-[1fr_1.25fr]'>
+            <nav
+              aria-label='Site pages'
+              className='pt-10 w-full flex flex-col gap-1 md:gap-8 text-montreal-mono'
+            >
               {pageNavLinks.map((item, key) => (
                 <NavLink
                   className={({ isActive }) =>
@@ -148,10 +245,10 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
                   {item.title}
                 </NavLink>
               ))}
-            </div>
+            </nav>
 
             <div className='md:border-l-[1px] border-secondary-light overflow-hidden relative md:pl-28 flex flex-col justify-end items-start'>
-              <h1
+              <h2
                 className='text-7xl uppercase text-primary-main opacity-90 tracking-wide absolute left-0 hidden md:inline-block select-none'
                 id={'contact-title'}
                 ref={contactTitleRef}
@@ -163,12 +260,15 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
                 }}
               >
                 Contact
-              </h1>
+              </h2>
 
               <div className='flex flex-col gap-9 md:gap-14 pb-8 mb-9 md:mb-0'>
                 <div className='flex flex-col gap-4 md:gap-8'>
                   <div className='flex items-center md:justify-start gap-1 -translate-x-1 group'>
-                    <MdOutlineArrowRightAlt className='text-white text-4xl transition-transform duration-1000 group-hover:translate-x-1' />
+                    <MdOutlineArrowRightAlt
+                      aria-hidden='true'
+                      className='text-white text-4xl transition-transform duration-1000 group-hover:translate-x-1'
+                    />
                     <a
                       href='mailto:khalidahammeduzzal@gmail.com'
                       className='text-lg md:text-2xl text-pp-eiko uppercase text-flicker thick-underline'
@@ -177,19 +277,26 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
                     </a>
                   </div>
 
-                  <div className='flex w-full flex-col text-secondary-light gap-2 md:gap-3 '>
+                  <div className='flex w-full flex-col text-muted-light gap-2 md:gap-3 '>
                     <p className='text-[10px] md:text-xs text-montreal-mono'>
                       BASED IN BANGLADESH — WORKING WORLDWIDE
                     </p>
                     <div className='flex items-center gap-4'>
-                      <div className='flex item-center gap-1 '>
+                      <div className='flex items-center gap-1 '>
                         <p className='text-[10px] md:text-xs text-montreal-mono'>
                           LOCAL TIME
                         </p>
-                        <BiSolidRightArrow className='text-[10px] md:text-xs mt-0.5' />
+                        <BiSolidRightArrow
+                          aria-hidden='true'
+                          className='text-[10px] md:text-xs mt-0.5'
+                        />
                       </div>
-                      <p className='text-white text-xs' ref={timeRef}>
-                        {new Date().toLocaleTimeString()}
+                      <p
+                        className='text-white text-xs'
+                        ref={timeRef}
+                        aria-label='Local time in Bangladesh'
+                      >
+                        {formatBangladeshTime()}
                       </p>
                     </div>
                   </div>
@@ -201,7 +308,13 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
                       <OutlinedSmallButton
                         key={key}
                         text={item.title}
-                        onClick={() => window.open(item.path, '_blank')}
+                        onClick={() =>
+                          window.open(
+                            item.path,
+                            '_blank',
+                            'noopener,noreferrer'
+                          )
+                        }
                       />
                     )
                   )}
@@ -213,26 +326,22 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
       )}
 
       {/* Page transition animation */}
-      {isPageMenu && (
-        <div className='page-blocks-container transition-in' key={423}>
-          {Array.from({ length: 10 }).map((_, rowIndex) => (
-            <div className='row' key={rowIndex}>
-              {Array.from({ length: 11 }).map((_, blockIndex) => (
-                <motion.div
-                  key={blockIndex}
-                  className='block-motion'
-                  initial={{ scaleY: 1 }}
-                  animate={{ scaleY: 0 }}
-                  exit={{ scaleY: 0 }}
-                  transition={{
-                    duration: 1,
-                    ease: [0.22, 1, 0.36, 1],
-                    delay: calculateRandomBlockDelay(rowIndex, 10),
-                  }}
-                ></motion.div>
-              ))}
-            </div>
-          ))}
+      {isPageMenu && !prefersReducedMotion && (
+        <div
+          className='page-blocks-container transition-in'
+          key={423}
+          aria-hidden='true'
+        >
+          <motion.div
+            className='block-motion'
+            initial={{ scaleY: 1 }}
+            animate={{ scaleY: 0 }}
+            exit={{ scaleY: 0 }}
+            transition={{
+              duration: 0.55,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+          />
         </div>
       )}
     </AnimatePresence>
@@ -241,8 +350,13 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
 
 PageNav.propTypes = {
   isPageMenu: PropTypes.bool,
+  isMenuPresent: PropTypes.bool,
   setIsPageMenu: PropTypes.func,
   classes: PropTypes.string,
+  onExitComplete: PropTypes.func,
+  triggerRef: PropTypes.shape({
+    current: PropTypes.object,
+  }),
 };
 
 export default PageNav;

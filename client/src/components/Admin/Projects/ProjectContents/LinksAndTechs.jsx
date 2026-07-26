@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import PrimaryButton from '../../../Buttons/PrimaryButton';
 import { MdDone } from 'react-icons/md';
 import Input from '../../../Forms/Input';
@@ -6,36 +6,58 @@ import { handleInputValChange } from '../../../../utils/FormValidations/handleVa
 import FormIconLists from '../../FormIconLists';
 import PropTypes from 'prop-types';
 
-const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
-  const [data, setData] = useState({
-    siteLink: '',
-    designLink: '',
-    codeLink: '',
-    techStack: [],
-  });
+const createDraft = (projectData = {}) => ({
+  siteLink: projectData.siteLink || '',
+  designLink: projectData.designLink || '',
+  codeLink: projectData.codeLink || '',
+  techStack: Array.isArray(projectData.techStack)
+    ? [...projectData.techStack]
+    : [],
+});
+
+const LinksAndTechs = ({ mode, projectData, handleSubmitData, disabled }) => {
+  const [data, setData] = useState(() => createDraft());
+  const [isDirty, setIsDirty] = useState(false);
+  const initializedProjectIdRef = useRef(null);
 
   useEffect(() => {
-    if (projectData?.id) {
-      setData({
-        siteLink: projectData?.siteLink,
-        designLink: projectData?.designLink,
-        codeLink: projectData?.codeLink,
-        techStack: projectData?.techStack,
-      });
+    const projectId = projectData?.id || null;
+
+    if (!projectId) {
+      if (initializedProjectIdRef.current !== null) {
+        initializedProjectIdRef.current = null;
+        setData(createDraft());
+        setIsDirty(false);
+      }
+      return;
     }
-  }, [mode, projectData]);
+
+    const projectChanged = initializedProjectIdRef.current !== projectId;
+    if (!projectChanged && isDirty) return;
+
+    initializedProjectIdRef.current = projectId;
+    setData(createDraft(projectData));
+    if (projectChanged) setIsDirty(false);
+  }, [isDirty, projectData]);
 
   const handleInputSubmit = (e, name, value) => {
+    setIsDirty(true);
     setData((data) => ({
       ...data,
       [name]: [...data[name], value],
     }));
   };
   const handleRemoveItem = (e, name, text) => {
+    setIsDirty(true);
     setData((data) => ({
       ...data,
       [name]: [...data[name].filter((item) => item !== text)],
     }));
+  };
+
+  const handleSave = async () => {
+    const saved = await handleSubmitData(data);
+    if (saved) setIsDirty(false);
   };
 
   return (
@@ -46,7 +68,10 @@ const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
             label={'Live Sitelink'}
             inputProps={{
               value: data.siteLink || '',
-              onChange: (e) => handleInputValChange(e, setData),
+              onChange: (e) => {
+                setIsDirty(true);
+                handleInputValChange(e, setData);
+              },
               name: 'siteLink',
             }}
           />
@@ -54,7 +79,10 @@ const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
             label={'GitHub Code Link'}
             inputProps={{
               value: data.codeLink || '',
-              onChange: (e) => handleInputValChange(e, setData),
+              onChange: (e) => {
+                setIsDirty(true);
+                handleInputValChange(e, setData);
+              },
               name: 'codeLink',
             }}
           />
@@ -64,14 +92,17 @@ const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
             label={'Design Link'}
             inputProps={{
               value: data.designLink || '',
-              onChange: (e) => handleInputValChange(e, setData),
+              onChange: (e) => {
+                setIsDirty(true);
+                handleInputValChange(e, setData);
+              },
               name: 'designLink',
             }}
           />
         </div>
-        <div className='grid sm:grid-cols-[max(70px),1fr] gap-4 h-min'>
+        <div className='grid sm:grid-cols-[70px_1fr] gap-4 h-min'>
           <div>
-            <h2 className='text-secondary-light text-sm mt-2'>Tech Stack</h2>
+            <h2 className='text-muted-light text-sm mt-2'>Tech Stack</h2>
           </div>
 
           <FormIconLists
@@ -85,11 +116,12 @@ const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
 
       <div className='flex w-full items-end justify-end mt-8'>
         <PrimaryButton
+          disabled={disabled}
           state='small'
           text={mode === 'create' ? 'DONE' : 'SAVE'}
           Icon={MdDone}
-          classes={`!rounded-full`}
-          onClick={() => handleSubmitData(data)}
+          classes='rounded-full!'
+          onClick={handleSave}
         />
       </div>
     </div>
@@ -107,6 +139,7 @@ LinksAndTechs.propTypes = {
     techStack: PropTypes.array,
   }),
   handleSubmitData: PropTypes.func,
+  disabled: PropTypes.bool,
 };
 
 export default LinksAndTechs;

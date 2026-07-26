@@ -1,9 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
 import axios from 'axios';
-import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { reqFileWrapper, reqs } from '../axios/requests';
-import { loadingGif, projectPlaceholder } from '../assets';
+import { projectPlaceholder } from '../assets';
 import { BsFillCaretRightFill } from 'react-icons/bs';
 import { FaGithub } from 'react-icons/fa';
 
@@ -13,7 +13,7 @@ import {
   OutlinedBigIcon,
   OutlinedSmallButton,
 } from '../components/Buttons/OutlinedButton';
-import ProjectVideos from './Project/projectVideos';
+import ProjectVideos from './Project/ProjectVideos';
 import { useAppContext } from '../App';
 import HRLine from '../components/utils/HRLine';
 import useTextRevealAnimation from '../animations/useTextRevealAnimation';
@@ -22,7 +22,24 @@ import { wordBlinkAnimation } from '../animations/wordBlinkAnimation';
 import PageTransition from '../animations/PageTransition';
 import ProjectSlider from '../components/project/ProjectSlider';
 import FloatingActionBtn from '../components/utils/FloatingActionBtn';
-import MetaCard from '../components/utils/MetaCard';
+import MetaCard, {
+  SITE_NAME,
+  SITE_ORIGIN,
+} from '../components/utils/MetaCard';
+import {
+  isValidProjectResponse,
+  parseProjectIdFromRoute,
+} from '../utils/projectResponse';
+import { handleImageFallback } from '../utils/imageFallback';
+
+const getProjectErrorType = (error) => {
+  const status = error?.response?.status;
+  const message = String(error?.response?.data?.msg || '').toLowerCase();
+
+  return status === 404 || message.includes('not found')
+    ? 'not-found'
+    : 'service';
+};
 
 const SingleProject = () => {
   const navigate = useNavigate();
@@ -31,64 +48,81 @@ const SingleProject = () => {
     appData: { projects },
   } = useAppContext();
   const { value } = useParams();
+  const projectId = useMemo(() => parseProjectIdFromRoute(value), [value]);
   const [project, setProject] = useState({});
-  const [projLoading, setProjLoading] = useState(false);
-  const [nextProject, setNextProject] = useState({});
+  const [projLoading, setProjLoading] = useState(true);
   useTextRevealAnimation('project-text-reveal');
   const projectDescParent = useRef(null);
   const projectDesc = useRef(null);
 
-  const findProjectAndgetNext = () => {
+  const nextProject = useMemo(() => {
     const numberOfProjects = projects?.length;
     if (numberOfProjects && numberOfProjects > 1 && project?.value) {
       const currKey = projects.findIndex(
         (item) => item.value === project.value
       );
 
-      if (currKey + 1 >= numberOfProjects) {
-        setNextProject(projects[0]);
-      } else {
-        setNextProject(projects[currKey + 1]);
-      }
+      if (currKey < 0 || currKey + 1 >= numberOfProjects) return projects[0];
+      return projects[currKey + 1];
     }
-  };
+    return {};
+  }, [project.value, projects]);
 
   useEffect(() => {
-    findProjectAndgetNext();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project, projects]);
+    const controller = new AbortController();
+    const navigateToError = (errorType) => {
+      navigate('/error', {
+        replace: true,
+        state: {
+          errorType,
+          retryPath: loc.pathname,
+        },
+      });
+    };
 
-  useEffect(() => {
-    window.scrollTo({
-      left: 0,
-      top: 0,
-    });
-  }, [loc.pathname, project]);
+    if (!projectId) {
+      navigateToError('not-found');
+      return () => controller.abort();
+    }
 
-  useEffect(() => {
-    const spArr = value.split('@');
-    const projectId = spArr[spArr.length - 1];
+    setProject({});
     setProjLoading(true);
     axios
-      .post(reqs.GET_PROJECT, { mode: 'single', projectId })
-      .then((res) => {
-        if (res.data.succeed) {
-          setProject(res.data.result);
-        }
-        setProjLoading(false);
+      .get(`${reqs.GET_PROJECT}/${projectId}`, {
+        signal: controller.signal,
       })
-      .catch(() => {
-        // console.log(err);
-        setProjLoading(false);
-        navigate('/error');
+      .then((res) => {
+        if (controller.signal.aborted) return;
+
+        if (isValidProjectResponse(res.data, projectId)) {
+          setProject(res.data.result);
+          setProjLoading(false);
+          return;
+        }
+
+        if (res.data?.succeed === false) {
+          navigateToError(
+            getProjectErrorType({
+              response: { status: res.status, data: res.data },
+            })
+          );
+        } else {
+          navigateToError('service');
+        }
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        navigateToError(getProjectErrorType(error));
       });
-    // navigate is stable from useNavigate
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+
+    return () => controller.abort();
+  }, [loc.pathname, navigate, projectId]);
 
   useEffect(() => {
+    let animationHandle;
+
     if (projectDescParent.current && projectDesc.current) {
-      wordBlinkAnimation(
+      animationHandle = wordBlinkAnimation(
         projectDesc.current,
         null,
         projectDescParent.current,
@@ -97,10 +131,59 @@ const SingleProject = () => {
         6
       );
     }
+
+    return () => animationHandle?.kill();
   }, [project]);
 
-  if (projLoading) {
-    return <Loader classes={'min-h-[250px]'} />;
+  const projectPreviewImage = useMemo(
+    () =>
+      project?.thumbnailContents?.length
+        ? reqFileWrapper(project.thumbnailContents[0].url)
+        : reqFileWrapper(project?.bannerImg),
+    [project]
+  );
+
+  // A CreativeWork entry per project gives search engines an explicit subject,
+  // author, and canonical URL for each case study rather than leaving them to
+  // infer one from the surrounding page copy.
+  const projectSchema = useMemo(() => {
+    if (!project?.id || !project?.title) return null;
+
+    const projectUrl = new URL(
+      `/singleProject/${project.value}@${project.id}`,
+      SITE_ORIGIN
+    ).href;
+
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'CreativeWork',
+      name: project.title,
+      headline: project.title,
+      url: projectUrl,
+      ...(project.overview ? { description: project.overview } : {}),
+      ...(projectPreviewImage ? { image: projectPreviewImage } : {}),
+      ...(Array.isArray(project.techStack) && project.techStack.length
+        ? { keywords: project.techStack.join(', ') }
+        : {}),
+      ...(project.category ? { genre: project.category } : {}),
+      author: {
+        '@type': 'Person',
+        name: SITE_NAME,
+        url: `${SITE_ORIGIN}/`,
+      },
+      isPartOf: {
+        '@type': 'CollectionPage',
+        name: 'Projects',
+        url: `${SITE_ORIGIN}/projects`,
+      },
+    };
+  }, [project, projectPreviewImage]);
+
+  if (projLoading || project.id !== projectId) {
+    // Reserve the loaded page's height. A short placeholder collapsing into a
+    // full-height article was the single largest layout shift on the site
+    // (~0.22 CLS on its own, past Google's 0.1 "good" threshold).
+    return <Loader classes={'min-h-screen'} />;
   }
 
   return (
@@ -108,22 +191,10 @@ const SingleProject = () => {
       <MetaCard
         title={project?.title}
         description={project?.overview}
-        image={
-          project.thumbnailContents && project.thumbnailContents.length
-            ? reqFileWrapper(project.thumbnailContents[0].url)
-            : reqFileWrapper(project?.bannerImg)
-        }
+        type='article'
+        image={projectPreviewImage}
+        structuredData={projectSchema}
       />
-
-      {projLoading && (
-        <div className='w-full min-h-[400px] flex items-center justify-center'>
-          <img
-            src={loadingGif}
-            alt='Loading...'
-            className='max-w-[90px] h-auto'
-          />
-        </div>
-      )}
 
       {(project?.siteLink || project?.designLink) && (
         <FloatingActionBtn
@@ -134,9 +205,9 @@ const SingleProject = () => {
 
       <div className='flex w-full flex-col gap-20 sec-project-x-padding'>
         <div className='flex flex-col w-full md:justify-start '>
-          <h4 className='text-[12px] sm:text-sm text-montreal-mono text-onPrimary-main '>
+          <p className='text-[12px] sm:text-sm text-montreal-mono text-onPrimary-main '>
             {project.subtitle}
-          </h4>
+          </p>
 
           {project.title && (
             <h1 className='text-[2.5rem] sm:text-[3rem] md:text-[4rem] uppercase break-words text-left text-letter-reveal pointer-all'>
@@ -154,18 +225,17 @@ const SingleProject = () => {
           <TextDividerHeading
             role='CODE LINK'
             text={
-              <div
+              <a
+                href={
+                  project.codeLink || 'https://github.com/khalid999devs'
+                }
+                target='_blank'
+                rel='noopener noreferrer'
                 className='flex items-center gap-3 group uppercase cursor-pointer'
-                onClick={() => {
-                  window.open(
-                    project.codeLink || 'https://github.com/khalid999devs',
-                    '_blank'
-                  );
-                }}
               >
                 <span className='group-hover:underline'>GITHUB</span>
-                <FaGithub className='text-white text-lg' />
-              </div>
+                <FaGithub aria-hidden='true' className='text-white text-lg' />
+              </a>
             }
           />
 
@@ -178,14 +248,23 @@ const SingleProject = () => {
 
       <div className='w-full h-auto sec-x-padding relative'>
         {project.siteLink && <LiveProjectButton link={project.siteLink} />}
+        {/* A banner path carries no stored dimensions, so the box reserves its
+            own height. Leaving this to the image's intrinsic size shifted the
+            page by ~0.18 CLS once the file arrived. The banner is also the
+            largest element above the fold, so it loads eagerly at high
+            priority to keep LCP down. */}
         <img
           src={
             project.bannerImg
               ? reqFileWrapper(project.bannerImg)
               : projectPlaceholder
           }
-          className='w-full min-h-[200px] max-h-[300px] md:max-h-[400px] object-cover h-auto pointer-all'
-          alt='BannerImg'
+          className='w-full h-55 md:h-80 lg:h-100 object-cover pointer-all'
+          alt={`${project.title || 'Project'} banner`}
+          onError={handleImageFallback}
+          loading='eager'
+          fetchPriority='high'
+          decoding='async'
         />
       </div>
 
@@ -194,17 +273,20 @@ const SingleProject = () => {
         className='flex w-full flex-col md:flex-row justify-between items-start gap-16 md:gap-24 sec-project-x-padding pointer-all'
       >
         {project.overview && (
-          <div ref={projectDesc} className='text-secondary-light flex-1 w-full'>
+          <div ref={projectDesc} className='text-muted-light flex-1 w-full'>
             {project?.overview}
           </div>
         )}
 
         <div className='flex-1 flex flex-col gap-3 w-full'>
           <div className='flex items-center gap-1 pt-1'>
-            <span className='text-xs sm:text-sm text-secondary-main opacity-80 uppercase text-letter-reveal'>
+            <span className='text-xs sm:text-sm text-muted-main opacity-80 uppercase text-letter-reveal'>
               # TECH STACK
             </span>
-            <BsFillCaretRightFill className='text-secondary-main text-xs' />
+            <BsFillCaretRightFill
+              aria-hidden='true'
+              className='text-muted-main text-xs'
+            />
           </div>
           <div className='flex flex-row flex-wrap gap-x-2 gap-y-3'>
             {project?.techStack?.map((prop, i) => (
@@ -235,32 +317,31 @@ const SingleProject = () => {
           <HRLine />
 
           <div className='relative w-full sec-project-x-padding flex flex-col gap-3.5 justify-center items-center'>
-            <div className='text-secondary-light text-sm'>Next Project</div>
+            <div className='text-muted-light text-sm'>Next Project</div>
             <h2 className='text-4xl '>{nextProject.title}</h2>
 
-            <div className='w-full overflow-hidden h-auto border-b-[0.5] border-secondary-main border-b border-opacity-40'>
-              <div
-                className='bg-primary-dark mt-4 rounded-t-md max-h-[90px] max-w-[200px] w-full p-3 pb-0 overflow-hidden m-auto translate-y-2 transition-transform duration-300 cursor-pointer pointer-all hover:translate-y-0'
-                onClick={() => {
-                  navigate(
-                    `/singleProject/${
-                      nextProject?.value + '@' + nextProject?.id
-                    }`
-                  );
-                }}
+            <div className='w-full overflow-hidden h-auto border-b-[0.5px] border-secondary-main/40'>
+              <Link
+                to={`/singleProject/${
+                  nextProject?.value + '@' + nextProject?.id
+                }`}
+                aria-label={`View next project: ${nextProject.title}`}
+                className='block bg-primary-dark mt-4 rounded-t-md max-h-[90px] max-w-[200px] w-full p-3 pb-0 overflow-hidden m-auto translate-y-2 transition-transform duration-300 cursor-pointer pointer-all hover:translate-y-0'
               >
                 <div className='rounded-t-lg '>
                   <img
                     src={reqFileWrapper(
-                      nextProject?.thumbnailContents[0]?.url ||
+                      nextProject?.thumbnailContents?.[0]?.url ||
                         nextProject?.bannerImg
                     )}
-                    alt='next project image'
+                    width={nextProject?.thumbnailContents?.[0]?.width}
+                    height={nextProject?.thumbnailContents?.[0]?.height}
+                    alt={`${nextProject.title} thumbnail`}
+                    onError={handleImageFallback}
                     className='rounded-t-lg h-full'
                   />
                 </div>
-              </div>
-              {/* <HRLine classes={`!my-0`} /> */}
+              </Link>
             </div>
 
             <div className='mt-10'>

@@ -1,11 +1,31 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { socialLinks, upworkedSocialLinks } from '../../Constants';
 import { textBlinkAnimation } from '../../animations/textBlinkAnimation';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
-import Scene from './bot/Scene';
 import { isUpwork } from '../../config';
 import { textBlinkAnimateByWord } from '../../animations/textBlinkAnimateByWord';
 import { useMichibotInteraction } from '../../hooks/useMichibotInteraction';
+import { MainRobotImg } from '../../assets';
+import useSceneCapability from '../../hooks/useSceneCapability';
+
+const Scene = lazy(() => import('./bot/Scene'));
+
+const RobotFallback = () => (
+  <div
+    className='flex h-full w-full items-center justify-center'
+    aria-hidden='true'
+  >
+    <img
+      src={MainRobotImg}
+      width='146'
+      height='193'
+      alt=''
+      className='h-[193px] w-[146px] object-contain'
+      decoding='async'
+      fetchPriority='high'
+    />
+  </div>
+);
 
 const Hero = () => {
   const nameTitleRef = useRef(null);
@@ -15,36 +35,124 @@ const Hero = () => {
   const heroRef = useRef(null);
   const botContainerRef = useRef(null);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [sceneRequested, setSceneRequested] = useState(false);
+  const [sceneFailed, setSceneFailed] = useState(false);
+  const [sceneAttempt, setSceneAttempt] = useState(0);
 
-  const { isActive, isDesktop, isLoaded, setIsLoaded, handleClick } =
-    useMichibotInteraction(botContainerRef, heroRef);
+  const {
+    isActive,
+    isDesktop,
+    isLoaded,
+    prefersReducedMotion,
+    setIsLoaded,
+    handleClick,
+  } = useMichibotInteraction(botContainerRef, heroRef);
+  const sceneCapability = useSceneCapability({
+    isDesktop,
+    prefersReducedMotion,
+  });
+  const isSceneLoading = sceneRequested && !isLoaded && !sceneFailed;
+
+  const handleSceneLoad = useCallback(() => {
+    setSceneFailed(false);
+    setIsLoaded(true);
+  }, [setIsLoaded]);
+
+  const handleSceneError = useCallback(() => {
+    setSceneFailed(true);
+    setIsLoaded(false);
+  }, [setIsLoaded]);
+
+  const handleBotClick = useCallback(() => {
+    if (!sceneCapability.eligible || isSceneLoading) return;
+
+    if (!sceneRequested || sceneFailed) {
+      setSceneFailed(false);
+      setIsLoaded(false);
+      setSceneRequested(true);
+      setSceneAttempt((attempt) => attempt + 1);
+      return;
+    }
+
+    handleClick();
+  }, [
+    handleClick,
+    isSceneLoading,
+    sceneCapability.eligible,
+    sceneFailed,
+    sceneRequested,
+    setIsLoaded,
+  ]);
 
   useEffect(() => {
+    const animationHandles = [];
+
     if (nameTitleRef.current) {
-      textBlinkAnimateByWord(nameTitleRef.current);
+      const handle = textBlinkAnimateByWord(nameTitleRef.current);
+      if (handle) animationHandles.push(handle);
     }
     if (developerTitleRef.current) {
-      textBlinkAnimation(developerTitleRef.current);
+      const handle = textBlinkAnimation(developerTitleRef.current);
+      if (handle) animationHandles.push(handle);
     }
     if (heroRef.current) {
       if (countryRef.current) {
-        wordBlinkAnimation(countryRef.current, null, heroRef.current, true);
+        const handle = wordBlinkAnimation(
+          countryRef.current,
+          null,
+          heroRef.current,
+          true
+        );
+        if (handle) animationHandles.push(handle);
       }
       if (passionRef.current) {
-        wordBlinkAnimation(passionRef.current, null, heroRef.current, true);
+        const handle = wordBlinkAnimation(
+          passionRef.current,
+          null,
+          heroRef.current,
+          true
+        );
+        if (handle) animationHandles.push(handle);
       }
     }
+
+    return () => animationHandles.forEach((handle) => handle.kill());
   }, []);
+
+  useEffect(() => {
+    if (sceneCapability.eligible) return;
+
+    setSceneRequested(false);
+    setSceneFailed(false);
+    setIsLoaded(false);
+    setShowTooltip(false);
+  }, [sceneCapability.eligible, setIsLoaded]);
+
+  const botActionLabel = !sceneCapability.eligible
+    ? 'Interactive 3D Michi Bot is unavailable on this device'
+    : sceneFailed
+    ? 'Retry loading the interactive 3D Michi Bot'
+    : !sceneRequested
+    ? 'Enable the interactive 3D Michi Bot'
+    : isSceneLoading
+    ? 'Loading the interactive 3D Michi Bot'
+    : 'Toggle the interactive Michi Bot';
+
+  const tooltipText = sceneFailed
+    ? 'Retry 3D'
+    : sceneRequested
+    ? 'Click me to see magic! ✨'
+    : 'Enable interactive 3D';
 
   return (
     <div
       ref={heroRef}
       className='min-h-screen body-max-width sec-inner-x-padding grid items-stretch gap-4 w-full pt-[160px] pb-2'
     >
-      <div className='flex relative items-center justify-between mt- w-full'>
+      <div className='flex relative items-center justify-between w-full'>
         <p
           ref={countryRef}
-          className='hidden sm:inline sm:text-[10px] md:text-xs text-montreal-mono text-secondary-light uppercase pointer-all'
+          className='hidden sm:inline sm:text-[10px] md:text-xs text-montreal-mono text-muted-light uppercase pointer-all'
         >
           Based in Bangladesh
         </p>
@@ -57,32 +165,71 @@ const Hero = () => {
             <p className='text-lg xl:text-xl capitalize'>Hi There</p>
           </div>
           <div className='w-full min-h-[20px] flex mt-12 relative'>
-            <div
+            <button
+              type='button'
               ref={botContainerRef}
-              className={`absolute w-[350px] h-[300px] left-[100%] -translate-x-1/2 transition-all duration-300 ${
-                isDesktop && isLoaded ? 'cursor-pointer' : ''
+              aria-label={botActionLabel}
+              aria-pressed={isLoaded ? isActive : undefined}
+              aria-busy={isSceneLoading}
+              aria-disabled={isSceneLoading || undefined}
+              disabled={!sceneCapability.eligible}
+              className={`pointer-all absolute w-[350px] h-[300px] left-[100%] -translate-x-1/2 transition-all duration-300 disabled:pointer-events-none ${
+                sceneCapability.eligible && !isSceneLoading
+                  ? 'cursor-pointer'
+                  : ''
               } ${isActive ? 'z-50 michibot-active' : 'z-40'}`}
-              onClick={handleClick}
+              onClick={handleBotClick}
               onMouseEnter={() =>
-                isDesktop && isLoaded && !isActive && setShowTooltip(true)
+                sceneCapability.eligible &&
+                !isSceneLoading &&
+                !isActive &&
+                setShowTooltip(true)
               }
               onMouseLeave={() => setShowTooltip(false)}
+              onFocus={() =>
+                sceneCapability.eligible &&
+                !isSceneLoading &&
+                !isActive &&
+                setShowTooltip(true)
+              }
+              onBlur={() => setShowTooltip(false)}
             >
-              {isDesktop && isLoaded && !isActive && (
+              {sceneCapability.eligible && !isSceneLoading && !isActive && (
                 <div
                   className={`michibot-tooltip ${showTooltip ? 'show' : ''}`}
                 >
-                  <span className='highlight-text'>Click</span> me to see magic!
-                  ✨
+                  <span className='highlight-text'>
+                    {sceneFailed ? 'Retry' : sceneRequested ? 'Click' : 'Enable'}
+                  </span>{' '}
+                  {tooltipText.replace(/^(Retry|Click|Enable)\s*/u, '')}
                 </div>
               )}
-              <Scene onLoad={() => setIsLoaded(true)} isActive={isActive} />
-            </div>
+              {sceneRequested ? (
+                <Suspense fallback={<RobotFallback />}>
+                  <Scene
+                    key={sceneAttempt}
+                    fallback={<RobotFallback />}
+                    onError={handleSceneError}
+                    onLoad={handleSceneLoad}
+                    isActive={isActive}
+                  />
+                </Suspense>
+              ) : (
+                <RobotFallback />
+              )}
+            </button>
+            <span className='sr-only' role='status' aria-live='polite'>
+              {isSceneLoading
+                ? 'Loading interactive 3D model.'
+                : sceneFailed
+                ? 'The interactive 3D model could not be loaded.'
+                : ''}
+            </span>
           </div>
         </div>
         <p
           ref={passionRef}
-          className='hidden sm:inline sm:text-[11px] text-xs text-montreal-mono text-secondary-light uppercase pointer-all'
+          className='hidden sm:inline sm:text-[11px] text-xs text-montreal-mono text-muted-light uppercase pointer-all'
         >
           Passionate Programmer
         </p>

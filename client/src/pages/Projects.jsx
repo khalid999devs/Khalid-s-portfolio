@@ -1,33 +1,39 @@
 /* eslint-disable react-refresh/only-export-components */
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { OutlinedBigIcon } from '../components/Buttons/OutlinedButton';
 import { useAppContext } from '../App';
 import { reqFileWrapper } from '../axios/requests';
 import { FaArrowRightLong } from 'react-icons/fa6';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import PageTransition from '../animations/PageTransition';
 import MetaCard from '../components/utils/MetaCard';
+import LoadingSpinner from '../components/utils/LoadingSpinner';
+import { handleImageFallback } from '../utils/imageFallback';
 
 const Projects = () => {
-  const loc = useLocation();
-  const navigate = useNavigate();
   const {
     appData: { projects },
+    loading,
   } = useAppContext();
-  const [categories, setCategories] = useState([]);
   const [targetCat, setTargetCat] = useState('all');
-
-  useEffect(() => {
-    window.scrollTo({
-      left: 0,
-      top: 0,
-    });
-  }, [projects, loc.pathname]);
-
-  useEffect(() => {
-    if (projects?.length > 0)
-      setCategories(['all', ...new Set(projects.map((item) => item.category))]);
-  }, [projects]);
+  const categories = useMemo(
+    () => [
+      'all',
+      ...new Set(
+        (projects || []).map((item) => item.category).filter(Boolean)
+      ),
+    ],
+    [projects]
+  );
+  const activeCategory = categories.includes(targetCat) ? targetCat : 'all';
+  const visibleProjects = useMemo(
+    () =>
+      (projects || []).filter(
+        (item) =>
+          activeCategory === 'all' || item.category === activeCategory
+      ),
+    [activeCategory, projects]
+  );
 
   return (
     <div className='w-full pb-28 min-h-screen screen-max-width pt-[160px] sec-x-padding'>
@@ -35,24 +41,22 @@ const Projects = () => {
 
       <div className='flex flex-col gap-8 w-full md:pl-28'>
         <div className='flex w-full justify-center md:justify-start items-center gap-4'>
-          <h1 className='text-[2.2rem] sm:text-[3rem] md:text-[4rem] text-pp-eiko text-letter-reveal'>
-            SELECTED
-          </h1>
-
-          <h1 className='text-[2.2rem] sm:text-[3rem] md:text-[4rem] text-letter-reveal'>
-            WORKS
+          <h1 className='flex items-center gap-4 text-[2.2rem] sm:text-[3rem] md:text-[4rem] text-letter-reveal'>
+            <span className='text-pp-eiko'>SELECTED</span>
+            <span>WORKS</span>
           </h1>
         </div>
 
-        {categories?.length ? (
+        {projects?.length ? (
           <div className='flex flex-row flex-wrap gap-3 items-center justify-center md:justify-start'>
-            {categories?.map((item, key) => (
+            {categories.map((item) => (
               <OutlinedBigIcon
-                classes={`!border-[0.2px] border-opacity-50 !rounded-[3px] capitalize ${
-                  item === targetCat ? '!bg-white !text-black' : ''
+                classes={`border-[0.2px]! border-onPrimary-main/50! rounded-[3px]! capitalize ${
+                  item === activeCategory ? 'bg-white! text-black!' : ''
                 }`}
                 text={item}
-                key={key}
+                key={item}
+                pressed={item === activeCategory}
                 onClick={() => {
                   setTargetCat(item);
                 }}
@@ -64,41 +68,46 @@ const Projects = () => {
         )}
       </div>
 
-      {projects?.length ? (
+      {loading && !projects?.length ? (
+        <LoadingSpinner
+          className='min-h-[320px]'
+          label='Loading projects'
+          sizeClass='h-14 w-14'
+        />
+      ) : visibleProjects.length ? (
         <div className='mt-32 grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 items-start justify-start gap-8'>
-          {projects
-            ?.filter((item) => {
-              if (targetCat === 'all') return true;
-              return item.category === targetCat;
-            })
-            .map((item, key) => {
+          {visibleProjects.map((item, key) => {
+              const thumbnail = item.thumbnailContents?.[0];
+
               return (
-                <div
-                  className='w-full grid border-b-[0.05px] border-opacity-30 border-secondary-light pb-3 gap-6 group cursor-pointer pointer-all'
-                  onClick={() => {
-                    navigate(`/singleProject/${item.value + '@' + item.id}`);
-                  }}
-                  key={key}
+                <Link
+                  to={`/singleProject/${item.value + '@' + item.id}`}
+                  className='w-full grid border-b-[0.05px] border-secondary-light/30 pb-3 gap-6 group cursor-pointer pointer-all'
+                  key={item.id || key}
                 >
                   <div className='w-full h-full rounded-lg overflow-hidden '>
                     <img
                       src={
-                        item.thumbnailContents && item.thumbnailContents.length
-                          ? reqFileWrapper(item.thumbnailContents[0].url)
+                        thumbnail
+                          ? reqFileWrapper(thumbnail.url)
                           : reqFileWrapper(item?.bannerImg)
                       }
+                      width={thumbnail?.width}
+                      height={thumbnail?.height}
                       alt={item.title}
+                      onError={handleImageFallback}
                       className='w-full max-h-[300px] lg:max-h-[350px] 2xl:max-h-[300px] h-auto object-cover rounded-lg transition-all duration-1000 group-hover:scale-[102%]'
                       loading='lazy'
+                      decoding='async'
                     />
                   </div>
 
                   <div className='w-full'>
                     <div className='w-full flex justify-between items-center flex-row flex-wrap gap-5'>
-                      <span className='text-[10px] sm:text-xs text-secondary-light opacity-80 uppercase'>
+                      <span className='text-[10px] sm:text-xs text-muted-light opacity-80 uppercase'>
                         PROJECT /{key + 1 < 10 ? `0${key + 1}` : key + 1}
                       </span>
-                      <span className='text-[10px] sm:text-xs text-secondary-light opacity-80 uppercase'>
+                      <span className='text-[10px] sm:text-xs text-muted-light opacity-80 uppercase'>
                         {item.role.join(' — ')}
                       </span>
                     </div>
@@ -108,17 +117,23 @@ const Projects = () => {
                         {item.title}
                       </h2>
 
-                      <button className=''>
-                        <FaArrowRightLong className='text-white text-2xl transition-all duration-500 group-hover:-translate-x-1' />
-                      </button>
+                      <FaArrowRightLong
+                        aria-hidden='true'
+                        className='text-white text-2xl transition-all duration-500 group-hover:-translate-x-1'
+                      />
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
         </div>
       ) : (
-        <></>
+        <p
+          className='mt-32 text-center text-muted-light'
+          role='status'
+        >
+          No projects are available in this category yet.
+        </p>
       )}
     </div>
   );

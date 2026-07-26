@@ -22,8 +22,6 @@ if (config.use_env_variable) {
 
 const modelCases = {
   admin: 'Admin',
-  contact: 'Contact',
-  clients: 'clients',
 };
 
 fs.readdirSync(__dirname)

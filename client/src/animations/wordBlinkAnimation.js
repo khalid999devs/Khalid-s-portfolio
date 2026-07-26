@@ -1,7 +1,6 @@
 import gsap from 'gsap';
 import ScrollTrigger from 'gsap/ScrollTrigger';
-
-// gsap.registerPlugin(ScrollTrigger);
+import { getReducedMotionMediaQuery } from '../utils/motionPreferences';
 
 export function wordBlinkAnimation(
   element,
@@ -11,19 +10,22 @@ export function wordBlinkAnimation(
   indent = false,
   indentNum = null
 ) {
-  if (!element || !parentElement) return;
+  const motionQuery = getReducedMotionMediaQuery();
+  if (!element || !parentElement || motionQuery?.matches) return null;
 
   const originalText = element.textContent.trim();
+  if (!originalText) return null;
+
   element.textContent = '';
 
   const fragment = document.createDocumentFragment();
   const wordSpans = [];
 
-  originalText.split(' ').forEach((word, index) => {
+  originalText.split(/\s+/).forEach((word, index) => {
     const span = document.createElement('span');
     span.textContent = word;
     span.style.display = 'inline-block';
-    span.style.opacity = (Math.random() * 0.9).toFixed(2);
+    span.style.opacity = (Math.random() * 0.25 + 0.65).toFixed(2);
 
     if (index === 0 && indent) {
       if (!indentNum)
@@ -42,39 +44,65 @@ export function wordBlinkAnimation(
 
   element.appendChild(fragment);
 
+  const activeTweens = new Set();
+  let killed = false;
+
+  const animate = () => {
+    activeTweens.forEach((tween) => tween.kill());
+    activeTweens.clear();
+    animateWordSpans(wordSpans, activeTweens, () => killed);
+  };
+
   const scrollTriggerInstance = ScrollTrigger.create({
     trigger: parentElement,
     start: 'top 95%',
-    // markers: true,
-    // end: 'bottom 20%',
-    onEnter: () => animateWordSpans(wordSpans),
+    onEnter: animate,
     onEnterBack: () => {
-      backAnimate && animateWordSpans(wordSpans);
+      if (backAnimate) animate();
     },
   });
 
-  return scrollTriggerInstance;
-  // animateWordSpans(wordSpans);
+  const animationHandle = {
+    kill() {
+      if (killed) return;
+      killed = true;
+      motionQuery?.removeEventListener?.('change', handleMotionChange);
+      scrollTriggerInstance.kill();
+      activeTweens.forEach((tween) => tween.kill());
+      activeTweens.clear();
+      element.textContent = originalText;
+    },
+  };
+
+  const handleMotionChange = (event) => {
+    if (event.matches) animationHandle.kill();
+  };
+  motionQuery?.addEventListener?.('change', handleMotionChange);
+
+  return animationHandle;
 }
 
-export let flickerEase =
+const flickerEase =
   "rough({ template: circ.easeOut, strength: 4, points: 50, taper: 'out', randomize: true, clamp:  true})";
 
-function animateWordSpans(wordSpans) {
+function animateWordSpans(wordSpans, activeTweens, isKilled) {
   wordSpans.forEach((wordSpan) => {
-    const randomDuration = Math.random() * 0.1 + 0.1;
+    const randomDuration = Math.random() * 0.1 + 0.15;
     const randomDelay = Math.random() * 0.3;
 
-    gsap.to(wordSpan, {
+    const tween = gsap.to(wordSpan, {
       duration: randomDuration,
-      opacity: () => Math.random(),
-      repeat: 7,
+      opacity: () => Math.random() * 0.35 + 0.65,
+      repeat: 2,
       yoyo: true,
-      // stagger: { each: 1, from: 'random' },
       ease: flickerEase,
-      // ease: 'power1.inOut',
       delay: randomDelay,
-      onComplete: () => gsap.set(wordSpan, { opacity: 1 }),
+      onComplete: () => {
+        activeTweens.delete(tween);
+        if (!isKilled()) gsap.set(wordSpan, { opacity: 1 });
+      },
     });
+
+    activeTweens.add(tween);
   });
 }

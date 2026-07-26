@@ -1,62 +1,735 @@
-require('dotenv').config();
-require('express-async-errors');
+require('dotenv').config({ quiet: true });
+const http = require('node:http');
+const path = require('path');
 const express = require('express');
-const app = express();
-const db = require('./models');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const { rateLimit } = require('express-rate-limit');
+const helmet = require('helmet');
+const { UnauthorizedError } = require('./errors');
+const {
+  assertAdminAccountReady,
+  assertDatabaseReady,
+  assertSettingsSingletonReady,
+} = require('./utils/databaseReadiness');
+const {
+  normalizeAdminUserName,
+  parseBcryptCost,
+} = require('./utils/adminAccount');
+const {
+  closeDatabaseConnection,
+  createShutdownManager,
+} = require('./utils/serverLifecycle');
+const { closeMailTransporter } = require('./utils/sendMail');
+const { UPLOADS_ROOT } = require('./utils/uploadPaths');
 
-//cors
-const whitelist = process.env.REMOTE_CLIENT_APP.split(',');
-const corOptions = {
-  origin: function (origin, callback) {
-    if (whitelist.indexOf(origin) !== -1 || !origin) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  optionsSuccessStatus: 200,
-  credentials: true,
+const MINIMUM_SECRET_LENGTH = 32;
+const ONE_MINUTE_MS = 60 * 1000;
+const ONE_HOUR_MS = 60 * ONE_MINUTE_MS;
+const ONE_KIBIBYTE = 1024;
+const ONE_MEBIBYTE = 1024 * ONE_KIBIBYTE;
+const IMMUTABLE_UPLOAD_CACHE_CONTROL =
+  'public, max-age=31536000, immutable';
+const REVALIDATED_UPLOAD_CACHE_CONTROL =
+  'public, no-cache, must-revalidate';
+const IMMUTABLE_IMAGE_UPLOAD_NAME =
+  /^(bannerImg|thumbnailContents|sliderContents)-\d{13,}-[a-f0-9]{24}-optimized\.webp$/u;
+const IMMUTABLE_VIDEO_UPLOAD_NAME =
+  /^videos-\d{13,}-[a-f0-9]{24}\.mp4$/u;
+
+const parseBoundedInteger = (
+  env,
+  variableName,
+  { defaultValue, maximum, minimum }
+) => {
+  const rawValue = env[variableName];
+
+  if (rawValue === undefined || String(rawValue).trim() === '') {
+    return defaultValue;
+  }
+
+  const normalizedValue = String(rawValue).trim();
+  if (!/^\d+$/.test(normalizedValue)) {
+    throw new Error(
+      `${variableName} must be an integer between ${minimum} and ${maximum}`
+    );
+  }
+
+  const value = Number(normalizedValue);
+  if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+    throw new Error(
+      `${variableName} must be an integer between ${minimum} and ${maximum}`
+    );
+  }
+
+  return value;
 };
 
-app.use(cors(corOptions));
+const parseBoundedByteSize = (
+  env,
+  variableName,
+  { defaultValue, maximum, minimum }
+) => {
+  const rawValue = env[variableName];
+  if (rawValue === undefined || String(rawValue).trim() === '') {
+    return defaultValue;
+  }
 
-//middlewares
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser('secret'));
+  const normalizedValue = String(rawValue).trim().toLowerCase();
+  const match = /^(\d+)(b|kb|mb)?$/u.exec(normalizedValue);
+  const unitMultipliers = {
+    b: 1n,
+    kb: 1024n,
+    mb: 1024n * 1024n,
+  };
 
-app.use('/uploads', express.static(__dirname + '/uploads'));
+  if (!match) {
+    throw new Error(
+      `${variableName} must be a byte size between ${minimum} and ${maximum} bytes`
+    );
+  }
 
-//routers
-const adminRouter = require('./routers/admin');
-const contactRouter = require('./routers/contact');
-const projectRouter = require('./routers/projects');
-const settingRouter = require('./routers/settings');
+  const value =
+    BigInt(match[1]) * unitMultipliers[match[2] || 'b'];
+  if (value < BigInt(minimum) || value > BigInt(maximum)) {
+    throw new Error(
+      `${variableName} must be a byte size between ${minimum} and ${maximum} bytes`
+    );
+  }
 
-app.use('/api/admin', adminRouter);
-app.use('/api/contact', contactRouter);
-app.use('/api/projects', projectRouter);
-app.use('/api/settings', settingRouter);
+  return Number(value);
+};
 
-//notfound and errors
-const errorHandlerMiddleWare = require('./middlewares/errorHandler');
-const notFoundMiddleWare = require('./middlewares/notFound');
+const isImmutableUploadPath = (filePath) => {
+  if (typeof filePath !== 'string' || !path.isAbsolute(filePath)) return false;
 
-app.use(notFoundMiddleWare);
-app.use(errorHandlerMiddleWare);
+  const relativePath = path.relative(UPLOADS_ROOT, path.resolve(filePath));
+  if (
+    path.isAbsolute(relativePath) ||
+    relativePath === '..' ||
+    relativePath.startsWith(`..${path.sep}`)
+  ) {
+    return false;
+  }
 
-//ports and start
-const PORT = process.env.PORT || 8000;
-db.sequelize
-  .sync()
-  .then((_) => {
-    console.log(`database connected`);
-    app.listen(PORT, () => {
-      console.log(`server is running on port ${PORT}...`);
-    });
-  })
-  .catch((err) => {
-    console.log(err);
+  const [rootSegment, projectId, fieldName, fileName, ...extraSegments] =
+    relativePath.split(path.sep);
+  if (
+    rootSegment !== 'projects' ||
+    !/^[1-9]\d*$/u.test(projectId || '') ||
+    !fileName ||
+    extraSegments.length
+  ) {
+    return false;
+  }
+
+  if (fieldName === 'videos') {
+    return IMMUTABLE_VIDEO_UPLOAD_NAME.test(fileName);
+  }
+
+  const imageName = IMMUTABLE_IMAGE_UPLOAD_NAME.exec(fileName);
+  return imageName?.[1] === fieldName;
+};
+
+const setUploadCacheHeaders = (res, filePath) => {
+  res.setHeader(
+    'Cache-Control',
+    isImmutableUploadPath(filePath)
+      ? IMMUTABLE_UPLOAD_CACHE_CONTROL
+      : REVALIDATED_UPLOAD_CACHE_CONTROL
+  );
+};
+
+const configureHttpServer = (server, policy) => {
+  server.requestTimeout = policy.requestTimeoutMs;
+  server.headersTimeout = policy.headersTimeoutMs;
+  server.keepAliveTimeout = policy.keepAliveTimeoutMs;
+  server.maxHeadersCount = policy.maxHeadersCount;
+  server.maxRequestsPerSocket = policy.maxRequestsPerSocket;
+  return server;
+};
+
+const parseAllowedOrigins = (value) => {
+  const configuredOrigins = value
+    ? value
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+    : [];
+
+  return [
+    ...new Set(
+      configuredOrigins.map((origin) => {
+        try {
+          const parsedOrigin = new URL(origin);
+
+          if (
+            !['http:', 'https:'].includes(parsedOrigin.protocol) ||
+            parsedOrigin.username ||
+            parsedOrigin.password
+          ) {
+            throw new Error('unsupported browser origin');
+          }
+
+          return parsedOrigin.origin;
+        } catch (_error) {
+          throw new Error(
+            `REMOTE_CLIENT_APP contains an invalid URL (HTTP(S) origins only): ${origin}`
+          );
+        }
+      })
+    ),
+  ];
+};
+
+const validateRuntimeConfig = (env = process.env) => {
+  const isProduction = env.NODE_ENV === 'production';
+  const requiredVariables = ['ADMIN_SECRET', 'COOKIE_SECRET', 'NODE_ENV'];
+
+  if (isProduction) {
+    requiredVariables.push('ADMIN_USERNAME', 'REMOTE_CLIENT_APP');
+
+    if (!env.DATABASE_URL?.trim()) {
+      requiredVariables.push('DB_HOST', 'DB_NAME', 'DB_PASS', 'DB_USER');
+    }
+  }
+
+  const missingVariables = requiredVariables.filter(
+    (variableName) => !String(env[variableName] || '').trim()
+  );
+
+  if (missingVariables.length) {
+    throw new Error(
+      `Missing required environment variables: ${missingVariables.join(', ')}`
+    );
+  }
+
+  if (!['development', 'production', 'test'].includes(env.NODE_ENV)) {
+    throw new Error('NODE_ENV must be development, production, or test');
+  }
+
+  if (env.RESUME_FILE_PATH?.trim()) {
+    const resumeFilePath = env.RESUME_FILE_PATH.trim();
+    if (!path.isAbsolute(resumeFilePath)) {
+      throw new Error('RESUME_FILE_PATH must be an absolute path');
+    }
+    if (path.extname(resumeFilePath).toLowerCase() !== '.pdf') {
+      throw new Error('RESUME_FILE_PATH must identify a PDF file');
+    }
+  }
+
+  for (const variableName of ['ADMIN_SECRET', 'COOKIE_SECRET']) {
+    if (env[variableName].length < MINIMUM_SECRET_LENGTH) {
+      throw new Error(
+        `${variableName} must contain at least ${MINIMUM_SECRET_LENGTH} characters`
+      );
+    }
+  }
+
+  if (env.ADMIN_SECRET === env.COOKIE_SECRET) {
+    throw new Error('ADMIN_SECRET and COOKIE_SECRET must be different');
+  }
+
+  const allowedOrigins = parseAllowedOrigins(
+    env.REMOTE_CLIENT_APP || 'http://localhost:5173'
+  );
+
+  if (
+    isProduction &&
+    allowedOrigins.some((origin) => new URL(origin).protocol !== 'https:')
+  ) {
+    throw new Error('REMOTE_CLIENT_APP must use HTTPS in production');
+  }
+  if (isProduction && env.DB_SSL !== 'true') {
+    throw new Error('DB_SSL=true is required in production');
+  }
+
+  const port = parseBoundedInteger(env, 'PORT', {
+    defaultValue: 8000,
+    minimum: 1,
+    maximum: 65535,
   });
+  const trustProxyHops = parseBoundedInteger(env, 'TRUST_PROXY_HOPS', {
+    defaultValue: 0,
+    minimum: 0,
+    maximum: 10,
+  });
+  const shutdownTimeoutMs = parseBoundedInteger(
+    env,
+    'SHUTDOWN_TIMEOUT_MS',
+    {
+      defaultValue: 10_000,
+      minimum: 1_000,
+      maximum: 60_000,
+    }
+  );
+  const readinessCacheMs = parseBoundedInteger(
+    env,
+    'READINESS_CACHE_MS',
+    {
+      defaultValue: 5_000,
+      minimum: 100,
+      maximum: ONE_MINUTE_MS,
+    }
+  );
+  const adminUserName = env.ADMIN_USERNAME?.trim()
+    ? normalizeAdminUserName(env.ADMIN_USERNAME)
+    : null;
+  const adminPasswordBcryptCost = parseBcryptCost(
+    env.ADMIN_PASSWORD_BCRYPT_COST
+  );
+  const bodyLimits = {
+    json: parseBoundedByteSize(env, 'JSON_BODY_LIMIT', {
+      defaultValue: 256 * ONE_KIBIBYTE,
+      minimum: ONE_KIBIBYTE,
+      maximum: ONE_MEBIBYTE,
+    }),
+    urlEncoded: parseBoundedByteSize(env, 'URL_ENCODED_BODY_LIMIT', {
+      defaultValue: 64 * ONE_KIBIBYTE,
+      minimum: ONE_KIBIBYTE,
+      maximum: 256 * ONE_KIBIBYTE,
+    }),
+  };
+  const httpServer = {
+    requestTimeoutMs: parseBoundedInteger(
+      env,
+      'HTTP_REQUEST_TIMEOUT_MS',
+      {
+        defaultValue: 300_000,
+        minimum: 10_000,
+        maximum: 600_000,
+      }
+    ),
+    headersTimeoutMs: parseBoundedInteger(
+      env,
+      'HTTP_HEADERS_TIMEOUT_MS',
+      {
+        defaultValue: 60_000,
+        minimum: 5_000,
+        maximum: 120_000,
+      }
+    ),
+    keepAliveTimeoutMs: parseBoundedInteger(
+      env,
+      'HTTP_KEEP_ALIVE_TIMEOUT_MS',
+      {
+        defaultValue: 5_000,
+        minimum: 1_000,
+        maximum: 60_000,
+      }
+    ),
+    maxHeadersCount: parseBoundedInteger(
+      env,
+      'HTTP_MAX_HEADERS_COUNT',
+      {
+        defaultValue: 100,
+        minimum: 16,
+        maximum: 1_000,
+      }
+    ),
+    maxRequestsPerSocket: parseBoundedInteger(
+      env,
+      'HTTP_MAX_REQUESTS_PER_SOCKET',
+      {
+        defaultValue: 1_000,
+        minimum: 1,
+        maximum: 100_000,
+      }
+    ),
+  };
+  if (httpServer.headersTimeoutMs > httpServer.requestTimeoutMs) {
+    throw new Error(
+      'HTTP_HEADERS_TIMEOUT_MS cannot exceed HTTP_REQUEST_TIMEOUT_MS'
+    );
+  }
+
+  const rateLimits = {
+    api: {
+      windowMs: parseBoundedInteger(env, 'API_RATE_LIMIT_WINDOW_MS', {
+        defaultValue: 15 * ONE_MINUTE_MS,
+        minimum: 1000,
+        maximum: 24 * ONE_HOUR_MS,
+      }),
+      limit: parseBoundedInteger(env, 'API_RATE_LIMIT_MAX_REQUESTS', {
+        defaultValue: 300,
+        minimum: 1,
+        maximum: 100_000,
+      }),
+    },
+    adminLogin: {
+      windowMs: parseBoundedInteger(
+        env,
+        'ADMIN_LOGIN_RATE_LIMIT_WINDOW_MS',
+        {
+          defaultValue: 15 * ONE_MINUTE_MS,
+          minimum: 1000,
+          maximum: 24 * ONE_HOUR_MS,
+        }
+      ),
+      limit: parseBoundedInteger(
+        env,
+        'ADMIN_LOGIN_RATE_LIMIT_MAX_REQUESTS',
+        {
+          defaultValue: 10,
+          minimum: 1,
+          maximum: 10_000,
+        }
+      ),
+    },
+    readiness: {
+      windowMs: parseBoundedInteger(env, 'READINESS_RATE_LIMIT_WINDOW_MS', {
+        defaultValue: 15 * ONE_MINUTE_MS,
+        minimum: 1000,
+        maximum: 24 * ONE_HOUR_MS,
+      }),
+      limit: parseBoundedInteger(
+        env,
+        'READINESS_RATE_LIMIT_MAX_REQUESTS',
+        {
+          defaultValue: 1_800,
+          minimum: 1,
+          maximum: 100_000,
+        }
+      ),
+    },
+  };
+
+  return {
+    adminPasswordBcryptCost,
+    adminUserName,
+    allowedOrigins,
+    bodyLimits,
+    cookieSecret: env.COOKIE_SECRET,
+    httpServer,
+    isProduction,
+    port,
+    rateLimits,
+    readinessCacheMs,
+    shutdownTimeoutMs,
+    trustProxyHops,
+  };
+};
+
+const createCorsOptions = (allowedOrigins) => ({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      const error = new Error('Origin not allowed');
+      error.statusCode = 403;
+      callback(error);
+    }
+  },
+  credentials: true,
+  maxAge: 600,
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  optionsSuccessStatus: 204,
+});
+
+const SAFE_REQUEST_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+const createUnsafeRequestOriginGuard = (allowedOrigins) => (req, _res, next) => {
+  if (SAFE_REQUEST_METHODS.has(req.method)) {
+    next();
+    return;
+  }
+
+  const origin = req.get('origin');
+  if (!origin || !allowedOrigins.includes(origin)) {
+    next(new UnauthorizedError('Request origin is not allowed'));
+    return;
+  }
+
+  next();
+};
+
+const createHelmetOptions = (isProduction) => ({
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      baseUri: ["'none'"],
+      defaultSrc: ["'none'"],
+      formAction: ["'none'"],
+      frameAncestors: ["'none'"],
+    },
+  },
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  frameguard: { action: 'deny' },
+  hsts: isProduction
+    ? { includeSubDomains: true, maxAge: 31_536_000, preload: false }
+    : false,
+  referrerPolicy: { policy: 'no-referrer' },
+});
+
+const createRateLimitHandler = (message) => (_req, res, _next, options) => {
+  res.set('Cache-Control', 'no-store');
+  return res.status(options.statusCode).json({
+    succeed: false,
+    msg: message,
+  });
+};
+
+const createLimiter = ({ limit, message, windowMs }) =>
+  rateLimit({
+    handler: createRateLimitHandler(message),
+    legacyHeaders: false,
+    limit,
+    skip: (req) => req.method === 'OPTIONS',
+    standardHeaders: 'draft-8',
+    windowMs,
+  });
+
+const createRateLimiters = (rateLimits) => ({
+  adminLogin: createLimiter({
+    ...rateLimits.adminLogin,
+    message: 'Too many login attempts. Please try again later.',
+  }),
+  api: createLimiter({
+    ...rateLimits.api,
+    message: 'Too many requests. Please try again later.',
+  }),
+  readiness: createLimiter({
+    ...rateLimits.readiness,
+    message: 'Too many readiness probes. Please try again later.',
+  }),
+});
+
+const createHealthRouter = ({
+  cacheMs = 0,
+  readinessCheck = async () => {
+    throw new Error('Readiness check is not configured');
+  },
+} = {}) => {
+  const router = express.Router();
+  let cachedReadiness;
+  let cacheExpiresAt = 0;
+  let readinessInFlight;
+
+  const getReadiness = () => {
+    const now = Date.now();
+    if (cachedReadiness !== undefined && now < cacheExpiresAt) {
+      return Promise.resolve(cachedReadiness);
+    }
+    if (readinessInFlight) return readinessInFlight;
+
+    readinessInFlight = Promise.resolve()
+      .then(readinessCheck)
+      .then(
+        () => true,
+        () => false
+      )
+      .then((isReady) => {
+        cachedReadiness = isReady;
+        cacheExpiresAt = Date.now() + cacheMs;
+        return isReady;
+      })
+      .finally(() => {
+        readinessInFlight = undefined;
+      });
+
+    return readinessInFlight;
+  };
+
+  router.use((_req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+  });
+  router.get('/live', (_req, res) => {
+    res.json({ status: 'ok' });
+  });
+  router.get('/ready', async (_req, res) => {
+    if (await getReadiness()) {
+      res.json({ status: 'ready' });
+    } else {
+      res.status(503).json({ status: 'unavailable' });
+    }
+  });
+
+  return router;
+};
+
+const createApp = (
+  env = process.env,
+  runtimeConfig,
+  { readinessCheck } = {}
+) => {
+  const config = runtimeConfig || validateRuntimeConfig(env);
+  const app = express();
+  const limiters = createRateLimiters(config.rateLimits);
+
+  app.disable('x-powered-by');
+  app.set('json escape', true);
+  app.set('query parser', 'simple');
+  app.set('trust proxy', config.trustProxyHops);
+  app.use(helmet(createHelmetOptions(config.isProduction)));
+  app.use('/health/ready', limiters.readiness);
+  app.use(
+    '/health',
+    createHealthRouter({
+      cacheMs: config.readinessCacheMs,
+      readinessCheck,
+    })
+  );
+  app.use(cors(createCorsOptions(config.allowedOrigins)));
+  app.use('/api', createUnsafeRequestOriginGuard(config.allowedOrigins));
+
+  app.use('/api', limiters.api);
+  app.post('/api/admin/login', limiters.adminLogin);
+
+  app.use(express.json({ limit: config.bodyLimits.json }));
+  app.use(
+    express.urlencoded({
+      extended: false,
+      limit: config.bodyLimits.urlEncoded,
+      parameterLimit: 100,
+    })
+  );
+  app.use(cookieParser(config.cookieSecret));
+
+  app.use(
+    '/uploads',
+    express.static(UPLOADS_ROOT, {
+      dotfiles: 'deny',
+      index: false,
+      setHeaders: setUploadCacheHeaders,
+    })
+  );
+
+  const adminRouter = require('./routers/admin');
+  const contactRouter = require('./routers/contact');
+  const projectRouter = require('./routers/projects');
+  const settingRouter = require('./routers/settings');
+
+  app.use('/api/admin', adminRouter);
+  app.use('/api/contact', contactRouter);
+  app.use('/api/projects', projectRouter);
+  app.use('/api/settings', settingRouter);
+
+  const errorHandlerMiddleWare = require('./middlewares/errorHandler');
+  const notFoundMiddleWare = require('./middlewares/notFound');
+
+  app.use(notFoundMiddleWare);
+  app.use(errorHandlerMiddleWare);
+
+  return app;
+};
+
+const listenForConnections = (
+  app,
+  port,
+  logger = console,
+  httpServerPolicy
+) =>
+  new Promise((resolve, reject) => {
+    const server = http.createServer(app);
+    const handleError = (error) => {
+      server.off('listening', handleListening);
+      reject(error);
+    };
+    const handleListening = () => {
+      server.off('error', handleError);
+      logger.log(`server is running on port ${port}...`);
+      resolve(server);
+    };
+
+    try {
+      if (httpServerPolicy) {
+        configureHttpServer(server, httpServerPolicy);
+      }
+      server.once('error', handleError);
+      server.once('listening', handleListening);
+      server.listen(port);
+    } catch (error) {
+      server.off('error', handleError);
+      server.off('listening', handleListening);
+      reject(error);
+    }
+  });
+
+const startServer = async ({
+  env = process.env,
+  loadDatabase = () => require('./models'),
+  logger = console,
+  processTarget = process,
+} = {}) => {
+  const runtimeConfig = validateRuntimeConfig(env);
+  const db = loadDatabase();
+  const lifecycleState = { isShuttingDown: false };
+
+  try {
+    await assertDatabaseReady(db.sequelize);
+    if (runtimeConfig.isProduction) {
+      await assertAdminAccountReady(
+        db.sequelize,
+        runtimeConfig.adminUserName,
+        runtimeConfig.adminPasswordBcryptCost
+      );
+      await assertSettingsSingletonReady(db.sequelize);
+    }
+    logger.log('database connected and migrations are current');
+
+    const app = createApp(env, runtimeConfig, {
+      readinessCheck: async () => {
+        if (lifecycleState.isShuttingDown) {
+          throw new Error('Server is shutting down');
+        }
+        await db.sequelize.authenticate();
+      },
+    });
+    const server = await listenForConnections(
+      app,
+      runtimeConfig.port,
+      logger,
+      runtimeConfig.httpServer
+    );
+    const shutdownManager = createShutdownManager({
+      closeMailTransporter,
+      lifecycleState,
+      logger,
+      processTarget,
+      sequelize: db.sequelize,
+      server,
+      timeoutMs: runtimeConfig.shutdownTimeoutMs,
+    });
+
+    return {
+      app,
+      server,
+      shutdown: shutdownManager.shutdown,
+    };
+  } catch (error) {
+    try {
+      closeMailTransporter();
+    } catch (_closeError) {
+      // Preserve the original startup failure. There is no safe recovery path
+      // for a mail-pool close error while startup itself is already failing.
+    }
+    await closeDatabaseConnection(
+      db.sequelize,
+      runtimeConfig.shutdownTimeoutMs
+    ).catch(() => {});
+    throw error;
+  }
+};
+
+if (require.main === module) {
+  startServer().catch((error) => {
+    console.error('Server failed to start:', error.message);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  configureHttpServer,
+  createApp,
+  createHealthRouter,
+  createRateLimiters,
+  createUnsafeRequestOriginGuard,
+  parseAllowedOrigins,
+  assertDatabaseReady,
+  assertSettingsSingletonReady,
+  isImmutableUploadPath,
+  startServer,
+  setUploadCacheHeaders,
+  validateRuntimeConfig,
+};

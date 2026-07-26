@@ -13,13 +13,13 @@ const IconedInput = ({
   const [value, setValue] = useState('');
   return (
     <form
-      className={`grid grid-cols-[1fr,auto] gap-5 px-2.5 ${
+      className={`grid grid-cols-[1fr_auto] gap-5 px-2.5 ${
         size === 'small'
           ? 'py-2 border rounded-md'
           : size === 'normal'
           ? 'py-2.5 border rounded-lg placeholder:font-extralight'
           : 'py-3 border rounded-lg placeholder:font-extralight'
-      } border-opacity-50 border-secondary-main ${classes}`}
+      } border-secondary-main/50 ${classes}`}
       onSubmit={(e) => {
         e.preventDefault();
         handleSubmit(e, name, value);
@@ -32,18 +32,20 @@ const IconedInput = ({
         onChange={(e) => setValue(e.target.value)}
         name={name}
         {...inputProps}
+        aria-label={inputProps?.['aria-label'] || `Add ${name || 'item'}`}
         className={
-          `outline-none w-full placeholder:text-secondary-main placeholder:opacity-100 bg-transparent text-primary-main text-base ${
-            size === 'small' && '!text-sm'
+          `outline-hidden w-full placeholder:text-muted-main bg-transparent text-primary-main text-base ${
+            size === 'small' && 'text-sm!'
           }  ` + inputClasses
         }
         placeholder='Name'
       />
       <button
         type='submit'
-        className='text-secondary-light text-2xl flex items-center justify-center'
+        aria-label={`Add ${name || 'item'}`}
+        className='text-muted-light text-2xl flex items-center justify-center'
       >
-        <IoAddCircleOutline />
+        <IoAddCircleOutline aria-hidden='true' />
       </button>
     </form>
   );

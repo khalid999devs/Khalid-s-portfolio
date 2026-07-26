@@ -3,40 +3,64 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Khalid Ahammed</title>
+    <meta name="theme-color" content="#161616" />
+    <meta name="color-scheme" content="dark" />
+
+    <!--
+      Default metadata for crawlers and link unfurlers that never execute
+      JavaScript. MetaCard rewrites these exact elements in place on every route
+      change rather than appending new ones, so a page never ships two titles or
+      two conflicting canonicals. Keep this set complete and valid on its own.
+    -->
+    <title>Khalid Ahammed — Full-Stack Web &amp; Mobile Developer</title>
+    <link rel="canonical" href="https://khalidahammed.com/" />
     <meta
       name="description"
-      content="Khalid Ahammed is a dynamic Full Stack Developer with over 4 years of experience in Web and Application Development. Proficient in tech stacks like PERN, MERN, Next.js, and more, he specializes in crafting scalable, high-performance digital solutions. Driven by a passion for leveraging innovative technologies to build impactful websites, web applications, and mobile apps, Khalid thrives in collaborative environments that foster creativity and innovation."
+      content="Khalid Ahammed is a full-stack developer building scalable, high-performance web and mobile products with React, Node.js, and related technologies."
+    />
+    <meta
+      name="robots"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
     />
 
-    <!-- OG Tags -->
-    <meta property="og:title" content="Khalid Ahammed" />
+    <!-- Open Graph -->
+    <meta
+      property="og:title"
+      content="Khalid Ahammed — Full-Stack Web &amp; Mobile Developer"
+    />
     <meta
       property="og:description"
-      content="Khalid Ahammed is a dynamic Full Stack Developer with over 4 years of experience in Web and Application Development. Proficient in tech stacks like PERN, MERN, Next.js, and more, he specializes in crafting scalable, high-performance digital solutions. Driven by a passion for leveraging innovative technologies to build impactful websites, web applications, and mobile apps, Khalid thrives in collaborative environments that foster creativity and innovation."
+      content="Khalid Ahammed is a full-stack developer building scalable, high-performance web and mobile products with React, Node.js, and related technologies."
     />
-    <meta property="og:url" content="https://khalidahammed.com" />
+    <meta property="og:url" content="https://khalidahammed.com/" />
     <meta
       property="og:image"
       content="https://khalidahammed.com/og-banner.jpg"
     />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Khalid Ahammed portfolio preview" />
     <meta property="og:type" content="website" />
-
-    <meta
-      name="keywords"
-      content="Khalid Ahammed, Full Stack Developer, MERN, PERN, Next.js, Portfolio, Web Development, Application Development, Khalid Ahammed Portfolio"
-    />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:site_name" content="Khalid Ahammed" />
 
     <!-- Twitter Cards -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Khalid Ahammed" />
+    <meta
+      name="twitter:title"
+      content="Khalid Ahammed — Full-Stack Web &amp; Mobile Developer"
+    />
     <meta
       name="twitter:description"
-      content="Khalid Ahammed is a dynamic Full Stack Developer with over 4 years of experience in Web and Application Development. Proficient in tech stacks like PERN, MERN, Next.js, and more, he specializes in crafting scalable, high-performance digital solutions. Driven by a passion for leveraging innovative technologies to build impactful websites, web applications, and mobile apps, Khalid thrives in collaborative environments that foster creativity and innovation."
+      content="Khalid Ahammed is a full-stack developer building scalable, high-performance web and mobile products with React, Node.js, and related technologies."
     />
     <meta
       name="twitter:image"
       content="https://khalidahammed.com/og-banner.jpg"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="Khalid Ahammed portfolio preview"
     />
 
     <link rel="icon" href="/favicon.ico" />
@@ -44,6 +68,57 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="manifest" href="/site.webmanifest" />
+
+    <!--
+      Static identity graph. Deliberately not managed by MetaCard so that
+      non-rendering crawlers always receive it and it stays stable across
+      client-side navigation. Per-page schema is added separately under
+      script[data-schema="page-schema"].
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Person",
+            "@id": "https://khalidahammed.com/#person",
+            "name": "Khalid Ahammed",
+            "url": "https://khalidahammed.com/",
+            "image": "https://khalidahammed.com/og-banner.jpg",
+            "jobTitle": "Full-Stack Developer",
+            "description": "Full-stack developer building scalable, high-performance web and mobile products with React, Node.js, and related technologies.",
+            "knowsAbout": [
+              "Web Development",
+              "Mobile Application Development",
+              "React",
+              "Node.js",
+              "JavaScript",
+              "UI/UX Design"
+            ],
+            "address": {
+              "@type": "PostalAddress",
+              "addressCountry": "BD"
+            }
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://khalidahammed.com/#website",
+            "url": "https://khalidahammed.com/",
+            "name": "Khalid Ahammed",
+            "inLanguage": "en",
+            "publisher": { "@id": "https://khalidahammed.com/#person" }
+          },
+          {
+            "@type": "ProfilePage",
+            "@id": "https://khalidahammed.com/#profilepage",
+            "url": "https://khalidahammed.com/",
+            "name": "Khalid Ahammed — Full-Stack Web & Mobile Developer",
+            "isPartOf": { "@id": "https://khalidahammed.com/#website" },
+            "about": { "@id": "https://khalidahammed.com/#person" }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

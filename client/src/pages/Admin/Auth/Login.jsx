@@ -6,6 +6,7 @@ import PrimaryButton from '../../../components/Buttons/PrimaryButton';
 import axios from 'axios';
 import { reqs } from '../../../axios/requests';
 import { useNavigate } from 'react-router-dom';
+import MetaCard from '../../../components/utils/MetaCard';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -18,42 +19,57 @@ const Login = () => {
     password: '',
   });
   const [show, setShow] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     axios
       .get(reqs.IS_ADMIN_VALID, {
-        withCredentials: true,
+        signal: controller.signal,
       })
       .then((res) => {
-        // console.log(res.data);
-
-        if (res.data.succeed) navigate('/admin');
+        if (res.data.succeed) navigate('/admin', { replace: true });
       })
       .catch(() => {});
+
+    return () => controller.abort();
   }, [navigate]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    axios
-      .post(
-        reqs.ADMIN_LOGIN,
-        { userName: data.username, password: data.password },
-        { withCredentials: true }
-      )
-      .then((res) => {
-        if (res.data.succeed) navigate('/admin');
-        else setError((error) => ({ ...error, password: res.data.msg }));
-      })
-      .catch((err) => {
-        setError((error) => ({
-          ...error,
-          password: err.response?.data?.msg || 'Login failed',
-        }));
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    setError((currentError) => ({ ...currentError, password: '' }));
+
+    try {
+      const response = await axios.post(reqs.ADMIN_LOGIN, {
+        userName: data.username,
+        password: data.password,
       });
+
+      if (response.data.succeed) {
+        navigate('/admin', { replace: true });
+      } else {
+        setError((currentError) => ({
+          ...currentError,
+          password: response.data.msg,
+        }));
+      }
+    } catch (requestError) {
+      setError((currentError) => ({
+        ...currentError,
+        password: requestError.response?.data?.msg || 'Login failed',
+      }));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className='min-h-screen'>
+      <MetaCard title='Administrator sign in' noIndex />
       <AdminBar title={'Admin Login'} loginState={true} />
       <div className='max-w-[480px] w-full pt-16 2xl:pt-[150px] m-auto'>
         <form className='grid gap-8' onSubmit={handleSubmit}>
@@ -62,7 +78,11 @@ const Login = () => {
               label={'Username'}
               size='big'
               inputProps={{
+                autoComplete: 'username',
+                maxLength: 255,
                 name: 'username',
+                required: true,
+                spellCheck: false,
                 value: data.username,
                 onChange: (e) => handleInputValChange(e, setData),
               }}
@@ -74,7 +94,10 @@ const Login = () => {
               size='big'
               onShowClick={() => setShow((show) => !show)}
               inputProps={{
+                autoComplete: 'current-password',
+                maxLength: 1024,
                 name: 'password',
+                required: true,
                 value: data.password,
                 onChange: (e) => handleInputValChange(e, setData),
               }}
@@ -82,7 +105,11 @@ const Login = () => {
             />
           </div>
           <div className='w-full flex items-center justify-center'>
-            <PrimaryButton text={'LOGIN'} type={'submit'} />
+            <PrimaryButton
+              disabled={isSubmitting}
+              text={isSubmitting ? 'SIGNING IN…' : 'LOGIN'}
+              type='submit'
+            />
           </div>
         </form>
       </div>

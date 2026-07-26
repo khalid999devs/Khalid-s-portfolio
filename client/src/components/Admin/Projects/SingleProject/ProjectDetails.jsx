@@ -13,6 +13,7 @@ import Thumbnails from '../ProjectContents/Thumbnails';
 import SliderContents from '../ProjectContents/SliderContents';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
+import ProjectDeleteDialog from '../ProjectDeleteDialog';
 
 const ProjectDetails = ({ mode = 'create', projectId }) => {
   const location = useLocation();
@@ -42,21 +43,17 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
     state: false,
   });
   const [loading, setLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [projectLoadState, setProjectLoadState] = useState(
+    mode === 'edit' ? 'loading' : 'ready'
+  );
+  const [projectLoadAttempt, setProjectLoadAttempt] = useState(0);
 
   useEffect(() => {
-    if (localStorage.getItem('project')) {
-      const createdProjectInfo = JSON.parse(localStorage.getItem('project'));
-      if (createdProjectInfo.value && createdProjectInfo.id) {
-        localStorage.removeItem('project');
-        navigate(
-          `/admin/edit-project/${createdProjectInfo.value}?id=${createdProjectInfo.id}`,
-          { replace: true, state: { formMode: 'content' } }
-        );
-      }
-    }
+    const controller = new AbortController();
     axios
-      .post(reqs.GET_PROJECT, { mode: 'cat' })
+      .post(reqs.GET_PROJECT, { mode: 'cat' }, { signal: controller.signal })
       .then((res) => {
         if (res.data.succeed) {
           setCategories(res.data.result);
@@ -69,46 +66,74 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
         }
       })
       .catch((err) => {
+        if (controller.signal.aborted) return;
         setPopup({
           text: err.response?.data?.msg || 'An error occurred',
           type: 'error',
           state: true,
         });
       });
-    // navigate is stable from useNavigate and doesn't need to be in deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+
+    return () => controller.abort();
+  }, [navigate]);
 
   useEffect(() => {
-    if (mode === 'edit') {
-      axios
-        .post(reqs.GET_PROJECT, { mode: 'single', projectId })
-        .then((res) => {
-          if (res.data.succeed) {
-            setProjectData(res.data.result);
-          }
-        })
-        .catch((err) => {
-          setPopup({
-            text: err.response?.data?.msg || 'An error occurred',
-            type: 'error',
-            state: true,
-          });
-        });
+    const controller = new AbortController();
+
+    if (mode !== 'edit') {
+      setProjectLoadState('ready');
+      return () => controller.abort();
     }
-  }, [mode, projectId]);
+
+    setProjectLoadState('loading');
+    axios
+      .post(
+        reqs.GET_PROJECT,
+        { mode: 'single', projectId },
+        { signal: controller.signal }
+      )
+      .then((res) => {
+        if (!res.data.succeed || !res.data.result) {
+          throw new Error(res.data.msg || 'Project data could not be loaded');
+        }
+        setProjectData(res.data.result);
+        setProjectLoadState('ready');
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        const message =
+          err.response?.data?.msg ||
+          err.message ||
+          'Project data could not be loaded';
+        setProjectLoadState('error');
+        setPopup({
+          text: message,
+          type: 'error',
+          state: true,
+        });
+      });
+
+    return () => controller.abort();
+  }, [mode, projectId, projectLoadAttempt]);
+
+  const formDisabled =
+    loading || (mode === 'edit' && projectLoadState !== 'ready');
 
   const handleDeleteProject = (projectId, projectName) => {
+    if (mode === 'edit' && !loading) {
+      setDeleteTarget({ id: projectId, name: projectName });
+    }
+  };
+
+  const confirmDeleteProject = ({ id: projectId }) => {
     if (mode === 'edit') {
-      deleteProject(projectId, projectName, setLoading, setPopup)
-        .then((data) => {
-          setPopup({
-            text: data.msg,
-            type: 'success',
-            state: true,
-          });
+      deleteProject(projectId, setLoading)
+        .then(() => {
+          setDeleteTarget(null);
+          navigate('/admin/projects', { replace: true });
         })
         .catch((error) => {
+          setDeleteTarget(null);
           setPopup({
             text: error.msg || 'Something went wrong, please try again.',
             type: 'error',
@@ -118,220 +143,165 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
     }
   };
 
-  const handleCreateProject = (data) => {
-    if (data.title && data.subtitle && mode === 'create') {
-      setLoading(true);
+  const handleCreateProject = async (data) => {
+    if (!data.title || !data.subtitle || mode !== 'create' || loading) {
+      return false;
+    }
+
+    setLoading(true);
+    setPopup({ text: 'Creating project...', type: 'normal', state: true });
+
+    try {
+      const res = await axios.post(reqs.CREATE_PROJECT, data);
+      if (!res.data.succeed) return false;
+
+      const initInfos = res.data.initialInfos;
+      navigate(
+        `/admin/edit-project/${encodeURIComponent(initInfos.value)}?id=${
+          initInfos.id
+        }`,
+        { replace: true, state: { formMode: 'content' } }
+      );
+      return true;
+    } catch (err) {
       setPopup({
-        text: 'Loading...',
-        type: 'normal',
+        text: err.response?.data?.msg || 'An error occurred',
+        type: 'error',
         state: true,
       });
-      axios
-        .post(reqs.CREATE_PROJECT, data, { withCredentials: true })
-        .then((res) => {
-          setLoading(false);
-          if (res.data.succeed) {
-            const initInfos = res.data.initialInfos;
-            setProjectData((projectData) => ({
-              ...projectData,
-              ...initInfos,
-            }));
-            setPopup({
-              text: res.data.msg,
-              type: 'success',
-              state: true,
-            });
-            localStorage.setItem(
-              'project',
-              JSON.stringify({ id: initInfos.id, value: initInfos.value })
-            );
-            setFormMode('content');
-          }
-        })
-        .catch((err) => {
-          setLoading(false);
-          setPopup({
-            text: err.response?.data?.msg || 'An error occurred',
-            type: 'error',
-            state: true,
-          });
-        });
+      return false;
+    } finally {
+      setLoading(false);
     }
   };
-  const handleUpdateProjectInfos = (data) => {
-    if (projectData.title && projectData.subtitle && mode === 'edit') {
-      setLoading(true);
+  const handleUpdateProjectInfos = async (data) => {
+    if (mode !== 'edit' || !projectData.id || loading) return false;
+
+    setLoading(true);
+    setPopup({ text: 'Updating...', type: 'normal', state: true });
+
+    try {
+      const res = await axios.patch(
+        `${reqs.EDIT_PROJECT_INFOS}/${projectData.id}`,
+        data
+      );
+      if (!res.data.succeed) return false;
+
+      setProjectData((currentProject) => ({
+        ...currentProject,
+        ...res.data.result,
+      }));
+      setPopup({ text: res.data.msg, type: 'success', state: true });
+      return true;
+    } catch (err) {
       setPopup({
-        text: 'Updating...',
-        type: 'normal',
+        text: err.response?.data?.msg || 'An error occurred',
+        type: 'error',
         state: true,
       });
-      axios
-        .patch(`${reqs.EDIT_PROJECT_INFOS}/${projectData.id}`, data, {
-          withCredentials: true,
-        })
-        .then((res) => {
-          setLoading(false);
-          if (res.data.succeed) {
-            setProjectData((projectData) => ({
-              ...projectData,
-              ...res.data.result,
-            }));
-            setPopup({
-              text: res.data.msg,
-              type: 'success',
-              state: true,
-            });
-          }
-        })
-        .catch((err) => {
-          setLoading(false);
-          setPopup({
-            text: err.response?.data?.msg || 'An error occurred',
-            type: 'error',
-            state: true,
-          });
-        });
+      return false;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUpdateProjectContents = (data) => {
-    if (mode === 'create' && projectData.id) {
-      setLoading(true);
-      setPopup({
-        text: 'Loading...',
-        type: 'normal',
-        state: true,
-      });
-      axios
-        .put(`${reqs.UPDATE_PROJECT_CONTENT}/${projectData.id}`, data, {
-          withCredentials: true,
-        })
-        .then((res) => {
-          setLoading(false);
-          if (res.data.succeed) {
-            setProjectData((projectData) => ({
-              ...projectData,
-              ...res.data.result,
-            }));
-            setPopup({
-              text: res.data.msg,
-              type: 'success',
-              state: true,
-            });
-          }
-        })
-        .catch((err) => {
-          setLoading(false);
-          setPopup({
-            text: err.response?.data?.msg || 'Something wrong happened!',
-            type: 'error',
-            state: true,
-          });
-        });
-    }
-  };
-
-  const handleEditProjectContents = (
+  const handleEditProjectContents = async (
     data, //{bannerImg:{},...}
     contentMode,
     contentId = null,
     replace = false
   ) => {
-    if (projectData?.id) {
-      const fd = new FormData();
-      fd.append('mode', contentMode);
+    if (!projectData?.id || loading) return false;
+
+    const fd = new FormData();
+    fd.append('mode', contentMode);
+    fd.append('replaceItem', replace);
+    if (contentId !== null && contentId !== undefined && contentId !== '') {
       fd.append('contentId', contentId);
-      fd.append('replaceItem', replace);
-      fd.append('title', projectData.title || projectData.id);
+    }
+    if (projectData.title) fd.append('title', projectData.title);
 
-      for (let i in data) {
-        if (Array.isArray(data[i])) {
-          data[i].forEach((item) => {
-            fd.append(i, item);
-          });
-        } else {
-          fd.append(i, data[i]);
-        }
+    for (const field in data) {
+      if (Array.isArray(data[field])) {
+        data[field].forEach((item) => {
+          fd.append(field, item);
+        });
+      } else {
+        fd.append(field, data[field]);
       }
+    }
 
-      // for (const entry of fd.entries()) {
-      //   console.log(entry);
-      // }
+    setLoading(true);
+    setPopup({ text: 'Uploading...', type: 'normal', state: true });
 
-      setLoading(true);
+    try {
+      const res = await axios.patch(
+        `${reqs.EDIT_PROJECT_CONTENTS}/${projectData.id}`,
+        fd,
+        { timeout: 120_000 }
+      );
+      if (!res?.data.succeed) return false;
+
+      const result = res.data.result;
+      if (result && Object.hasOwn(result, contentMode)) {
+        setProjectData((currentProject) => ({
+          ...currentProject,
+          [contentMode]: result[contentMode],
+        }));
+      }
+      setPopup({ text: res.data.msg, type: 'success', state: true });
+      return true;
+    } catch (err) {
       setPopup({
-        text: 'Uploading...',
-        type: 'normal',
+        text: err.response?.data?.msg || 'Something wrong happened!',
+        type: 'error',
         state: true,
       });
-      axios
-        .patch(`${reqs.EDIT_PROJECT_CONTENTS}/${projectData.id}`, fd, {
-          withCredentials: true,
-        })
-        .then((res) => {
-          setLoading(false);
-          if (res?.data.succeed) {
-            setPopup({
-              text: res.data.msg,
-              type: 'success',
-              state: true,
-            });
-            const result = res.data.result;
-
-            setProjectData((projectData) => ({
-              ...projectData,
-              videos: result?.videos,
-              sliderContents: result?.sliderContents,
-              thumbnailContents: result?.thumbnailContents,
-            }));
-          }
-        })
-        .catch((err) => {
-          setLoading(false);
-          setPopup({
-            text: err.response?.data?.msg || 'Something wrong happened!',
-            type: 'error',
-            state: true,
-          });
-        });
+      return false;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteProjectContents = (contentMode, contentId) => {
-    if (projectData?.id) {
-      setLoading(true);
+  const handleDeleteProjectContents = async (contentMode, contentId) => {
+    if (!projectData?.id || loading) return false;
+
+    setLoading(true);
+    setPopup({
+      text: 'Deleting...',
+      type: 'normal',
+      state: true,
+    });
+    try {
+      const res = await axios.patch(
+        `${reqs.DELETE_PROJECT_CONTENTS}/${projectData.id}`,
+        { mode: contentMode, contentId }
+      );
+      if (!res.data.succeed) return false;
+
+      setProjectData((currentProject) => {
+        if (contentMode === 'bannerImg') {
+          return { ...currentProject, bannerImg: null };
+        }
+
+        return {
+          ...currentProject,
+          [contentMode]: (currentProject[contentMode] || []).filter(
+            (item) => String(item.id) !== String(contentId)
+          ),
+        };
+      });
+      setPopup({ text: res.data.msg, type: 'success', state: true });
+      return true;
+    } catch (err) {
       setPopup({
-        text: 'Deleting...',
-        type: 'normal',
+        text: err.response?.data?.msg || 'Something wrong happened!',
+        type: 'error',
         state: true,
       });
-      axios
-        .patch(
-          `${reqs.DELETE_PROJECT_CONTENTS}/${projectData.id}`,
-          { mode: contentMode, contentId },
-          {
-            withCredentials: true,
-          }
-        )
-        .then((res) => {
-          setLoading(false);
-          if (res.data.succeed) {
-            setPopup({
-              text: res.data.msg,
-              type: 'success',
-              state: true,
-            });
-          }
-        })
-        .catch((err) => {
-          setLoading(false);
-          setPopup({
-            text: err.response?.data?.msg || 'Something wrong happened!',
-            type: 'error',
-            state: true,
-          });
-        });
+      return false;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -344,8 +314,33 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
         setFormMode={setFormMode}
         projectId={projectData?.id}
         projectName={projectData?.title}
+        disabled={formDisabled}
       />
-      {formMode === 'info' ? (
+      {projectLoadState === 'loading' ? (
+        <div
+          className='min-h-[40vh] flex items-center justify-center text-muted-light'
+          role='status'
+          aria-live='polite'
+        >
+          Loading project…
+        </div>
+      ) : projectLoadState === 'error' ? (
+        <div
+          className='min-h-[40vh] flex flex-col items-center justify-center gap-4 text-center'
+          role='alert'
+        >
+          <p className='text-muted-light'>Project data could not be loaded.</p>
+          <button
+            type='button'
+            className='rounded-md border border-secondary-light px-4 py-2 text-sm hover:bg-primary-main hover:text-body-main'
+            onClick={() =>
+              setProjectLoadAttempt((currentAttempt) => currentAttempt + 1)
+            }
+          >
+            Retry
+          </button>
+        </div>
+      ) : formMode === 'info' ? (
         <div className='w-full h-full grid grid-cols-10 gap-6'>
           <ProjectTitles
             handleCreateProject={handleCreateProject}
@@ -354,14 +349,21 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
             setFormMode={setFormMode}
             projectData={projectData}
             handleUpdateProjectInfos={handleUpdateProjectInfos}
+            disabled={formDisabled}
           />
           <div className='w-full hidden lg:flex pt-10 items-start justify-center h-full col-span-3'>
             <img
               className='w-full h-auto'
+              width='381'
+              height='581'
               src={
                 mode === 'create' ? newProjIllustration : editProjIllustration
               }
-              alt='project-create-img'
+              alt={
+                mode === 'create'
+                  ? 'Create project illustration'
+                  : 'Edit project illustration'
+              }
             />
           </div>
         </div>
@@ -370,38 +372,46 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
           <LinksAndTechs
             mode={mode}
             projectData={projectData}
-            handleSubmitData={(data) => {
-              mode === 'create'
-                ? handleUpdateProjectContents(data)
-                : handleUpdateProjectInfos(data);
-            }}
+            handleSubmitData={handleUpdateProjectInfos}
+            disabled={formDisabled}
           />
           <Banner
             projectData={projectData}
             handleSubmit={handleEditProjectContents}
             handleDelete={handleDeleteProjectContents}
             mode={mode}
+            disabled={formDisabled}
           />
           <Videos
             projectData={projectData}
             mode={mode}
             handleDelete={handleDeleteProjectContents}
             handleSubmit={handleEditProjectContents}
+            disabled={formDisabled}
           />
           <Thumbnails
             projectData={projectData}
             mode={mode}
             handleDelete={handleDeleteProjectContents}
             handleSubmit={handleEditProjectContents}
+            disabled={formDisabled}
           />
           <SliderContents
             projectData={projectData}
             mode={mode}
             handleDelete={handleDeleteProjectContents}
             handleSubmit={handleEditProjectContents}
+            disabled={formDisabled}
           />
         </div>
       )}
+
+      <ProjectDeleteDialog
+        busy={loading}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDeleteProject}
+        project={deleteTarget}
+      />
 
       <Popup
         setPopup={setPopup}

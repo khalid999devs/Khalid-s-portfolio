@@ -10,6 +10,7 @@ const ProgressAndDel = ({
   handleDelete,
   projectId,
   projectName,
+  disabled,
 }) => {
   return (
     <div className={`w-full h-min flex items-center justify-between `}>
@@ -43,9 +44,10 @@ const ProgressAndDel = ({
 
       {projectId && (
         <PrimaryButton
+          disabled={disabled}
           onClick={() => handleDelete(projectId, projectName)}
           Icon={MdOutlineDelete}
-          classes={`!rounded-full`}
+          classes='rounded-full!'
           btnState={'error'}
           text={'DELETE'}
           state='small'
@@ -63,6 +65,7 @@ ProgressAndDel.propTypes = {
   handleDelete: PropTypes.func,
   projectId: PropTypes.number,
   projectName: PropTypes.string,
+  disabled: PropTypes.bool,
 };
 
 export default ProgressAndDel;

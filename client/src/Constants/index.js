@@ -20,10 +20,6 @@ export const pageNavLinks = [
     title: 'About',
     path: '/about-me',
   },
-  // {
-  //   title: 'Coding Lab',
-  //   path: 'coding-lab',
-  // },
 ];
 
 export const adminNavLinks = [
@@ -106,7 +102,7 @@ export const experience = [
 export const achievements = [
   {
     title: 'Regional Winner and Global Nominee',
-    from: 'NASA SPACE APP CHALLANGE HACKATHON 2024',
+    from: 'NASA SPACE APPS CHALLENGE 2024',
     date: '2024',
     link: 'https://www.spaceappschallenge.org/nasa-space-apps-2024/find-a-team/novaflare/?tab=details',
   },

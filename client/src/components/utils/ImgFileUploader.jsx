@@ -1,220 +1,247 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { IoImageOutline } from 'react-icons/io5';
 import { RiImageAddLine } from 'react-icons/ri';
 import { IoClose } from 'react-icons/io5';
-import { handleCompressImg } from '../../utils/FileProcessing/ImageCompression';
 import PrimaryButton from '../Buttons/PrimaryButton';
-import { validFileWrapper } from '../../axios/requests';
+import { reqFileWrapper } from '../../axios/requests';
 import { FaVideo } from 'react-icons/fa';
 import PropTypes from 'prop-types';
+
+const IMAGE_ACCEPT = {
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/webp': ['.webp'],
+};
+const VIDEO_ACCEPT = {
+  'video/mp4': ['.mp4'],
+};
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
 const ImgFileUploader = ({
   dragActiveText,
   fileImg,
   onLoad,
   type = 'multiple',
-  compress = { state: false, maxSizeMb: 0.5, maxWidthOrHeight: 1920 },
   clearFileImg,
-  dropContainerClass,
-  imageContainerClass,
-  thumbnail = false,
+  dropContainerClass = '',
+  imageContainerClass = '',
   defaultImg,
-  processText,
   PlaceholderImgIcon,
   dataURL = false,
   video = false,
   fileNumber,
-  plaecholderIconCls,
+  placeholderIconClass = '',
+  maxFiles,
+  currentFileCount = 0,
+  disabled = false,
 }) => {
-  const fileInputRef = useRef();
-  const [loading, setLoading] = useState(false);
-  const activeReadersRef = useRef([]); // Track active FileReaders
+  const [processError, setProcessError] = useState('');
+  const [previewSource, setPreviewSource] = useState(null);
+  const configuredMaxFiles = maxFiles ?? (video ? 4 : 8);
+  const remainingFiles =
+    type === 'multiple'
+      ? Math.max(configuredMaxFiles - currentFileCount, 0)
+      : 1;
+  const uploadDisabled = disabled || remainingFiles === 0;
+  const remainingFileLabel = `${video ? 'video' : 'image'}${
+    remainingFiles === 1 ? '' : 's'
+  }`;
+  const capacityError =
+    currentFileCount > 0
+      ? `You can select ${remainingFiles} more ${remainingFileLabel} in this batch.`
+      : `You can select at most ${configuredMaxFiles} ${
+          video ? 'videos' : 'images'
+        } at a time.`;
+
+  useEffect(() => {
+    const previewValue = fileImg || defaultImg;
+    let objectUrl;
+
+    if (dataURL && typeof previewValue === 'string') {
+      setPreviewSource(previewValue);
+    } else if (typeof Blob !== 'undefined' && previewValue instanceof Blob) {
+      objectUrl = URL.createObjectURL(previewValue);
+      setPreviewSource(objectUrl);
+    } else {
+      setPreviewSource(reqFileWrapper(previewValue));
+    }
+
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [dataURL, defaultImg, fileImg]);
 
   const onDrop = useCallback(
     (acceptedFiles) => {
-      acceptedFiles.forEach(async (file) => {
-        setLoading(true);
-        const reader = new FileReader();
-        activeReadersRef.current.push(reader); // Track this reader
+      if (!acceptedFiles.length || uploadDisabled) return;
 
-        reader.onabort = () => {};
-        reader.onerror = () => {};
-        reader.onload = async () => {
-          // Remove reader from active list when done
-          const index = activeReadersRef.current.indexOf(reader);
-          if (index > -1) {
-            activeReadersRef.current.splice(index, 1);
-          }
+      const filesToProcess =
+        type === 'multiple'
+          ? acceptedFiles.slice(0, remainingFiles)
+          : acceptedFiles.slice(0, 1);
 
-          if (compress.state) {
-            const compressedImg = await handleCompressImg(
-              file,
-              compress.maxSizeMb,
-              compress.maxWidthOrHeight
-            );
-            if (thumbnail) {
-              onLoad(file, compressedImg);
-            } else {
-              onLoad(compressedImg);
-            }
-          } else {
-            onLoad(file);
-          }
-          setLoading(false);
-        };
-        reader.readAsArrayBuffer(file);
-      });
+      if (filesToProcess.length < acceptedFiles.length) {
+        setProcessError(capacityError);
+      }
+
+      if (filesToProcess.length === acceptedFiles.length) {
+        setProcessError('');
+      }
+
+      filesToProcess.forEach((file) => onLoad(file));
     },
     [
-      compress.state,
-      compress.maxSizeMb,
-      compress.maxWidthOrHeight,
-      thumbnail,
       onLoad,
+      uploadDisabled,
+      type,
+      remainingFiles,
+      capacityError,
     ]
   );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const handleDropRejected = useCallback(
+    (rejections) => {
+      const firstError = rejections[0]?.errors?.[0]?.code;
+      setProcessError(
+        firstError === 'file-too-large'
+          ? 'Files must be no larger than 25 MB.'
+          : firstError === 'too-many-files'
+          ? capacityError
+          : 'Select a supported file type.'
+      );
+    },
+    [capacityError]
+  );
+
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+    accept: video ? VIDEO_ACCEPT : IMAGE_ACCEPT,
+    maxFiles: type === 'multiple' ? configuredMaxFiles : 1,
+    maxSize: MAX_UPLOAD_BYTES,
+    noKeyboard: false,
     onDrop,
-    oClick: true,
-    noKeyboard: true,
-    multiple: type === 'multiple' ? true : false,
-    // accept: 'image/*',
+    onDropRejected: handleDropRejected,
+    multiple: type === 'multiple',
+    disabled: uploadDisabled,
   });
 
-  // Cleanup: Abort all active FileReaders on unmount
-  useEffect(() => {
-    const readers = activeReadersRef.current;
-    return () => {
-      readers.forEach((reader) => {
-        if (reader.readyState === 1) {
-          // LOADING state
-          reader.abort();
-        }
-      });
-    };
-  }, []);
-
-  const openFileSelector = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  if (fileImg?.name || typeof fileImg === 'string' || defaultImg) {
+  if (previewSource) {
     return (
       <div
         className={
-          'flex h-full w-full items-center justify-center relative cursor-pointer group ' +
+          'flex h-full w-full items-center justify-center relative group ' +
           imageContainerClass
         }
       >
         <img
-          src={dataURL ? fileImg : validFileWrapper(fileImg)}
-          alt='FileImg'
+          src={previewSource}
+          alt={video ? 'Selected video preview' : 'Selected image preview'}
           className='w-full h-full rounded-lg object-cover'
         />
-        <div
-          className='absolute right-[3%] top-[3%] bg-body-main bg-opacity-60 text-lg duration-500 group-hover:bg-opacity-80 w-[25px] h-[25px] rounded-full flex items-center justify-center cursor-pointer'
+        <button
+          disabled={disabled}
+          type='button'
+          aria-label={video ? 'Remove selected video' : 'Remove selected image'}
+          className='absolute right-[3%] top-[3%] bg-body-main/60 text-lg duration-500 group-hover:bg-body-main/80 w-[25px] h-[25px] rounded-full flex items-center justify-center cursor-pointer'
           onClick={clearFileImg}
         >
-          <IoClose className='text-primary-main' />
-        </div>
+          <IoClose aria-hidden='true' className='text-primary-main' />
+        </button>
         {type === 'multiple' && fileNumber && (
-          <div className='absolute bottom-[2%] right-[2%] bg-primary-dark text-primary-main text-md px-2 py-0.5 rounded-sm border-l-4 border-t-4 border-l-secondary-main border-t-secondary-main'>
+          <div className='absolute bottom-[2%] right-[2%] bg-primary-dark text-primary-main text-base px-2 py-0.5 rounded-xs border-l-4 border-t-4 border-l-secondary-main border-t-secondary-main'>
             {fileNumber}
           </div>
         )}
         {video && (
           <div
+            aria-hidden='true'
             className='absolute text-4xl text-primary-main top-1/2 left-1/2'
             style={{ transform: 'translate(-50%,-50%)' }}
           >
             <FaVideo />
           </div>
         )}
+        {processError && (
+          <p
+            role='alert'
+            className='absolute left-2 right-2 top-2 rounded bg-red-800 px-2 py-1 text-center text-xs text-primary-main'
+          >
+            {processError}
+          </p>
+        )}
         <div className='absolute left-0 bottom-0 w-max'>
           <PrimaryButton
-            type={'small'}
+            disabled={uploadDisabled}
+            type='button'
+            state='small'
             text={video ? 'Add video' : 'Add Image'}
             Icon={RiImageAddLine}
-            classes={'!py-1 !px-1.5 rounded-none text-xs text-body-main'}
-            onClick={openFileSelector}
+            classes={'py-1! px-1.5! rounded-none text-xs text-body-main'}
+            onClick={open}
           />
-          <input
-            {...getInputProps()}
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            multiple={type === 'multiple' ? true : false}
-          />
+          <input {...getInputProps()} disabled={uploadDisabled} />
         </div>
       </div>
     );
   } else {
     return (
       <div
-        {...getRootProps()}
+        {...getRootProps({
+          role: 'button',
+          'aria-disabled': uploadDisabled,
+          'aria-label': video
+            ? 'Upload video files'
+            : `Upload ${type === 'multiple' ? 'image files' : 'an image'}`,
+        })}
         className={
-          'flex w-full h-full items-center justify-center relative cursor-pointer flex-col border-2 border-secondary-main border-dashed p-4 rounded-lg ' +
+          `flex w-full h-full items-center justify-center relative flex-col border-2 border-secondary-main border-dashed p-4 rounded-lg ${
+            uploadDisabled
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer'
+          } ` +
           dropContainerClass
         }
       >
         <input
           {...getInputProps()}
+          disabled={uploadDisabled}
           multiple={type === 'multiple' ? true : false}
         />
         <div className='w-[80%] flex text-center items-center justify-center flex-col gap-2 group'>
           {PlaceholderImgIcon ? (
             <PlaceholderImgIcon
               className={
-                'text-5xl text-secondary-main opacity-80 ' + plaecholderIconCls
+                'text-5xl text-muted-main opacity-80 ' +
+                placeholderIconClass
               }
             />
           ) : (
             <IoImageOutline
               className={
-                'text-5xl text-secondary-main opacity-80 ' + plaecholderIconCls
+                'text-5xl text-muted-main opacity-80 ' +
+                placeholderIconClass
               }
             />
           )}
 
-          {/* <p className={'w-full opacity-80 !break-keep ' + textClasses}>
-            {placeholderText ||
-              `Drop your ${type === 'multiple' ? 'Images' : 'Image'}`}{' '}
-            <br /> or{' '}
-            <span
-              className={
-                'text-blue-600 text-sm duration-500 group-hover:underline ' +
-                textClasses
-              }
-            >
-              click to browse
-            </span>
-          </p> */}
         </div>
         <div
+          role='status'
+          aria-live='polite'
           className={`absolute top-[50%] left-[50%] text-onPrimary-main bg-secondary-main rounded-lg w-[97%] h-[95%] text-lg md:text-sm font-medium text-center p-3 ${
             isDragActive ? 'flex' : 'hidden'
-          } justify-center items-center text-md`}
+          } justify-center items-center text-base`}
           style={{ transform: 'translate(-50%,-50%)' }}
         >
           {dragActiveText || 'Drop files here'}
         </div>
-        {loading && (
-          <div
-            className={`absolute top-[50%] left-[50%] text-onPrimary-main bg-primary-main bg-opacity-95 rounded-lg w-[97%] h-[95%] text-lg font-medium flex flex-col justify-center items-center text-md text-center p-3`}
-            style={{ transform: 'translate(-50%,-50%)' }}
+        {processError && (
+          <p
+            role='alert'
+            className='absolute bottom-2 left-2 right-2 rounded bg-red-800 px-2 py-1 text-center text-xs text-primary-main'
           >
-            <img
-              src='/Images/loading.gif'
-              className='w-[25px] h-[25px]'
-              alt='Loading...'
-            />
-            <p className='text-xs text-tertiary-main font-medium break-words'>
-              {processText || 'Processing Image'}
-            </p>
-          </div>
+            {processError}
+          </p>
         )}
       </div>
     );
@@ -222,29 +249,22 @@ const ImgFileUploader = ({
 };
 
 ImgFileUploader.propTypes = {
-  mode: PropTypes.string,
   dragActiveText: PropTypes.string,
-  fileImg: PropTypes.object,
-  onLoad: PropTypes.func,
+  fileImg: PropTypes.oneOfType([PropTypes.object, PropTypes.string]),
+  onLoad: PropTypes.func.isRequired,
   type: PropTypes.string,
-  compress: PropTypes.shape({
-    state: PropTypes.bool,
-    maxSizeMb: PropTypes.number,
-    maxWidthOrHeight: PropTypes.number,
-  }),
   clearFileImg: PropTypes.func,
-  placeholderText: PropTypes.string,
   dropContainerClass: PropTypes.string,
   imageContainerClass: PropTypes.string,
-  thumbnail: PropTypes.bool,
-  textClasses: PropTypes.string,
   defaultImg: PropTypes.string,
-  processText: PropTypes.string,
   PlaceholderImgIcon: PropTypes.elementType,
   dataURL: PropTypes.bool,
   video: PropTypes.bool,
   fileNumber: PropTypes.number,
-  plaecholderIconCls: PropTypes.string,
+  placeholderIconClass: PropTypes.string,
+  maxFiles: PropTypes.number,
+  currentFileCount: PropTypes.number,
+  disabled: PropTypes.bool,
 };
 
 export default ImgFileUploader;

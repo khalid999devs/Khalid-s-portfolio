@@ -1,309 +1,912 @@
-const { projects } = require('../models');
+const { randomBytes } = require('crypto');
+const { projects, sequelize } = require('../models');
 const { BadRequestError, UnauthorizedError } = require('../errors');
 const deleteFile = require('../utils/deleteFile');
+const { toStoredUploadPath } = require('../utils/uploadPaths');
+
+const ARRAY_FIELDS = [
+  'role',
+  'techStack',
+  'videos',
+  'thumbnailContents',
+  'sliderContents',
+];
+const URL_FIELDS = ['siteLink', 'designLink', 'codeLink'];
+const LINK_FIELDS = [...URL_FIELDS, 'techStack'];
+const INFO_FIELDS = [
+  'title',
+  'subtitle',
+  'overview',
+  'role',
+  'category',
+  'date',
+  'locationYear',
+  ...LINK_FIELDS,
+];
+const CONTENT_MODES = [
+  'bannerImg',
+  'videos',
+  'thumbnailContents',
+  'sliderContents',
+];
+const CONTENT_METADATA_KEYS = {
+  videos: 'serverVid',
+  thumbnailContents: 'serverThumb',
+  sliderContents: 'serverContent',
+};
+const CONTENT_ITEM_LIMITS = {
+  videos: 32,
+  thumbnailContents: 64,
+  sliderContents: 64,
+};
+const PROJECT_RESPONSE_FIELDS = [
+  'id',
+  'title',
+  'value',
+  'category',
+  'subtitle',
+  'overview',
+  'role',
+  'siteLink',
+  'designLink',
+  'codeLink',
+  'date',
+  'locationYear',
+  'techStack',
+  'bannerImg',
+  'videos',
+  'thumbnailContents',
+  'sliderContents',
+  'displayOrder',
+  'createdAt',
+  'updatedAt',
+];
+
+const MAX_DATABASE_ID = 2_147_483_647;
+const MAX_PROJECT_CREATE_ATTEMPTS = 3;
+const MAX_REORDER_ITEMS = 500;
+const MAX_SLUG_LENGTH = 160;
+const FIELD_RULES = {
+  title: { maxLength: 160, required: true, singleLine: true },
+  subtitle: { maxLength: 255, required: true, singleLine: true },
+  overview: { maxBytes: 60_000, maxLength: 20_000, required: true },
+  category: { maxLength: 80, required: true, singleLine: true },
+  date: { maxLength: 80, required: true, singleLine: true },
+  locationYear: { maxLength: 160, required: true, singleLine: true },
+};
+const ARRAY_RULES = {
+  role: { maxItems: 32, maxItemLength: 120, required: true },
+  techStack: { maxItems: 64, maxItemLength: 120 },
+};
+const LINK_RULES = {
+  maxLength: 255,
+};
+
+const hasOwn = (object, key) =>
+  Object.prototype.hasOwnProperty.call(object, key);
+
+const assertOnlyFields = (data, allowedFields) => {
+  const unexpectedField = Object.keys(data || {}).find(
+    (field) => !allowedFields.includes(field)
+  );
+
+  if (unexpectedField) {
+    throw new BadRequestError(`Unexpected field: ${unexpectedField}`);
+  }
+};
+
+const pickFields = (data, allowedFields) => {
+  const picked = {};
+
+  allowedFields.forEach((field) => {
+    if (hasOwn(data, field) && data[field] !== undefined) {
+      picked[field] = data[field];
+    }
+  });
+
+  return picked;
+};
+
+const normalizeText = (value, fieldName, rules = {}) => {
+  const {
+    maxBytes,
+    maxLength,
+    required = false,
+    singleLine = false,
+    allowNull = false,
+  } = rules;
+
+  if (value === null && allowNull) return null;
+  if (typeof value !== 'string') {
+    throw new BadRequestError(`${fieldName} must be a string`);
+  }
+
+  let normalized = value
+    .normalize('NFKC')
+    .replace(/\r\n?/g, '\n')
+    .trim();
+
+  if (/\p{Cc}/u.test(normalized.replace(/[\t\n]/g, ''))) {
+    throw new BadRequestError(`${fieldName} contains invalid control characters`);
+  }
+  if (singleLine && /[\n\r\u2028\u2029]/u.test(normalized)) {
+    throw new BadRequestError(`${fieldName} must be a single line`);
+  }
+  if (singleLine) normalized = normalized.replace(/[\t ]+/gu, ' ');
+  if (required && normalized.length === 0) {
+    throw new BadRequestError(`${fieldName} must not be empty`);
+  }
+  if (maxLength && [...normalized].length > maxLength) {
+    throw new BadRequestError(
+      `${fieldName} must be at most ${maxLength} characters`
+    );
+  }
+  if (maxBytes && Buffer.byteLength(normalized, 'utf8') > maxBytes) {
+    throw new BadRequestError(
+      `${fieldName} must be at most ${maxBytes} UTF-8 bytes`
+    );
+  }
+
+  return normalized;
+};
+
+const normalizeUrl = (value, fieldName) => {
+  const normalized = normalizeText(value, fieldName, {
+    ...LINK_RULES,
+    allowNull: true,
+    singleLine: true,
+  });
+
+  if (normalized === null || normalized === '') return normalized;
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(normalized);
+  } catch (error) {
+    throw new BadRequestError(`${fieldName} must be a valid HTTP(S) URL`);
+  }
+
+  if (
+    !['http:', 'https:'].includes(parsedUrl.protocol) ||
+    !parsedUrl.hostname ||
+    parsedUrl.username ||
+    parsedUrl.password
+  ) {
+    throw new BadRequestError(`${fieldName} must be a valid HTTP(S) URL`);
+  }
+
+  const canonicalUrl = parsedUrl.toString();
+  if ([...canonicalUrl].length > LINK_RULES.maxLength) {
+    throw new BadRequestError(
+      `${fieldName} must be at most ${LINK_RULES.maxLength} characters`
+    );
+  }
+
+  return canonicalUrl;
+};
+
+const normalizeScalarFields = (data, fields) => {
+  fields.forEach((field) => {
+    if (!hasOwn(data, field)) return;
+
+    data[field] = URL_FIELDS.includes(field)
+      ? normalizeUrl(data[field], field)
+      : normalizeText(data[field], field, FIELD_RULES[field]);
+  });
+};
+
+const parsePositiveProjectId = (value, fieldName = 'Project id') => {
+  const isCanonicalString =
+    typeof value === 'string' && /^[1-9]\d{0,9}$/u.test(value);
+  const parsedValue = isCanonicalString ? Number(value) : value;
+
+  if (
+    !Number.isInteger(parsedValue) ||
+    parsedValue <= 0 ||
+    parsedValue > MAX_DATABASE_ID
+  ) {
+    throw new BadRequestError(`${fieldName} must be a positive integer`);
+  }
+
+  return parsedValue;
+};
+
+const validateProjectIdParam = (req, _res, next) => {
+  try {
+    req.projectId = parsePositiveProjectId(req.params?.id);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const normalizeContentId = (value, required = false) => {
+  if (value === undefined || value === null || value === '') {
+    if (required) {
+      throw new BadRequestError('A content id is required');
+    }
+    return undefined;
+  }
+
+  if (
+    typeof value !== 'string' &&
+    !(Number.isSafeInteger(value) && value > 0)
+  ) {
+    throw new BadRequestError('Content id must be a string');
+  }
+
+  const normalized = normalizeText(String(value), 'Content id', {
+    maxLength: 128,
+    required: true,
+    singleLine: true,
+  });
+
+  if (normalized.toLowerCase() === 'null') {
+    throw new BadRequestError('A valid content id is required');
+  }
+
+  return normalized;
+};
+
+const parseArray = (value, fieldName) => {
+  let parsedValue = value;
+
+  if (typeof value === 'string') {
+    try {
+      parsedValue = JSON.parse(value);
+    } catch (error) {
+      throw new BadRequestError(`${fieldName} must be a valid array`);
+    }
+  }
+
+  if (!Array.isArray(parsedValue)) {
+    throw new BadRequestError(`${fieldName} must be an array`);
+  }
+
+  return parsedValue;
+};
+
+const parseStoredArray = (value, fieldName) => {
+  if (value === null || value === undefined || value === '') {
+    return [];
+  }
+
+  return parseArray(value, fieldName);
+};
+
+const normalizeArrayFieldsForStorage = (data, fields) => {
+  fields.forEach((field) => {
+    if (!hasOwn(data, field)) return;
+
+    const rules = ARRAY_RULES[field];
+    const parsedValue = parseArray(data[field], field);
+    if (parsedValue.length > rules.maxItems) {
+      throw new BadRequestError(
+        `${field} must contain at most ${rules.maxItems} items`
+      );
+    }
+
+    const seenItems = new Set();
+    const normalizedItems = parsedValue.reduce((items, item) => {
+      const normalizedItem = normalizeText(item, `${field} item`, {
+        maxLength: rules.maxItemLength,
+        required: true,
+        singleLine: true,
+      });
+
+      if (!seenItems.has(normalizedItem)) {
+        seenItems.add(normalizedItem);
+        items.push(normalizedItem);
+      }
+      return items;
+    }, []);
+
+    if (rules.required && normalizedItems.length === 0) {
+      throw new BadRequestError(`${field} must contain at least one item`);
+    }
+
+    data[field] = JSON.stringify(normalizedItems);
+  });
+};
+
+const parseBoolean = (value, fieldName) => {
+  if (value === undefined || value === false || value === 'false') {
+    return false;
+  }
+  if (value === true || value === 'true') {
+    return true;
+  }
+
+  throw new BadRequestError(`${fieldName} must be true or false`);
+};
+
+const slugifyTitle = (title) => {
+  const slug = title
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/&/gu, ' and ')
+    .replace(/[^a-z0-9]+/gu, '-')
+    .replace(/^-+|-+$/gu, '')
+    .slice(0, MAX_SLUG_LENGTH)
+    .replace(/-+$/gu, '');
+
+  return slug || 'project';
+};
+
+const findAvailableSlug = async (title, transaction) => {
+  const baseSlug = slugifyTitle(title);
+  const candidateExists = async (value) =>
+    Boolean(
+      await projects.findOne({
+        attributes: ['id'],
+        lock: transaction.LOCK?.UPDATE,
+        transaction,
+        where: { value },
+      })
+    );
+
+  if (!(await candidateExists(baseSlug))) return baseSlug;
+
+  // A database uniqueness constraint is still the ultimate concurrency guard,
+  // but a random suffix plus an existence check avoids ordinary collisions
+  // without changing URLs for existing records.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const suffix = randomBytes(6).toString('hex');
+    const candidate = `${baseSlug.slice(
+      0,
+      MAX_SLUG_LENGTH - suffix.length - 1
+    )}-${suffix}`;
+    if (!(await candidateExists(candidate))) return candidate;
+  }
+
+  throw new BadRequestError('Unable to generate a unique project URL');
+};
+
+const isSlugUniqueConstraintError = (error) => {
+  if (error?.name !== 'SequelizeUniqueConstraintError') return false;
+
+  const fieldNames = Array.isArray(error.fields)
+    ? error.fields
+    : Object.keys(error.fields || {});
+  if (fieldNames.includes('value')) return true;
+  if (error.errors?.some((item) => item?.path === 'value')) return true;
+
+  return [
+    error.constraint,
+    error.original?.constraint,
+    error.parent?.constraint,
+    error.original?.sqlMessage,
+    error.parent?.sqlMessage,
+  ].some((value) => String(value || '').includes('projects_value_unique'));
+};
+
+const getUploadedFiles = (req) =>
+  Object.values(req.files || {})
+    .flat()
+    .filter(Boolean);
+
+const cleanupUploadedFiles = async (req) => {
+  await Promise.all(
+    getUploadedFiles(req).map(async (file) => {
+      try {
+        await deleteFile(toStoredUploadPath(file.path));
+      } catch (error) {
+        // Do not attempt a broader fallback deletion: if containment validation
+        // fails, preserving a file is safer than unlinking an unknown path.
+        console.error('Unable to clean up a rejected upload safely', error);
+      }
+    })
+  );
+};
+
+const cleanupUploadsAfterUncertainCommit = async (req, projectId) => {
+  let referencedPaths;
+
+  try {
+    const project = await projects.findByPk(projectId);
+    referencedPaths = new Set(
+      project
+        ? [
+            project.bannerImg,
+            ...collectContentPaths(project, 'videos'),
+            ...collectContentPaths(project, 'sliderContents'),
+            ...collectContentPaths(project, 'thumbnailContents'),
+          ].filter(Boolean)
+        : []
+    );
+  } catch (error) {
+    // A commit error can mean that MySQL committed but the acknowledgment was
+    // lost. If the verification read also fails, preserving a possible orphan
+    // is safer than deleting a file that a committed row may now reference.
+    console.error(
+      'Unable to reconcile uploads after an uncertain database commit',
+      error
+    );
+    return;
+  }
+
+  await Promise.all(
+    getUploadedFiles(req).map(async (file) => {
+      try {
+        const storedPath = toStoredUploadPath(file.path);
+        if (!referencedPaths.has(storedPath)) await deleteFile(storedPath);
+      } catch (error) {
+        console.error('Unable to reconcile an uncertain upload safely', error);
+      }
+    })
+  );
+};
+
+const deleteStoredFilesSafely = async (storedPaths) => {
+  await Promise.all(
+    [...new Set(storedPaths.filter(Boolean))].map(async (storedPath) => {
+      try {
+        await deleteFile(storedPath);
+      } catch (error) {
+        // The database operation has already succeeded. Keep serving a correct
+        // response and surface the orphan/suspicious path in server diagnostics.
+        console.error('Unable to delete a stored upload safely', error);
+      }
+    })
+  );
+};
+
+const publicFileMetadata = (file, storedPath) => ({
+  fieldname: file.fieldname,
+  filename: file.filename,
+  mimetype: file.mimetype,
+  path: storedPath,
+  size: file.size,
+  ...(Number.isSafeInteger(file.width) ? { width: file.width } : {}),
+  ...(Number.isSafeInteger(file.height) ? { height: file.height } : {}),
+});
+
+const createContentItem = (file, metadataKey, id) => {
+  const storedPath = toStoredUploadPath(file.path);
+
+  return {
+    id:
+      id ||
+      `${Date.now()}-${randomBytes(8).toString('hex')}`,
+    url: storedPath,
+    ...(Number.isSafeInteger(file.width) ? { width: file.width } : {}),
+    ...(Number.isSafeInteger(file.height) ? { height: file.height } : {}),
+    [metadataKey]: publicFileMetadata(file, storedPath),
+  };
+};
+
+const projectForResponse = (project) => {
+  const rawData = project.get
+    ? project.get({ plain: true })
+    : { ...project };
+  const data = pickFields(rawData, PROJECT_RESPONSE_FIELDS);
+
+  ARRAY_FIELDS.forEach((field) => {
+    if (hasOwn(data, field)) {
+      data[field] = parseStoredArray(data[field], field);
+    }
+  });
+
+  return data;
+};
+
+const publicContentItem = (item) => {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+
+  return pickFields(item, ['id', 'url', 'width', 'height']);
+};
+
+const projectForPublicResponse = (project, { compact = false } = {}) => {
+  const data = projectForResponse(project);
+  delete data.createdAt;
+  delete data.updatedAt;
+
+  for (const field of ['videos', 'thumbnailContents', 'sliderContents']) {
+    if (!Array.isArray(data[field])) continue;
+    const content = data[field].map(publicContentItem).filter(Boolean);
+    data[field] =
+      compact && field === 'thumbnailContents' ? content.slice(0, 1) : content;
+  }
+
+  return data;
+};
+
+const setPublicReadCache = (res) => {
+  res.set(
+    'Cache-Control',
+    'public, no-cache, must-revalidate'
+  );
+};
+
+const collectContentPaths = (project, field) =>
+  parseStoredArray(project[field], field)
+    .map((item) => item?.url)
+    .filter(Boolean);
+
+const findLockedProject = async (projectId, transaction) => {
+  const project = await projects.findByPk(projectId, {
+    lock: transaction.LOCK?.UPDATE,
+    transaction,
+  });
+
+  if (!project) {
+    throw new BadRequestError('Please enter the correct project id');
+  }
+
+  return project;
+};
 
 const createProject = async (req, res) => {
-  const { title, subtitle, overview, role, date, category, locationYear } =
-    req.body;
-  if (!title || !subtitle || !overview || !role || !locationYear || !date)
+  const body = req.body || {};
+  const allowedFields = [
+    'title',
+    'subtitle',
+    'overview',
+    'role',
+    'date',
+    'category',
+    'locationYear',
+  ];
+  assertOnlyFields(body, allowedFields);
+
+  const requiredFields = [
+    'title',
+    'subtitle',
+    'overview',
+    'role',
+    'date',
+    'locationYear',
+  ];
+  if (
+    requiredFields.some(
+      (field) => !hasOwn(body, field) || body[field] === undefined
+    )
+  ) {
     throw new BadRequestError(
       'Data for all the necessary fields must be provided'
     );
+  }
 
-  // Get the highest displayOrder to set the new project at the end
-  const maxOrderProject = await projects.findOne({
-    order: [['displayOrder', 'DESC']],
-    attributes: ['displayOrder'],
-  });
-  const nextDisplayOrder = maxOrderProject
-    ? maxOrderProject.displayOrder + 1
-    : 0;
+  const data = pickFields(body, allowedFields);
+  normalizeScalarFields(data, [
+    'title',
+    'subtitle',
+    'overview',
+    'category',
+    'date',
+    'locationYear',
+  ]);
+  normalizeArrayFieldsForStorage(data, ['role']);
+  if (!hasOwn(data, 'category')) data.category = 'all';
 
-  let initialInfos = await projects.create({
-    title,
-    value: title
-      .split(' ')
-      .map((word) => word.toLowerCase())
-      .join('-'),
-    category: category || 'all',
-    subtitle,
-    overview,
-    role: JSON.stringify(role),
-    date,
-    locationYear,
-    displayOrder: nextDisplayOrder,
-  });
+  let initialInfos;
+  for (let attempt = 0; attempt < MAX_PROJECT_CREATE_ATTEMPTS; attempt += 1) {
+    try {
+      initialInfos = await sequelize.transaction(async (transaction) => {
+        const value = await findAvailableSlug(data.title, transaction);
+        const maxOrderProject = await projects.findOne({
+          attributes: ['displayOrder'],
+          lock: transaction.LOCK?.UPDATE,
+          order: [['displayOrder', 'DESC']],
+          transaction,
+        });
+        const currentMaxOrder = maxOrderProject?.displayOrder;
+        if (
+          currentMaxOrder !== undefined &&
+          (!Number.isInteger(currentMaxOrder) ||
+            currentMaxOrder < 0 ||
+            currentMaxOrder >= MAX_DATABASE_ID)
+        ) {
+          throw new BadRequestError('Existing project order data is invalid');
+        }
 
-  initialInfos.dataValues.role = JSON.parse(initialInfos.dataValues.role);
-  initialInfos.dataValues.techStack = JSON.parse(
-    initialInfos.dataValues.techStack
-  );
-  initialInfos.dataValues.sliderContents = JSON.parse(
-    initialInfos.dataValues.sliderContents
-  );
-  initialInfos.dataValues.thumbnailContents = JSON.parse(
-    initialInfos.dataValues.thumbnailContents
-  );
-  initialInfos.dataValues.videos = JSON.parse(initialInfos.dataValues.videos);
+        return projects.create(
+          {
+            ...data,
+            value,
+            displayOrder: maxOrderProject ? currentMaxOrder + 1 : 0,
+          },
+          { transaction }
+        );
+      });
+      break;
+    } catch (error) {
+      if (!isSlugUniqueConstraintError(error)) throw error;
+      if (attempt === MAX_PROJECT_CREATE_ATTEMPTS - 1) {
+        throw new BadRequestError(
+          'Unable to reserve a unique project URL; please retry'
+        );
+      }
+    }
+  }
 
   res.json({
     succeed: true,
     msg: 'Successfully created the project',
-    initialInfos,
+    initialInfos: projectForResponse(initialInfos),
   });
 };
 
 const updateProjectContents = async (req, res) => {
-  const projectId = req.params.id;
-  let data = req.body;
+  let committed = false;
+  let transactionWorkCompleted = false;
+  let projectId;
 
-  let project = await projects.findOne({ where: { id: projectId } });
-  if (!project)
-    throw new BadRequestError('Please Enter the correct project Id!');
+  try {
+    projectId = parsePositiveProjectId(req.params?.id);
+    const body = req.body || {};
+    // Older clients included title because it once selected the upload folder.
+    // Accept but ignore it; the immutable route id now chooses the folder.
+    assertOnlyFields(body, [...LINK_FIELDS, 'title']);
+    if (hasOwn(body, 'title')) {
+      normalizeText(body.title, 'title', {
+        maxLength: 255,
+        singleLine: true,
+      });
+    }
+    const data = pickFields(body, LINK_FIELDS);
+    normalizeScalarFields(data, URL_FIELDS);
+    normalizeArrayFieldsForStorage(data, ['techStack']);
 
-  if (req.files) {
-    const uploadedFiles = req.files;
+    const uploadedFiles = req.files || {};
+    const { project, stalePaths } = await sequelize.transaction(
+      async (transaction) => {
+        const project = await findLockedProject(projectId, transaction);
+        const stalePaths = [];
 
-    if (uploadedFiles.bannerImg?.length > 0) {
-      data.bannerImg = uploadedFiles.bannerImg[0].path;
+        if (uploadedFiles.bannerImg?.length) {
+          if (project.bannerImg) stalePaths.push(project.bannerImg);
+          data.bannerImg = toStoredUploadPath(uploadedFiles.bannerImg[0].path);
+        }
+
+        ['videos', 'sliderContents', 'thumbnailContents'].forEach((field) => {
+          if (uploadedFiles[field]?.length) {
+            stalePaths.push(...collectContentPaths(project, field));
+            data[field] = JSON.stringify(
+              uploadedFiles[field].map((file) =>
+                createContentItem(file, CONTENT_METADATA_KEYS[field])
+              )
+            );
+          }
+        });
+
+        if (Object.keys(data).length === 0) {
+          throw new BadRequestError('No supported project content was provided');
+        }
+
+        await project.update(data, { transaction });
+        transactionWorkCompleted = true;
+        return { project, stalePaths };
+      }
+    );
+    committed = true;
+    await deleteStoredFilesSafely(stalePaths);
+
+    res.json({
+      succeed: true,
+      msg: 'Successfully updated project content!',
+      result: projectForResponse(project),
+    });
+  } catch (error) {
+    if (!committed) {
+      if (transactionWorkCompleted) {
+        await cleanupUploadsAfterUncertainCommit(req, projectId);
+      } else {
+        await cleanupUploadedFiles(req);
+      }
     }
-    if (uploadedFiles.videos?.length > 0) {
-      const readyVideos = uploadedFiles.videos.map((item, index) => ({
-        id: `${index + 1}@${Date.now()}`,
-        url: item.path,
-        serverVid: item,
-      }));
-      data.videos = JSON.stringify(readyVideos);
-    }
-    if (uploadedFiles.sliderContents?.length > 0) {
-      const readySliderContents = uploadedFiles.sliderContents.map(
-        (item, index) => ({
-          id: `${index + 1}@${Date.now()}`,
-          url: item.path,
-          serverContent: item,
-        })
-      );
-      data.sliderContents = JSON.stringify(readySliderContents);
-    }
-    if (uploadedFiles.thumbnailContents?.length > 0) {
-      const readyThumbnailContents = uploadedFiles.thumbnailContents.map(
-        (item, index) => ({
-          id: `${index + 1}@${Date.now()}`,
-          url: item.path,
-          serverThumb: item,
-        })
-      );
-      data.thumbnailContents = JSON.stringify(readyThumbnailContents);
-    }
+    throw error;
   }
-
-  if (data.techStack) data.techStack = JSON.stringify(data.techStack);
-
-  await projects.update({ ...data }, { where: { id: projectId } });
-
-  if (data.techStack) data.techStack = JSON.parse(data.techStack);
-  if (data.videos) data.videos = JSON.parse(data.videos);
-  if (data.sliderContents)
-    data.sliderContents = JSON.parse(data.sliderContents);
-
-  const result = { ...project, ...data };
-
-  res.json({
-    succeed: true,
-    msg: 'Successfully updated project content!',
-    result: result,
-  });
 };
 
 const editProjectInfos = async (req, res) => {
-  const projectId = req.params.id;
-  let data = req.body;
-
-  let project = await projects.findOne({ where: { id: projectId } });
-  if (!project)
-    throw new BadRequestError('Please Enter the correct project Id!');
-
-  if (data.bannerImg || data.videos || data.sliderContents)
+  const projectId = parsePositiveProjectId(req.params?.id);
+  const body = req.body || {};
+  const mediaField = Object.keys(body).find((field) =>
+    CONTENT_MODES.includes(field)
+  );
+  if (mediaField) {
     throw new UnauthorizedError(
-      'You are not permitted to change this data in this route!'
+      'Project media cannot be changed through this route'
     );
+  }
 
-  if (data.techStack) data.techStack = JSON.stringify(data.techStack);
-  if (data.role) data.role = JSON.stringify(data.role);
+  assertOnlyFields(body, INFO_FIELDS);
+  const data = pickFields(body, INFO_FIELDS);
+  normalizeScalarFields(data, [
+    'title',
+    'subtitle',
+    'overview',
+    'category',
+    'date',
+    'locationYear',
+    'siteLink',
+    'designLink',
+    'codeLink',
+  ]);
+  normalizeArrayFieldsForStorage(data, ['techStack', 'role']);
 
-  await projects.update({ ...data }, { where: { id: projectId } });
+  if (Object.keys(data).length === 0) {
+    throw new BadRequestError('No supported project information was provided');
+  }
 
-  if (data.techStack) data.techStack = JSON.parse(data.techStack);
-  if (data.role) data.role = JSON.parse(data.role);
+  const project = await sequelize.transaction(async (transaction) => {
+    const project = await findLockedProject(projectId, transaction);
+    await project.update(data, { transaction });
+    return project;
+  });
 
   res.json({
     succeed: true,
-    msg: 'Successfully Updated Project Infos',
-    result: { ...project, ...data },
+    msg: 'Successfully updated project information',
+    result: projectForResponse(project),
   });
 };
 
 const editProjectContents = async (req, res) => {
-  const projectId = req.params.id;
-  let { mode, contentId, replaceItem } = req.body;
-  replaceItem = JSON.parse(replaceItem);
+  let committed = false;
+  let transactionWorkCompleted = false;
+  let projectId;
 
-  let project = await projects.findOne({ where: { id: projectId } });
-  if (!project)
-    throw new BadRequestError('Please Enter the correct project Id!');
+  try {
+    projectId = parsePositiveProjectId(req.params?.id);
+    const body = req.body || {};
+    assertOnlyFields(body, [
+      'mode',
+      'contentId',
+      'replaceItem',
+      'title',
+    ]);
 
-  if (req.files) {
-    const uploadedFiles = req.files;
-
-    if (mode === 'bannerImg' && uploadedFiles.bannerImg?.length > 0) {
-      if (project.img) deleteFile(project.img);
-      project.bannerImg = uploadedFiles.bannerImg[0].path;
-    } else if (mode === 'videos' && uploadedFiles.videos?.length > 0) {
-      let dataVideos = JSON.parse(project.videos);
-
-      if (!replaceItem) {
-        uploadedFiles.videos.forEach((item, index) => {
-          dataVideos.push({
-            id: `${dataVideos?.length + 1}@${Date.now()}`,
-            url: item.path,
-            serverVid: item,
-          });
-        });
-      } else {
-        dataVideos.forEach((item, index) => {
-          if (contentId === item.id) {
-            if (item.url) deleteFile(item.url);
-
-            item.url = uploadedFiles.videos[0].path;
-            item.serverVid = uploadedFiles.videos[0];
-          }
-        });
-      }
-
-      project.videos = JSON.stringify(dataVideos);
-    } else if (
-      mode === 'sliderContents' &&
-      uploadedFiles.sliderContents?.length > 0
-    ) {
-      let dataSliderContents = JSON.parse(project.sliderContents);
-
-      if (!replaceItem) {
-        uploadedFiles.sliderContents.forEach((item, index) => {
-          dataSliderContents.push({
-            id: `${dataSliderContents?.length + 1}@${Date.now()}`,
-            url: item.path,
-            serverContent: item,
-          });
-        });
-      } else {
-        dataSliderContents.forEach((item, index) => {
-          if (contentId === item.id) {
-            if (item.url) deleteFile(item.url);
-            item.url = uploadedFiles.sliderContents[0].path;
-            item.serverContent = uploadedFiles.sliderContents[0];
-          }
-        });
-      }
-      project.sliderContents = JSON.stringify(dataSliderContents);
-    } else if (
-      mode === 'thumbnailContents' &&
-      uploadedFiles.thumbnailContents?.length > 0
-    ) {
-      let dataThumbnailContents = JSON.parse(project.thumbnailContents);
-
-      if (!replaceItem) {
-        uploadedFiles.thumbnailContents.forEach((item, index) => {
-          dataThumbnailContents.push({
-            id: `${dataThumbnailContents?.length + 1}@${Date.now()}`,
-            url: item.path,
-            serverThumb: item,
-          });
-        });
-      } else {
-        dataThumbnailContents.forEach((item, index) => {
-          if (contentId === item.id) {
-            if (item.url) deleteFile(item.url);
-            item.url = uploadedFiles.thumbnailContents[0].path;
-            item.serverThumb = uploadedFiles.thumbnailContents[0];
-          }
-        });
-      }
-      project.thumbnailContents = JSON.stringify(dataThumbnailContents);
+    const { mode, contentId } = body;
+    if (hasOwn(body, 'title')) {
+      normalizeText(body.title, 'title', {
+        maxLength: 255,
+        singleLine: true,
+      });
     }
+    if (!CONTENT_MODES.includes(mode)) {
+      throw new BadRequestError('A valid project content mode is required');
+    }
+
+    const replaceItem = parseBoolean(body.replaceItem, 'replaceItem');
+    const normalizedContentId = normalizeContentId(
+      contentId,
+      replaceItem && mode !== 'bannerImg'
+    );
+    const uploadedFiles = getUploadedFiles(req);
+    const modeFiles = req.files?.[mode] || [];
+
+    if (
+      modeFiles.length === 0 ||
+      uploadedFiles.some((file) => file.fieldname !== mode)
+    ) {
+      throw new BadRequestError('Uploaded files must match the selected mode');
+    }
+
+    if ((mode === 'bannerImg' || replaceItem) && modeFiles.length !== 1) {
+      throw new BadRequestError('This operation requires exactly one file');
+    }
+
+    const { project, stalePaths } = await sequelize.transaction(
+      async (transaction) => {
+        const project = await findLockedProject(projectId, transaction);
+        const stalePaths = [];
+        if (mode === 'bannerImg') {
+          if (project.bannerImg) stalePaths.push(project.bannerImg);
+          project.bannerImg = toStoredUploadPath(modeFiles[0].path);
+        } else {
+          const contentItems = parseStoredArray(project[mode], mode);
+          const metadataKey = CONTENT_METADATA_KEYS[mode];
+
+          if (replaceItem) {
+            const itemIndex = contentItems.findIndex(
+              (item) =>
+                item &&
+                typeof item === 'object' &&
+                String(item.id) === normalizedContentId
+            );
+            if (itemIndex === -1) {
+              throw new BadRequestError(
+                'The requested project content was not found'
+              );
+            }
+
+            if (contentItems[itemIndex].url) {
+              stalePaths.push(contentItems[itemIndex].url);
+            }
+            contentItems[itemIndex] = createContentItem(
+              modeFiles[0],
+              metadataKey,
+              contentItems[itemIndex].id
+            );
+          } else {
+            if (
+              contentItems.length + modeFiles.length >
+              CONTENT_ITEM_LIMITS[mode]
+            ) {
+              throw new BadRequestError(
+                `${mode} cannot contain more than ${CONTENT_ITEM_LIMITS[mode]} items`
+              );
+            }
+            contentItems.push(
+              ...modeFiles.map((file) => createContentItem(file, metadataKey))
+            );
+          }
+
+          project[mode] = JSON.stringify(contentItems);
+        }
+
+        await project.save({ fields: [mode], transaction });
+        transactionWorkCompleted = true;
+        return { project, stalePaths };
+      }
+    );
+    committed = true;
+    await deleteStoredFilesSafely(stalePaths);
+
+    res.json({
+      succeed: true,
+      msg: 'Successfully updated project contents!',
+      result: projectForResponse(project),
+    });
+  } catch (error) {
+    if (!committed) {
+      if (transactionWorkCompleted) {
+        await cleanupUploadsAfterUncertainCommit(req, projectId);
+      } else {
+        await cleanupUploadedFiles(req);
+      }
+    }
+    throw error;
   }
-
-  await project.save();
-
-  project.dataValues.videos = JSON.parse(project.dataValues.videos);
-  project.dataValues.sliderContents = JSON.parse(
-    project.dataValues.sliderContents
-  );
-  project.dataValues.thumbnailContents = JSON.parse(
-    project.dataValues.thumbnailContents
-  );
-  // project.dataValues.techStack = JSON.parse(project.dataValues.techStack);
-
-  res.json({
-    succeed: true,
-    msg: 'Successfully updated project contents!',
-    result: project,
-  });
 };
 
 const deleteProjectContents = async (req, res) => {
-  const projectId = req.params.id;
-  const { mode, contentId } = req.body;
-
-  let project = await projects.findOne({
-    attributes: [
-      'id',
-      'bannerImg',
-      'sliderContents',
-      'videos',
-      'thumbnailContents',
-    ],
-    where: { id: projectId },
-  });
-
-  if (!project)
-    throw new BadRequestError('Please Enter the correct project Id!');
-
-  if (mode === 'bannerImg') {
-    if (project.bannerImg) deleteFile(project.bannerImg);
-    project.bannerImg = null;
-  } else if (mode === 'videos') {
-    let dataVideos = JSON.parse(project.videos);
-    let filteredVideos = [];
-    dataVideos.forEach((item) => {
-      if (item.id === contentId) {
-        if (item.url) deleteFile(item.url);
-        item.serverVid = {};
-      } else filteredVideos.push(item);
-    });
-    project.videos = JSON.stringify(filteredVideos);
-  } else if (mode === 'sliderContents') {
-    let dataSliderContents = JSON.parse(project.sliderContents);
-    let filteredSliderContents = [];
-    dataSliderContents.forEach((item) => {
-      if (item.id === contentId) {
-        if (item.url) deleteFile(item.url);
-        item.serverContent = {};
-      } else filteredSliderContents.push(item);
-    });
-    project.sliderContents = JSON.stringify(filteredSliderContents);
-  } else if (mode === 'thumbnailContents') {
-    let dataThumbnailContents = JSON.parse(project.thumbnailContents);
-    let filteredThumbnailContents = [];
-    dataThumbnailContents.forEach((item) => {
-      if (item.id === contentId) {
-        if (item.url) deleteFile(item.url);
-        item.serverThumb = {};
-      } else filteredThumbnailContents.push(item);
-    });
-    project.thumbnailContents = JSON.stringify(filteredThumbnailContents);
+  const projectId = parsePositiveProjectId(req.params?.id);
+  const body = req.body || {};
+  assertOnlyFields(body, ['mode', 'contentId']);
+  const { mode, contentId } = body;
+  if (!CONTENT_MODES.includes(mode)) {
+    throw new BadRequestError('A valid project content mode is required');
   }
+  const normalizedContentId = normalizeContentId(
+    contentId,
+    mode !== 'bannerImg'
+  );
 
-  await project.save();
+  const stalePaths = await sequelize.transaction(async (transaction) => {
+    const project = await findLockedProject(projectId, transaction);
+    const stalePaths = [];
+    if (mode === 'bannerImg') {
+      if (project.bannerImg) stalePaths.push(project.bannerImg);
+      project.bannerImg = null;
+    } else {
+      const contentItems = parseStoredArray(project[mode], mode);
+      const itemIndex = contentItems.findIndex(
+        (item) =>
+          item &&
+          typeof item === 'object' &&
+          String(item.id) === normalizedContentId
+      );
+      if (itemIndex === -1) {
+        throw new BadRequestError(
+          'The requested project content was not found'
+        );
+      }
+
+      if (contentItems[itemIndex].url) {
+        stalePaths.push(contentItems[itemIndex].url);
+      }
+      contentItems.splice(itemIndex, 1);
+      project[mode] = JSON.stringify(contentItems);
+    }
+
+    await project.save({ fields: [mode], transaction });
+    return stalePaths;
+  });
+  await deleteStoredFilesSafely(stalePaths);
 
   res.json({
     succeed: true,
@@ -312,32 +915,22 @@ const deleteProjectContents = async (req, res) => {
 };
 
 const deleteProject = async (req, res) => {
-  const projectId = req.params.id;
+  const projectId = parsePositiveProjectId(req.params?.id);
+  const storedPaths = await sequelize.transaction(async (transaction) => {
+    const project = await findLockedProject(projectId, transaction);
+    const paths = [
+      project.bannerImg,
+      ...collectContentPaths(project, 'videos'),
+      ...collectContentPaths(project, 'sliderContents'),
+      ...collectContentPaths(project, 'thumbnailContents'),
+    ];
 
-  let project = await projects.findOne({
-    where: { id: projectId },
+    // Remove the database record first. A failed filesystem cleanup leaves an
+    // orphan for maintenance; deleting files first could leave broken DB rows.
+    await project.destroy({ transaction });
+    return paths;
   });
-  if (!project)
-    throw new BadRequestError('Please Enter the correct project Id!');
-
-  if (project.bannerImg) deleteFile(project.bannerImg);
-
-  const projVideos = JSON.parse(project.videos);
-  projVideos.forEach((item) => {
-    if (item.url) deleteFile(item.url);
-  });
-
-  const projSliderContents = JSON.parse(project.sliderContents);
-  projSliderContents.forEach((item) => {
-    if (item.url) deleteFile(item.url);
-  });
-
-  const projThumbContents = JSON.parse(project.thumbnailContents);
-  projThumbContents.forEach((item) => {
-    if (item.url) deleteFile(item.url);
-  });
-
-  await project.destroy();
+  await deleteStoredFilesSafely(storedPaths);
 
   res.json({
     succeed: true,
@@ -346,11 +939,13 @@ const deleteProject = async (req, res) => {
 };
 
 const getProjects = async (req, res) => {
-  const { mode, projectId } = req.body;
+  const body = req.body || {};
+  assertOnlyFields(body, ['mode', 'projectId']);
+  const { mode, projectId } = body;
   let result;
 
   if (mode === 'all') {
-    result = await projects.findAll({
+    const projectRows = await projects.findAll({
       attributes: [
         'id',
         'title',
@@ -366,57 +961,159 @@ const getProjects = async (req, res) => {
         'displayOrder',
         'createdAt',
       ],
-      order: [['displayOrder', 'ASC']],
+      order: [
+        ['displayOrder', 'ASC'],
+        ['id', 'ASC'],
+      ],
     });
-    result.forEach((item) => {
-      item.dataValues.thumbnailContents = JSON.parse(
-        item.dataValues.thumbnailContents
-      );
-      item.dataValues.role = JSON.parse(item.dataValues.role);
-    });
+    result = projectRows.map(projectForResponse);
   } else if (mode === 'single') {
-    if (!projectId) throw new BadRequestError('Project Id must be provided!');
-    result = await projects.findOne({ where: { id: projectId } });
+    if (projectId === undefined || projectId === null || projectId === '') {
+      throw new BadRequestError('Project id must be provided');
+    }
 
-    result.dataValues.techStack = JSON.parse(result.dataValues.techStack);
-    result.dataValues.role = JSON.parse(result.dataValues.role);
-    result.dataValues.videos = JSON.parse(result.dataValues.videos);
-    result.dataValues.thumbnailContents = JSON.parse(
-      result.dataValues.thumbnailContents
-    );
-    result.dataValues.sliderContents = JSON.parse(
-      result.dataValues.sliderContents
-    );
+    const normalizedProjectId = parsePositiveProjectId(projectId);
+    const project = await projects.findByPk(normalizedProjectId);
+    if (!project) {
+      throw new BadRequestError('The requested project was not found');
+    }
+    result = projectForResponse(project);
   } else if (mode === 'cat') {
-    result = await projects.findAll({
+    const projectRows = await projects.findAll({
       attributes: ['id', 'title', 'category'],
+      order: [
+        ['category', 'ASC'],
+        ['id', 'ASC'],
+      ],
     });
-    result = [...new Set(result.map((item) => item.dataValues.category))];
+    result = [
+      ...new Set(projectRows.map((item) => item.dataValues.category)),
+    ];
+  } else {
+    throw new BadRequestError('A valid project query mode is required');
   }
 
   res.json({
     succeed: true,
     msg: 'Successfully fetched project data!',
-    result: result,
+    result,
+  });
+};
+
+const getPublicProjects = async (_req, res) => {
+  const projectRows = await projects.findAll({
+    attributes: [
+      'id',
+      'title',
+      'value',
+      'bannerImg',
+      'category',
+      'subtitle',
+      'role',
+      'date',
+      'thumbnailContents',
+      'displayOrder',
+    ],
+    order: [
+      ['displayOrder', 'ASC'],
+      ['id', 'ASC'],
+    ],
+  });
+
+  setPublicReadCache(res);
+  res.json({
+    succeed: true,
+    msg: 'Successfully fetched project data!',
+    result: projectRows.map((project) =>
+      projectForPublicResponse(project, { compact: true })
+    ),
+  });
+};
+
+const getPublicProject = async (req, res) => {
+  const project = await projects.findByPk(req.projectId);
+  if (!project) {
+    const error = new Error('The requested project was not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  setPublicReadCache(res);
+  res.json({
+    succeed: true,
+    msg: 'Successfully fetched project data!',
+    result: projectForPublicResponse(project),
   });
 };
 
 const reorderProjects = async (req, res) => {
-  const { projectOrders } = req.body;
+  const body = req.body || {};
+  assertOnlyFields(body, ['projectOrders']);
+  const { projectOrders } = body;
 
-  if (!projectOrders || !Array.isArray(projectOrders)) {
-    throw new BadRequestError('Project orders must be provided as an array');
+  if (
+    !Array.isArray(projectOrders) ||
+    projectOrders.length > MAX_REORDER_ITEMS
+  ) {
+    throw new BadRequestError(
+      `Project orders must be provided as an array of at most ${MAX_REORDER_ITEMS} items`
+    );
   }
 
-  // Update each project's displayOrder in a transaction
-  const updatePromises = projectOrders.map((item) =>
-    projects.update(
-      { displayOrder: item.displayOrder },
-      { where: { id: item.id } }
-    )
-  );
+  const seenIds = new Set();
+  const seenDisplayOrders = new Set();
+  projectOrders.forEach((item) => {
+    if (
+      !item ||
+      typeof item !== 'object' ||
+      Array.isArray(item) ||
+      Object.keys(item).some(
+        (field) => !['id', 'displayOrder'].includes(field)
+      ) ||
+      !Number.isInteger(item.id) ||
+      item.id <= 0 ||
+      item.id > MAX_DATABASE_ID ||
+      !Number.isInteger(item.displayOrder) ||
+      item.displayOrder < 0 ||
+      item.displayOrder >= projectOrders.length ||
+      seenIds.has(item.id) ||
+      seenDisplayOrders.has(item.displayOrder)
+    ) {
+      throw new BadRequestError('Project orders contain invalid values');
+    }
+    seenIds.add(item.id);
+    seenDisplayOrders.add(item.displayOrder);
+  });
 
-  await Promise.all(updatePromises);
+  await sequelize.transaction(async (transaction) => {
+    const projectRows = await projects.findAll({
+      attributes: ['id'],
+      lock: transaction.LOCK?.UPDATE,
+      order: [['id', 'ASC']],
+      transaction,
+    });
+    const storedIds = projectRows.map((project) =>
+      project.get ? project.get('id') : project.id ?? project.dataValues?.id
+    );
+
+    if (
+      storedIds.length !== projectOrders.length ||
+      storedIds.some((id) => !seenIds.has(id))
+    ) {
+      throw new BadRequestError(
+        'Project orders must contain every existing project exactly once'
+      );
+    }
+
+    // Run updates serially on the same transaction/connection. This keeps the
+    // final state deterministic and avoids reporting success for a partial set.
+    for (const item of projectOrders) {
+      await projects.update(
+        { displayOrder: item.displayOrder },
+        { transaction, where: { id: item.id } }
+      );
+    }
+  });
 
   res.json({
     succeed: true,
@@ -432,5 +1129,9 @@ module.exports = {
   deleteProjectContents,
   deleteProject,
   getProjects,
+  getPublicProject,
+  getPublicProjects,
+  projectForPublicResponse,
   reorderProjects,
+  validateProjectIdParam,
 };

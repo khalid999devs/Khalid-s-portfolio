@@ -1,25 +1,42 @@
-const htmlCreator = (mode, data) => {
-  let subject = data?.info?.subject,
-    body = data?.info?.body;
-  text = data?.info?.text;
+const escapeHtml = (value) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
-  let client = data.client;
+const asHtmlText = (value) =>
+  escapeHtml(String(value ?? '').replace(/\r\n?/g, '\n')).replace(
+    /\n/g,
+    '<br />'
+  );
+
+const htmlCreator = (mode, data) => {
+  const info = data?.info || {};
+  const rawName = String(data?.client?.fullName || '').trim();
+  const rawBody = String(info.body || '').replace(/\r\n?/g, '\n').trim();
+  const safeName = escapeHtml(rawName);
+  const safeBody = asHtmlText(rawBody);
+  const subject = info.subject;
 
   if (mode === 'newsletter') {
-    subject = subject;
-    body = `<p>Newsletter body</p>`;
-  } else if (mode === 'contact') {
-    subject = `We are here for you!`;
-    body = `<p style="color: #3A1500; margin: 0;">Dear ${client.fullName},</p>
-       <p style="color: #3A1500; margin: 20px 0;">${data.info.body}</p>
-    `;
-  } else if (mode === 'custom') {
-    subject = subject;
-    body = `<p style="color: #3A1500; margin: 0;">Dear ${client.fullName},</p>
-    <p style="color: #3A1500; margin: 20px 0;">${data.info.body}</p>`;
+    return {
+      subject,
+      body: `<p style="color: #3A1500; margin: 20px 0;">${safeBody}</p>`,
+      text: rawBody,
+    };
   }
 
-  return { subject, body, text };
+  const greeting = safeName
+    ? `<p style="color: #3A1500; margin: 0;">Dear ${safeName},</p>`
+    : '';
+
+  return {
+    subject,
+    body: `${greeting}<p style="color: #3A1500; margin: 20px 0;">${safeBody}</p>`,
+    text: rawName ? `Dear ${rawName},\n\n${rawBody}` : rawBody,
+  };
 };
 
-module.exports = { htmlCreator };
+module.exports = { asHtmlText, escapeHtml, htmlCreator };

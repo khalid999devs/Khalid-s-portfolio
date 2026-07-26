@@ -7,6 +7,7 @@ import PropTypes from 'prop-types';
 const Technologies = ({
   mode,
   settings,
+  disabled,
   handleCreateSettings,
   handleEditSettings,
 }) => {
@@ -37,16 +38,16 @@ const Technologies = ({
   return (
     <div className='col-span-7 box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8'>
       <div className='grid gap-8'>
-        <h1 className='text-md'>Please enter following information</h1>
+        <h1 className='text-base'>Please enter following information</h1>
         <div className='grid gap-10'>
           {Object.keys(technologies).map((label, key) => {
             return (
               <div
                 key={key}
-                className='grid sm:grid-cols-[max(70px),1fr] gap-4 h-min'
+                className='grid sm:grid-cols-[70px_1fr] gap-4 h-min'
               >
                 <div>
-                  <h2 className='text-secondary-light text-sm mt-2'>{label}</h2>
+                  <h2 className='text-muted-light text-sm mt-2'>{label}</h2>
                 </div>
 
                 <FormIconLists
@@ -63,10 +64,11 @@ const Technologies = ({
 
       <div className='flex w-full items-end justify-end mt-8'>
         <PrimaryButton
+          disabled={disabled}
           state='small'
           text={mode === 'create' ? 'DONE' : 'SAVE'}
           Icon={MdDone}
-          classes={`!rounded-full`}
+          classes='rounded-full!'
           onClick={() =>
             mode === 'create'
               ? handleCreateSettings({ technologies })
@@ -82,8 +84,9 @@ const Technologies = ({
 Technologies.propTypes = {
   mode: PropTypes.string,
   settings: PropTypes.shape({
-    technologies: PropTypes.array,
+    technologies: PropTypes.objectOf(PropTypes.arrayOf(PropTypes.string)),
   }),
+  disabled: PropTypes.bool,
   handleCreateSettings: PropTypes.func,
   handleEditSettings: PropTypes.func,
 };

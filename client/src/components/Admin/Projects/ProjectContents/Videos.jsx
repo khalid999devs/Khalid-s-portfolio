@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import ImgFileUploader from '../../../utils/ImgFileUploader';
 import PrimaryButton from '../../../Buttons/PrimaryButton';
 import { IoMdAdd } from 'react-icons/io';
@@ -7,15 +7,95 @@ import { reqFileWrapper } from '../../../../axios/requests';
 import { FaPlay, FaPause } from 'react-icons/fa';
 import { IoClose } from 'react-icons/io5';
 import PropTypes from 'prop-types';
+import useObjectUrl from '../../../../hooks/useObjectUrl';
 
-const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
+const VideoPreview = ({
+  index,
+  isPlaying,
+  item,
+  onRemove,
+  onToggle,
+  disabled,
+}) => {
+  const videoRef = useRef(null);
+  const objectUrl = useObjectUrl(item?.url ? null : item);
+  const source = item?.url ? reqFileWrapper(item.url) : objectUrl;
+
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+
+    if (isPlaying) {
+      videoElement.play().catch(() => videoElement.pause());
+    } else {
+      videoElement.pause();
+    }
+  }, [isPlaying]);
+
+  return (
+    <div className='w-[128px] h-[100px] bg-black rounded-lg relative overflow-hidden group'>
+      <video
+        ref={videoRef}
+        src={source || undefined}
+        playsInline
+        preload='metadata'
+        muted
+        aria-hidden='true'
+        className='w-full h-full object-cover'
+      ></video>
+      <button
+        disabled={disabled}
+        type='button'
+        aria-label={isPlaying ? 'Pause video preview' : 'Play video preview'}
+        className='absolute inset-0 flex items-center justify-center text-xl text-primary-main'
+        onClick={onToggle}
+      >
+        {isPlaying ? (
+          <FaPause aria-hidden='true' />
+        ) : (
+          <FaPlay aria-hidden='true' />
+        )}
+      </button>
+      <button
+        disabled={disabled}
+        type='button'
+        aria-label={`Remove video ${index + 1}`}
+        className='absolute right-[3%] top-[3%] bg-body-main/70 text-sm duration-500 group-hover:bg-body-main w-[22px] h-[22px] rounded-full flex items-center justify-center cursor-pointer'
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (item.id) onRemove(item.id);
+        }}
+      >
+        <IoClose aria-hidden='true' className='text-primary-main' />
+      </button>
+    </div>
+  );
+};
+
+VideoPreview.propTypes = {
+  index: PropTypes.number.isRequired,
+  isPlaying: PropTypes.bool.isRequired,
+  item: PropTypes.object.isRequired,
+  onRemove: PropTypes.func.isRequired,
+  onToggle: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
+};
+
+const Videos = ({
+  projectData,
+  handleSubmit,
+  mode,
+  handleDelete,
+  disabled,
+}) => {
+  const maxUploadFiles = 4;
   const [videos, setVideos] = useState([]);
   const [uploadedVideos, setUploadedVideos] = useState([]);
   const [videoThumbnail, setVideoThumbnail] = useState(null);
   const [playingVideo, setPlayingVideo] = useState(null);
 
   const canvasRef = useRef(null);
-  const videoURLsRef = useRef(new Map()); // Track created Object URLs
 
   useEffect(() => {
     if (projectData?.id && projectData?.videos) {
@@ -23,136 +103,178 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
     }
   }, [projectData, mode]);
 
-  const getVideoThumbnail = (file) => {
+  const getVideoThumbnail = useCallback((file, signal) => {
     return new Promise((resolve, reject) => {
       if (!file) return resolve(null);
 
       const video = document.createElement('video');
       const objectURL = URL.createObjectURL(file);
-      video.src = objectURL;
+      let cleanedUp = false;
       video.muted = true;
       video.playsInline = true;
-      video.autoplay = true;
+      video.preload = 'metadata';
 
       const cleanup = () => {
+        if (cleanedUp) return;
+        cleanedUp = true;
         video.removeEventListener('loadeddata', handleLoadedData);
         video.removeEventListener('seeked', handleSeeked);
         video.removeEventListener('error', handleError);
+        signal?.removeEventListener('abort', handleAbort);
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
         URL.revokeObjectURL(objectURL);
-        video.src = '';
       };
 
-      const handleLoadedData = () => {
-        video.currentTime = 2;
+      const resolveThumbnail = (thumbnail) => {
+        if (cleanedUp) return;
+        cleanup();
+        resolve(thumbnail);
       };
 
-      const handleSeeked = () => {
+      const rejectThumbnail = (error) => {
+        if (cleanedUp) return;
+        cleanup();
+        reject(error);
+      };
+
+      const captureFrame = () => {
         const canvas = canvasRef.current;
         if (!canvas) {
-          cleanup();
-          reject(new Error('Canvas not available'));
+          rejectThumbnail(new Error('Canvas not available'));
           return;
         }
         const context = canvas.getContext('2d');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        if (!context || !video.videoWidth || !video.videoHeight) {
+          rejectThumbnail(new Error('Video frame is unavailable'));
+          return;
+        }
+
+        const maxDimension = 640;
+        const scale = Math.min(
+          1,
+          maxDimension / Math.max(video.videoWidth, video.videoHeight)
+        );
+        canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+        canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
 
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const thumbnailDataURL = canvas.toDataURL('image/png');
-        cleanup();
-        resolve(thumbnailDataURL);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolveThumbnail(blob);
+            else
+              rejectThumbnail(
+                new Error('Video thumbnail could not be created')
+              );
+          },
+          'image/jpeg',
+          0.75
+        );
       };
 
+      const handleLoadedData = () => {
+        const targetTime = Number.isFinite(video.duration)
+          ? Math.min(1, video.duration / 2)
+          : 0;
+        if (targetTime > 0.05) video.currentTime = targetTime;
+        else captureFrame();
+      };
+
+      const handleSeeked = () => captureFrame();
+
       const handleError = (err) => {
-        cleanup();
-        reject(err);
+        rejectThumbnail(
+          err instanceof Error ? err : new Error('Video could not be decoded')
+        );
+      };
+
+      const handleAbort = () => {
+        rejectThumbnail(
+          new DOMException('Video thumbnail generation aborted', 'AbortError')
+        );
       };
 
       video.addEventListener('loadeddata', handleLoadedData);
       video.addEventListener('seeked', handleSeeked);
       video.addEventListener('error', handleError);
+      signal?.addEventListener('abort', handleAbort, { once: true });
+
+      if (signal?.aborted) {
+        handleAbort();
+        return;
+      }
+
+      video.src = objectURL;
+      video.load();
     });
-  };
+  }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     if (uploadedVideos.length > 0) {
       const latestVideo = uploadedVideos[uploadedVideos.length - 1];
-      getVideoThumbnail(latestVideo).then((thumbnailURL) => {
-        setVideoThumbnail(thumbnailURL);
-      });
+      getVideoThumbnail(latestVideo, controller.signal)
+        .then((thumbnail) => {
+          setVideoThumbnail(thumbnail);
+        })
+        .catch((error) => {
+          if (error?.name !== 'AbortError') setVideoThumbnail(null);
+        });
+    } else {
+      setVideoThumbnail(null);
     }
-  }, [uploadedVideos]);
+
+    return () => controller.abort();
+  }, [getVideoThumbnail, uploadedVideos]);
 
   const handleAddVideos = async () => {
-    // const newVideosWithThumbnails = await Promise.all(
-    //   uploadedVideos.map(async (item) => {
-    //     const thumbnail = await getVideoThumbnail(item);
-    //     return { file: item, thumbnail };
-    //   })
-    // );
-    if (uploadedVideos.length < 1) {
-      alert('Please Add a video first!');
-      return;
+    if (uploadedVideos.length < 1) return;
+
+    if (await handleSubmit({ videos: uploadedVideos }, 'videos')) {
+      setUploadedVideos([]);
+      setVideoThumbnail(null);
     }
-    handleSubmit({ videos: uploadedVideos }, 'videos');
-    setUploadedVideos([]);
-    setVideoThumbnail(null);
   };
 
   const handleRemoveVideo = (contentId) => {
     if (contentId) {
-      handleDelete('videos', contentId);
-      setVideos((videos) => [
-        ...videos.filter((video) => video.id !== contentId),
-      ]);
+      handleDelete('videos', contentId).then((deleted) => {
+        if (deleted) {
+          setVideos((currentVideos) =>
+            currentVideos.filter((video) => video.id !== contentId)
+          );
+        }
+      });
     }
   };
 
   const togglePlayPause = (key) => {
-    const currentVideo = document.getElementById(`video-${key}`);
-    if (!currentVideo) return;
-
-    if (playingVideo === key) {
-      currentVideo.pause();
-      setPlayingVideo(null);
-    } else {
-      if (playingVideo !== null) {
-        const previousVideo = document.getElementById(`video-${playingVideo}`);
-        if (previousVideo) previousVideo.pause();
-      }
-      currentVideo.play();
-      setPlayingVideo(key);
-    }
+    setPlayingVideo((currentKey) => (currentKey === key ? null : key));
   };
-
-  // Cleanup all Object URLs on unmount
-  useEffect(() => {
-    const urlMap = videoURLsRef.current;
-    return () => {
-      urlMap.forEach((url) => {
-        URL.revokeObjectURL(url);
-      });
-      urlMap.clear();
-    };
-  }, []);
 
   return (
     <div className='box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8 col-span-10 lg:col-span-5'>
       <div className='grid gap-9'>
-        <div className='grid grid-cols-[1fr,auto] gap-7'>
+        <div className='grid grid-cols-[1fr_auto] gap-7'>
           <div className='flex w-full gap-3 h-full justify-start items-start'>
             <h3 className='text-primary-main font-medium opacity-90 text-sm h-min'>
               Videos
             </h3>
             <div className='h-[170px] w-full'>
               <ImgFileUploader
+                disabled={disabled}
                 dataURL={true}
                 dragActiveText={'Drop Videos here!'}
                 fileImg={videoThumbnail}
                 onLoad={(file) => {
-                  setUploadedVideos((prev) => [...prev, file]);
+                  setUploadedVideos((currentFiles) =>
+                    currentFiles.length < maxUploadFiles
+                      ? [...currentFiles, file]
+                      : currentFiles
+                  );
                 }}
-                mode={mode}
                 clearFileImg={() => {
                   setUploadedVideos([]);
                   setVideoThumbnail(null);
@@ -160,17 +282,20 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
                 PlaceholderImgIcon={MdOutlineOndemandVideo}
                 video={true}
                 fileNumber={uploadedVideos?.length}
-                plaecholderIconCls={`!text-4xl`}
+                currentFileCount={uploadedVideos.length}
+                maxFiles={maxUploadFiles}
+                placeholderIconClass='text-4xl!'
               />
             </div>
           </div>
 
           <div className='flex w-full h-full items-end justify-end'>
             <PrimaryButton
+              disabled={disabled || uploadedVideos.length < 1}
               state='small'
               text={mode === 'create' ? 'ADD' : 'SAVE'}
               Icon={IoMdAdd}
-              classes={`!rounded-full`}
+              classes='rounded-full!'
               onClick={handleAddVideos}
             />
           </div>
@@ -178,48 +303,20 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
 
         {videos.length > 0 && (
           <div className='flex items-center flex-wrap flex-row gap-3'>
-            {videos.map((item, key) => (
-              <div
-                key={key}
-                className='w-[128px] h-[100px] bg-black rounded-lg relative overflow-hidden group'
-                onClick={() => togglePlayPause(key)}
-              >
-                <video
-                  id={`video-${key}`}
-                  src={
-                    !item.url
-                      ? (() => {
-                          const videoKey = `video-${key}`;
-                          if (!videoURLsRef.current.has(videoKey)) {
-                            const url = URL.createObjectURL(item);
-                            videoURLsRef.current.set(videoKey, url);
-                          }
-                          return videoURLsRef.current.get(videoKey);
-                        })()
-                      : reqFileWrapper(item.url)
-                  }
-                  playsInline
-                  preload='metadata'
-                  muted={playingVideo !== key}
-                  className='w-full h-full object-cover'
-                ></video>
-                <div
-                  className='absolute text-xl text-primary-main top-1/2 left-1/2'
-                  style={{ transform: 'translate(-50%,-50%)' }}
-                >
-                  {playingVideo === key ? <FaPause /> : <FaPlay />}
-                </div>
-                <div
-                  className='absolute right-[3%] top-[3%] bg-body-main bg-opacity-70 text-sm duration-500 group-hover:bg-opacity-100 w-[22px] h-[22px] rounded-full flex items-center justify-center cursor-pointer'
-                  onClick={(e) => {
-                    e.preventDefault();
-                    item.id && handleRemoveVideo(item.id);
-                  }}
-                >
-                  <IoClose className='text-primary-main' />
-                </div>
-              </div>
-            ))}
+            {videos.map((item, key) => {
+              const videoKey = item.id || key;
+              return (
+                <VideoPreview
+                  key={videoKey}
+                  index={key}
+                  isPlaying={playingVideo === videoKey}
+                  item={item}
+                  onRemove={handleRemoveVideo}
+                  onToggle={() => togglePlayPause(videoKey)}
+                  disabled={disabled}
+                />
+              );
+            })}
           </div>
         )}
       </div>
@@ -236,6 +333,7 @@ Videos.propTypes = {
   handleSubmit: PropTypes.func,
   mode: PropTypes.string,
   handleDelete: PropTypes.func,
+  disabled: PropTypes.bool,
 };
 
 export default Videos;

@@ -1,20 +1,13 @@
-import { loadingGif } from '../../assets';
 import PropTypes from 'prop-types';
+import LoadingSpinner from './LoadingSpinner';
 
-const Loader = ({ classes }) => {
-  return (
-    <div
-      className={'w-full flex-grow flex items-start justify-center ' + classes}
-    >
-      <img
-        src={loadingGif}
-        className='w-[100px] h-[100px]'
-        alt='loading img'
-        loading='eager'
-      />
-    </div>
-  );
-};
+const Loader = ({ classes = '' }) => (
+  <LoadingSpinner
+    className={`w-full flex-grow items-start ${classes}`}
+    label='Loading content'
+    sizeClass='h-16 w-16'
+  />
+);
 
 
 Loader.propTypes = {

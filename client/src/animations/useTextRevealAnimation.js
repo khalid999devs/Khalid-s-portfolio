@@ -1,9 +1,7 @@
 import { useEffect } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useLocation } from 'react-router-dom';
-
-// gsap.registerPlugin(ScrollTrigger);
+import usePrefersReducedMotion from '../hooks/usePrefersReducedMotion';
 
 function getRandomCharacter() {
   const characters =
@@ -12,23 +10,36 @@ function getRandomCharacter() {
 }
 
 function useTextRevealAnimation(className, duration = 0.1) {
-  const loc = useLocation();
-  useEffect(() => {
-    let scrollTriggers = [];
+  const prefersReducedMotion = usePrefersReducedMotion();
 
-    scrollTriggers.forEach((trigger) => trigger.kill());
-    scrollTriggers = [];
-    ScrollTrigger.refresh();
+  useEffect(() => {
+    if (prefersReducedMotion) return undefined;
+
+    const animations = new Set();
+    let animationFrameId;
 
     const updateAnimations = () => {
+      animationFrameId = undefined;
+
+      animations.forEach((animation) => {
+        if (animation.element.isConnected) return;
+        animation.trigger.kill();
+        animation.timeline.kill();
+        animations.delete(animation);
+      });
+
       const elements = document.querySelectorAll(`.${className}`);
       if (!elements.length) return;
+
+      let createdAnimation = false;
 
       elements.forEach((element) => {
         if (element.dataset.animated) return;
         element.dataset.animated = 'true';
 
         const originalText = element.textContent;
+        const previousAriaLabel = element.getAttribute('aria-label');
+        element.setAttribute('aria-label', originalText);
         element.textContent = '';
 
         const spans = originalText.split('').map((letter) => {
@@ -69,29 +80,61 @@ function useTextRevealAnimation(className, duration = 0.1) {
           onEnter: () => tl.play(),
           onLeaveBack: () => tl.seek(0).pause(),
           toggleActions: 'play none none none',
-          // markers: true,
         });
 
-        scrollTriggers.push(scrollTriggerInstance);
+        animations.add({
+          element,
+          originalText,
+          previousAriaLabel,
+          timeline: tl,
+          trigger: scrollTriggerInstance,
+        });
+        createdAnimation = true;
       });
-      // setTimeout(() => ScrollTrigger.refresh(), 200);
-      // ScrollTrigger.refresh();
+
+      if (createdAnimation) ScrollTrigger.refresh();
+    };
+
+    const scheduleUpdate = () => {
+      if (animationFrameId !== undefined) return;
+      animationFrameId = window.requestAnimationFrame(updateAnimations);
     };
 
     updateAnimations();
 
-    const observer = new MutationObserver(updateAnimations);
+    const observer = new MutationObserver(scheduleUpdate);
     observer.observe(document.body, {
       childList: true,
       subtree: true,
     });
 
     return () => {
-      ScrollTrigger.refresh();
       observer.disconnect();
-      scrollTriggers.forEach((trigger) => trigger.kill());
+      window.cancelAnimationFrame(animationFrameId);
+      animations.forEach(
+        ({
+          element,
+          originalText,
+          previousAriaLabel,
+          timeline,
+          trigger,
+        }) => {
+          trigger.kill();
+          timeline.kill();
+
+          if (element.isConnected) {
+            element.textContent = originalText;
+            delete element.dataset.animated;
+            if (previousAriaLabel === null) {
+              element.removeAttribute('aria-label');
+            } else {
+              element.setAttribute('aria-label', previousAriaLabel);
+            }
+          }
+        }
+      );
     };
-  }, [className, duration, loc.pathname]);
+  }, [className, duration, prefersReducedMotion]);
 }
 
 export default useTextRevealAnimation;

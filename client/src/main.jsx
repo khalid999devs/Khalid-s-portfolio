@@ -1,14 +1,25 @@
 /* eslint-disable react-refresh/only-export-components */
-import { lazy, Suspense } from 'react';
+import { lazy, StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
+import {
+  createBrowserRouter,
+  Outlet,
+  RouterProvider,
+  ScrollRestoration,
+} from 'react-router-dom';
 import './axios/global.js';
-import App from './App.jsx';
 import './index.css';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import ErrorPage from './pages/ErrorPage.jsx';
-import Home from './pages/Home.jsx';
 
-//admin
+const App = lazy(() => import('./App.jsx'));
+const ErrorPage = lazy(() => import('./pages/ErrorPage.jsx'));
+
+// Public routes
+const Home = lazy(() => import('./pages/Home.jsx'));
+const Projects = lazy(() => import('./pages/Projects.jsx'));
+const About = lazy(() => import('./pages/About.jsx'));
+const SingleProject = lazy(() => import('./pages/SingleProject.jsx'));
+
+// Admin routes
 const Login = lazy(() => import('./pages/Admin/Auth/Login.jsx'));
 const Admin = lazy(() => import('./pages/Admin/Panel/Admin.jsx'));
 const Dashboard = lazy(() => import('./pages/Admin/Panel/Dashboard.jsx'));
@@ -19,91 +30,115 @@ const CreateProject = lazy(() =>
 );
 const Settings = lazy(() => import('./pages/Admin/Panel/Settings.jsx'));
 
-//client
-import Projects from './pages/Projects.jsx';
-import About from './pages/About.jsx';
-import SingleProject from './pages/SingleProject.jsx';
-import CodingLab from './pages/CodingLab.jsx';
+const fullPageFallback = (
+  <div
+    className='bg-body-main min-h-screen w-full flex items-center justify-center text-onPrimary-main'
+    role='status'
+    aria-live='polite'
+  >
+    <span className='text-sm uppercase'>Loading page…</span>
+  </div>
+);
 
-import { HelmetProvider } from 'react-helmet-async';
-import Loader from './components/utils/Loader.jsx';
+const contentFallback = (
+  <div
+    className='min-h-[50vh] w-full flex items-center justify-center text-onPrimary-main'
+    role='status'
+    aria-live='polite'
+  >
+    <span className='text-sm uppercase'>Loading page…</span>
+  </div>
+);
+
+const suspend = (Component, fallback = contentFallback) => (
+  <Suspense fallback={fallback}>
+    <Component />
+  </Suspense>
+);
 
 const router = createBrowserRouter([
   {
-    path: '/',
-    element: <App />,
-    errorElement: <ErrorPage />,
+    element: (
+      <>
+        <ScrollRestoration />
+        <Outlet />
+      </>
+    ),
     children: [
       {
-        index: true,
-        element: <Home />,
+        path: '/',
+        element: suspend(App, fullPageFallback),
+        errorElement: suspend(ErrorPage, fullPageFallback),
+        children: [
+          {
+            index: true,
+            element: suspend(Home),
+          },
+          {
+            path: 'projects',
+            element: suspend(Projects),
+          },
+          {
+            path: 'about-me',
+            element: suspend(About),
+          },
+          {
+            path: 'singleProject/:value',
+            element: suspend(SingleProject),
+          },
+        ],
       },
       {
-        path: 'projects',
-        element: <Projects />,
+        path: '/admin-login',
+        element: suspend(Login, fullPageFallback),
+        errorElement: suspend(ErrorPage, fullPageFallback),
       },
       {
-        path: 'about-me',
-        element: <About />,
+        path: '/admin',
+        element: suspend(Admin, fullPageFallback),
+        errorElement: suspend(ErrorPage, fullPageFallback),
+        children: [
+          {
+            index: true,
+            element: suspend(Dashboard),
+          },
+          {
+            path: 'projects',
+            element: suspend(AdminProjects),
+          },
+          {
+            path: 'edit-project/:value',
+            element: suspend(EditProject),
+          },
+          {
+            path: 'add-project',
+            element: suspend(CreateProject),
+          },
+          {
+            path: 'settings',
+            element: suspend(Settings),
+          },
+        ],
       },
       {
-        path: 'singleProject/:value',
-        element: <SingleProject />,
+        path: '/error',
+        element: suspend(ErrorPage, fullPageFallback),
       },
+      // Without this, an unmatched URL reached React Router's built-in error
+      // boundary: an unstyled page that still advertised the site's default
+      // title and a canonical link back to the home page. Search engines read
+      // that as a soft 404 and may index the broken URL. The project's own
+      // error page renders a real 404 and withholds both.
       {
-        path: 'coding-lab',
-        element: <CodingLab />,
+        path: '*',
+        element: suspend(ErrorPage, fullPageFallback),
       },
     ],
-  },
-  {
-    path: '/admin-login',
-    element: (
-      <Suspense fallback={<Loader classes={'z-40 !w-screen !h-screen'} />}>
-        <Login />
-      </Suspense>
-    ),
-    errorElement: <ErrorPage />,
-  },
-  {
-    path: '/admin',
-    element: (
-      <Suspense fallback={<Loader classes={'z-40 !w-screen !h-screen'} />}>
-        <Admin />
-      </Suspense>
-    ),
-    errorElement: <ErrorPage />,
-    children: [
-      {
-        index: true,
-        element: <Dashboard />,
-      },
-      {
-        path: 'projects',
-        element: <AdminProjects />,
-      },
-      {
-        path: 'edit-project/:value',
-        element: <EditProject />,
-      },
-      {
-        path: 'add-project',
-        element: <CreateProject />,
-      },
-      {
-        path: 'settings',
-        element: <Settings />,
-      },
-    ],
-  },
-  {
-    path: '/error',
-    element: <ErrorPage />,
   },
 ]);
 
 createRoot(document.getElementById('root')).render(
-  <HelmetProvider>
+  <StrictMode>
     <RouterProvider router={router} />
-  </HelmetProvider>
+  </StrictMode>
 );

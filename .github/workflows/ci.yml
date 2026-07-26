@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets:
+    name: Secret history scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Check out complete repository history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Scan commits for secrets
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  server:
+    name: Server tests and audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Use repository Node version
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server dependencies
+        run: npm ci --prefix server
+
+      - name: Check server syntax
+        run: npm run check:syntax --prefix server
+
+      - name: Run server tests with coverage floors
+        run: npm run test:coverage --prefix server
+
+      - name: Audit all server dependencies
+        run: npm audit --prefix server --audit-level=low
+
+      - name: Generate server CycloneDX SBOM
+        if: always()
+        run: npm sbom --prefix server --sbom-format cyclonedx > server-sbom.cdx.json
+
+      - name: Upload server SBOM
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: server-sbom
+          path: server-sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30
+
+  client:
+    name: Client lint, build, and audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Use repository Node version
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install client dependencies
+        run: npm ci --prefix client
+
+      - name: Lint client
+        run: npm run lint --prefix client
+
+      - name: Test client
+        run: npm test --prefix client
+
+      - name: Build client
+        run: npm run build --prefix client
+
+      - name: Audit all client dependencies
+        run: npm run audit:dependencies --prefix client
+
+      - name: Generate client CycloneDX SBOM
+        if: always()
+        run: npm sbom --prefix client --sbom-format cyclonedx > client-sbom.cdx.json
+
+      - name: Upload client SBOM
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: client-sbom
+          path: client-sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30

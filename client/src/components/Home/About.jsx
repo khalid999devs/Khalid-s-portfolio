@@ -1,20 +1,23 @@
 import { useEffect, useRef } from 'react';
 import SectionLabel from '../utils/SectionLabel';
 import { GravityField, myPic } from '../../assets';
-import { OutlinedBigIcon } from '../Buttons/OutlinedButton';
 import SkillsAndTechs from './SkillsAndTechs';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 import useIsGreaterOrEqualMd from '../../hooks/useIsGreaterOrEqualMd';
-import { downloadResume } from '../../axios';
+import { useAppContext } from '../../App';
+import ResumeDownloadButton from '../utils/ResumeDownloadButton';
 
 const About = () => {
   const aboutTextRef = useRef(null);
   const aboutParentRef = useRef(null);
   const isGreaterOrEqualMd = useIsGreaterOrEqualMd();
+  const { resumeAvailable } = useAppContext();
 
   useEffect(() => {
+    let animationHandle;
+
     if (aboutParentRef.current && aboutTextRef.current) {
-      wordBlinkAnimation(
+      animationHandle = wordBlinkAnimation(
         aboutTextRef.current,
         isGreaterOrEqualMd,
         aboutParentRef.current,
@@ -22,6 +25,8 @@ const About = () => {
         true
       );
     }
+
+    return () => animationHandle?.kill();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -41,23 +46,29 @@ const About = () => {
           <div className='max-w-[400px] w-full relative'>
             <img
               src={GravityField}
-              alt='gravity-field'
+              alt=''
+              aria-hidden='true'
+              width='551'
+              height='633'
               className='w-full h-auto z-0'
               loading='lazy'
             />
             <img
               src={myPic}
-              alt='gravity-field'
+              width='338'
+              height='410'
+              alt='Portrait of Khalid Ahammed'
               className='w-[72%] md:w-[70%] lg:w-[75%] xl:w-[65%] absolute top-[47%] left-[46%] h-auto z-10 object-cover saturate-[20%] transition-all duration-1000 hover:saturate-[100%] pointer-all'
               style={{ transform: 'translate(-50%,-50%)' }}
               loading='lazy'
+              decoding='async'
             />
           </div>
 
           <div className='flex gap-10 md:gap-20 mds:gap-[115px] mdl:gap-[190px] lg:gap-[85px] xl:gap-[104px] md:pt-10 lg:pt-[25px] xl:pt-[60px] md:pl-16 flex-col w-full md:min-w-[120px] justify-between h-full md:max-w-[400px] lg:max-w-[500px] 3xl:pt-16 3xl:gap-36 mt-4 md:mt-0'>
             <p
               ref={aboutTextRef}
-              className='text-secondary-main md:text-sm xl:text-base uppercase pointer-all'
+              className='text-muted-main md:text-sm xl:text-base uppercase pointer-all'
               style={{
                 wordSpacing: '0.15rem',
               }}
@@ -67,12 +78,11 @@ const About = () => {
               through code and enjoy collaborating with diverse teams to create
               impactful solutions.
             </p>
-            <div className='inline-block m-auto md:m-0'>
-              <OutlinedBigIcon
-                text={'DOWNLOAD CV'}
-                onClick={() => downloadResume()}
-              />
-            </div>
+            {resumeAvailable && (
+              <div className='inline-block m-auto md:m-0'>
+                <ResumeDownloadButton />
+              </div>
+            )}
           </div>
         </div>
       </div>

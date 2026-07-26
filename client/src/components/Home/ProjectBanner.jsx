@@ -5,31 +5,42 @@ import { ScrollMouseAnime } from '../../assets';
 import { useEffect, useRef } from 'react';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import useDocumentHeight from '../../hooks/useDocumentHeight';
+import usePrefersReducedMotion from '../../hooks/usePrefersReducedMotion';
 
 const ProjectBanner = () => {
-  const projecsParentRef = useRef(null);
-  const documentHeight = useDocumentHeight();
+  const projectsParentRef = useRef(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
-    if (projecsParentRef.current) {
+    const animationHandles = [];
+
+    if (projectsParentRef.current && !prefersReducedMotion) {
       const animatingElements = [
-        ...document.querySelectorAll('.blink-animate'),
+        ...projectsParentRef.current.querySelectorAll('.blink-animate'),
       ];
 
       if (animatingElements.length > 0) {
         animatingElements.forEach((ele) => {
-          wordBlinkAnimation(ele, null, projecsParentRef.current, true, false);
+          const handle = wordBlinkAnimation(
+            ele,
+            null,
+            projectsParentRef.current,
+            true,
+            false
+          );
+          if (handle) animationHandles.push(handle);
         });
       }
     }
-  }, []);
+
+    return () => animationHandles.forEach((handle) => handle.kill());
+  }, [prefersReducedMotion]);
 
   useEffect(() => {
     let projectParentScrollTInstance;
-    if (projecsParentRef.current) {
+    if (projectsParentRef.current && !prefersReducedMotion) {
       projectParentScrollTInstance = ScrollTrigger.create({
-        trigger: projecsParentRef.current,
+        trigger: projectsParentRef.current,
         pin: true,
         pinSpacing: false,
         scrub: 0.2,
@@ -40,11 +51,11 @@ const ProjectBanner = () => {
     return () => {
       if (projectParentScrollTInstance) projectParentScrollTInstance.kill();
     };
-  }, [documentHeight]);
+  }, [prefersReducedMotion]);
 
   return (
     <div
-      ref={projecsParentRef}
+      ref={projectsParentRef}
       className='pt-16 min-h-screen w-full pb-16 flex items-center justify-center relative'
     >
       <div className='flex flex-col w-full justify-center -translate-y-3'>
@@ -55,15 +66,15 @@ const ProjectBanner = () => {
               <span className='blink-animate'>Selected</span>
             </p>
             <div className='flex gap-0.5 items-end justify-end text-xs text-onPrimary-dark text-right'>
-              <MdOutlineArrowBackIos />
-              <MdOutlineArrowForwardIos />
+              <MdOutlineArrowBackIos aria-hidden='true' />
+              <MdOutlineArrowForwardIos aria-hidden='true' />
             </div>
           </div>
 
           <div>
-            <h1 className='text-[4rem] sm:text-[70px] md:text-[105px] uppercase'>
+            <h2 className='text-[4rem] sm:text-[70px] md:text-[105px] uppercase'>
               PROJECTS{' '}
-            </h1>
+            </h2>
           </div>
 
           <div className='flex-col hidden sm:flex gap-3 md:gap-7 justify-between'>
@@ -72,7 +83,7 @@ const ProjectBanner = () => {
               <span className='blink-animate'>WEB APPS</span>
             </p>
             <p className='text-lg text-left text-onPrimary-dark'>
-              <MdOutlineArrowOutward />
+              <MdOutlineArrowOutward aria-hidden='true' />
             </p>
           </div>
         </div>
@@ -87,8 +98,19 @@ const ProjectBanner = () => {
         </div>
       </div>
 
-      <div className='absolute left-1/2 bottom-8 -translate-x-1/2 -translate-y-1/2'>
-        <img src={ScrollMouseAnime} className='w-10 opacity-20' alt='mouse' />
+      <div
+        className={`absolute left-1/2 bottom-8 -translate-x-1/2 -translate-y-1/2 ${
+          prefersReducedMotion ? 'hidden' : ''
+        }`}
+      >
+        <img
+          src={ScrollMouseAnime}
+          width='150'
+          height='150'
+          className='w-10 opacity-20'
+          alt=''
+          aria-hidden='true'
+        />
       </div>
     </div>
   );
