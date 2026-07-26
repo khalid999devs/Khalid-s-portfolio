@@ -1,6 +1,29 @@
 const { projects } = require('../models');
-const { BadRequestError, UnauthorizedError } = require('../errors');
+const { BadRequestError } = require('../errors');
 const deleteFile = require('../utils/deleteFile');
+const {
+  EDITABLE_INFO_FIELDS,
+  EDITABLE_CONTENT_FIELDS,
+  JSON_ARRAY_FIELDS,
+  pickProjectFields,
+} = require('../utils/projectFields');
+
+/**
+ * Restores the array fields to arrays for the response body.
+ *
+ * The columns are TEXT holding JSON, so the allowlist encodes them for storage;
+ * the admin panel expects arrays back. Kept as a helper so the response shape
+ * stays byte-identical to what these routes returned before.
+ */
+const decodeArrayFields = (data) => {
+  const decoded = { ...data };
+  for (const field of JSON_ARRAY_FIELDS) {
+    if (typeof decoded[field] === 'string') {
+      decoded[field] = JSON.parse(decoded[field]);
+    }
+  }
+  return decoded;
+};
 
 const createProject = async (req, res) => {
   const { title, subtitle, overview, role, date, category, locationYear } =
@@ -28,7 +51,10 @@ const createProject = async (req, res) => {
     category: category || 'all',
     subtitle,
     overview,
-    role: JSON.stringify(role),
+    // Was `JSON.stringify(role)` on whatever arrived. That is how rows with
+    // `role: [""]` were written -- values this route's own reader treats as
+    // invalid. Validated to a non-empty array of non-empty strings.
+    ...pickProjectFields({ role }, ['role']),
     date,
     locationYear,
     displayOrder: nextDisplayOrder,
@@ -55,11 +81,16 @@ const createProject = async (req, res) => {
 
 const updateProjectContents = async (req, res) => {
   const projectId = req.params.id;
-  let data = req.body;
 
   let project = await projects.findOne({ where: { id: projectId } });
   if (!project)
     throw new BadRequestError('Please Enter the correct project Id!');
+
+  // Was `let data = req.body`, spread wholesale into `projects.update`. A caller
+  // could set any column, including the media paths the delete routes later feed
+  // to the filesystem. Media values below come only from what multer actually
+  // wrote to disk.
+  const data = pickProjectFields(req.body, EDITABLE_CONTENT_FIELDS);
 
   if (req.files) {
     const uploadedFiles = req.files;
@@ -97,49 +128,40 @@ const updateProjectContents = async (req, res) => {
     }
   }
 
-  if (data.techStack) data.techStack = JSON.stringify(data.techStack);
-
+  // `techStack` is already JSON-encoded by the allowlist.
   await projects.update({ ...data }, { where: { id: projectId } });
 
-  if (data.techStack) data.techStack = JSON.parse(data.techStack);
-  if (data.videos) data.videos = JSON.parse(data.videos);
-  if (data.sliderContents)
-    data.sliderContents = JSON.parse(data.sliderContents);
-
-  const result = { ...project, ...data };
+  const responseData = decodeArrayFields(data);
+  if (responseData.videos) responseData.videos = JSON.parse(responseData.videos);
+  if (responseData.sliderContents)
+    responseData.sliderContents = JSON.parse(responseData.sliderContents);
 
   res.json({
     succeed: true,
     msg: 'Successfully updated project content!',
-    result: result,
+    result: { ...project, ...responseData },
   });
 };
 
 const editProjectInfos = async (req, res) => {
   const projectId = req.params.id;
-  let data = req.body;
 
   let project = await projects.findOne({ where: { id: projectId } });
   if (!project)
     throw new BadRequestError('Please Enter the correct project Id!');
 
-  if (data.bannerImg || data.videos || data.sliderContents)
-    throw new UnauthorizedError(
-      'You are not permitted to change this data in this route!'
-    );
-
-  if (data.techStack) data.techStack = JSON.stringify(data.techStack);
-  if (data.role) data.role = JSON.stringify(data.role);
+  // The old guard here only rejected bannerImg, videos and sliderContents --
+  // it missed thumbnailContents entirely, and let every other column through,
+  // including id, value, displayOrder and createdAt. An allowlist cannot have
+  // that kind of gap.
+  const data = pickProjectFields(req.body, EDITABLE_INFO_FIELDS);
 
   await projects.update({ ...data }, { where: { id: projectId } });
-
-  if (data.techStack) data.techStack = JSON.parse(data.techStack);
-  if (data.role) data.role = JSON.parse(data.role);
 
   res.json({
     succeed: true,
     msg: 'Successfully Updated Project Infos',
-    result: { ...project, ...data },
+    result: { ...project, ...decodeArrayFields(data) },
   });
 };
 
@@ -408,15 +430,30 @@ const reorderProjects = async (req, res) => {
     throw new BadRequestError('Project orders must be provided as an array');
   }
 
-  // Update each project's displayOrder in a transaction
-  const updatePromises = projectOrders.map((item) =>
-    projects.update(
-      { displayOrder: item.displayOrder },
-      { where: { id: item.id } }
-    )
-  );
+  // `item.id` and `item.displayOrder` went straight into the query untyped, so
+  // a non-numeric id reached the database as-is and a non-integer order could
+  // be written to an INTEGER NOT NULL column.
+  const updates = projectOrders.map((item) => {
+    const id = Number(item?.id);
+    const displayOrder = Number(item?.displayOrder);
+    if (!Number.isSafeInteger(id) || id < 1) {
+      throw new BadRequestError('Each entry needs a positive integer "id".');
+    }
+    if (!Number.isSafeInteger(displayOrder) || displayOrder < 0) {
+      throw new BadRequestError(
+        'Each entry needs a non-negative integer "displayOrder".'
+      );
+    }
+    return { id, displayOrder };
+  });
 
-  await Promise.all(updatePromises);
+  // Previously issued in parallel with no transaction, so a failure partway
+  // through left the catalogue in a half-reordered state that nothing repaired.
+  await projects.sequelize.transaction(async (transaction) => {
+    for (const { id, displayOrder } of updates) {
+      await projects.update({ displayOrder }, { where: { id }, transaction });
+    }
+  });
 
   res.json({
     succeed: true,
