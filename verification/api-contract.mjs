@@ -147,6 +147,25 @@ const waitForReady = async (attempts = 40) => {
   return false;
 };
 
+/**
+ * Refuses to proceed if something is already listening. A stale server left
+ * over from manual testing silently answers on behalf of the supervised one,
+ * and since it runs whatever code was current when it started, the contract
+ * gets recorded against the wrong build. That produced a 23-request phantom
+ * diff once already.
+ */
+const assertPortIsFree = async () => {
+  try {
+    await fetch(`${BASE}/api/settings`, { signal: AbortSignal.timeout(1500) });
+  } catch {
+    return;
+  }
+  throw new Error(
+    `Something is already serving ${BASE}. Stop it first ` +
+      `(lsof -ti:${new URL(BASE).port} | xargs kill) so this suite controls the server under test.`
+  );
+};
+
 const startServer = async () => {
   child = spawn(process.execPath, ['index.js'], { cwd: SERVER_DIR, stdio: 'ignore' });
   child.alive = true;
@@ -159,6 +178,7 @@ const supervise = process.argv.includes('--serve');
 const record = async () => {
   const results = {};
   if (supervise) {
+    await assertPortIsFree();
     await ensureResumeFixture();
     await startServer();
   }

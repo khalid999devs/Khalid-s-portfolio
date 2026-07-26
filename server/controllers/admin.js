@@ -2,7 +2,11 @@ const { compare } = require('bcryptjs');
 const { Admin } = require('../models');
 const { sign } = require('jsonwebtoken');
 const { BadRequestError, UnauthenticatedError } = require('../errors');
-const { attachTokenToResponse } = require('../utils/createToken');
+const {
+  attachTokenToResponse,
+  clearTokenCookie,
+} = require('../utils/createToken');
+const env = require('../config/env');
 
 // A bcrypt hash of a value no password can produce. Compared against when the
 // username is unknown so the failure path costs the same as a real one.
@@ -30,15 +34,18 @@ const adminLogin = async (req, res) => {
     userName: admin.userName,
     role: 'admin',
   };
-  const token = sign(user, process.env.ADMIN_SECRET, {
-    expiresIn: '1h',
+  const token = sign(user, env.adminSecret, {
+    algorithm: 'HS256',
+    expiresIn: env.sessionSeconds,
   });
-  attachTokenToResponse('token', { res, token, expiresInDay: 1 });
+  attachTokenToResponse('token', { res, token });
   res.json({ succeed: true, msg: 'successfully logged in' });
 };
 
 const adminLogout = (req, res) => {
-  res.clearCookie('token');
+  // `res.clearCookie('token')` did not match the attributes the cookie was set
+  // with, so the browser could keep it. Clear it with the same attributes.
+  clearTokenCookie(res, 'token');
   res.json({ succeed: true, msg: 'logout succes' });
 };
 
