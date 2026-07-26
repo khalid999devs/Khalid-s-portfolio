@@ -4,6 +4,7 @@ const express = require('express');
 const { DataTypes, Utils } = require('sequelize');
 
 const {
+  configureHttpServer,
   createApp,
   createRateLimiters,
   createUnsafeRequestOriginGuard,
@@ -18,6 +19,7 @@ const createEnvironment = (overrides = {}) => ({
   ADMIN_SECRET: adminSecret,
   ADMIN_USERNAME: 'portfolio-admin',
   COOKIE_SECRET: cookieSecret,
+  DB_SSL: 'true',
   NODE_ENV: 'test',
   REMOTE_CLIENT_APP: 'http://portfolio.example.test',
   ...overrides,
@@ -93,15 +95,133 @@ test('proxy and rate-limit settings accept only bounded decimal integers', () =>
   const config = validateRuntimeConfig(
     createEnvironment({
       API_RATE_LIMIT_MAX_REQUESTS: '25',
-      CONTACT_RATE_LIMIT_WINDOW_MS: '60000',
+      READINESS_RATE_LIMIT_WINDOW_MS: '60000',
       TRUST_PROXY_HOPS: '2',
     })
   );
 
   assert.equal(config.trustProxyHops, 2);
   assert.equal(config.rateLimits.api.limit, 25);
-  assert.equal(config.rateLimits.contactSubmission.windowMs, 60_000);
+  assert.equal(config.rateLimits.readiness.windowMs, 60_000);
   assert.equal(config.shutdownTimeoutMs, 10_000);
+});
+
+test('configured resume paths must be absolute PDF paths', () => {
+  assert.throws(
+    () =>
+      validateRuntimeConfig(
+        createEnvironment({ RESUME_FILE_PATH: 'resume.pdf' })
+      ),
+    /RESUME_FILE_PATH must be an absolute path/
+  );
+  assert.throws(
+    () =>
+      validateRuntimeConfig(
+        createEnvironment({ RESUME_FILE_PATH: '/private/resume.txt' })
+      ),
+    /RESUME_FILE_PATH must identify a PDF file/
+  );
+  assert.doesNotThrow(() =>
+    validateRuntimeConfig(
+      createEnvironment({ RESUME_FILE_PATH: '/private/resume.PDF' })
+    )
+  );
+});
+
+test('body-size and HTTP server settings are bounded and normalized at startup', () => {
+  const defaults = validateRuntimeConfig(createEnvironment());
+  assert.deepEqual(defaults.bodyLimits, {
+    json: 256 * 1024,
+    urlEncoded: 64 * 1024,
+  });
+  assert.deepEqual(defaults.httpServer, {
+    requestTimeoutMs: 300_000,
+    headersTimeoutMs: 60_000,
+    keepAliveTimeoutMs: 5_000,
+    maxHeadersCount: 100,
+    maxRequestsPerSocket: 1_000,
+  });
+
+  const configured = validateRuntimeConfig(
+    createEnvironment({
+      HTTP_HEADERS_TIMEOUT_MS: '10000',
+      HTTP_KEEP_ALIVE_TIMEOUT_MS: '2500',
+      HTTP_MAX_HEADERS_COUNT: '64',
+      HTTP_MAX_REQUESTS_PER_SOCKET: '50',
+      HTTP_REQUEST_TIMEOUT_MS: '20000',
+      JSON_BODY_LIMIT: '1mb',
+      URL_ENCODED_BODY_LIMIT: '128KB',
+    })
+  );
+  assert.deepEqual(configured.bodyLimits, {
+    json: 1024 * 1024,
+    urlEncoded: 128 * 1024,
+  });
+  assert.deepEqual(configured.httpServer, {
+    requestTimeoutMs: 20_000,
+    headersTimeoutMs: 10_000,
+    keepAliveTimeoutMs: 2_500,
+    maxHeadersCount: 64,
+    maxRequestsPerSocket: 50,
+  });
+
+  assert.throws(
+    () =>
+      validateRuntimeConfig(createEnvironment({ JSON_BODY_LIMIT: '2mb' })),
+    /JSON_BODY_LIMIT must be a byte size between 1024 and 1048576 bytes/
+  );
+  assert.throws(
+    () =>
+      validateRuntimeConfig(
+        createEnvironment({ JSON_BODY_LIMIT: '256kib' })
+      ),
+    /JSON_BODY_LIMIT must be a byte size/
+  );
+  assert.throws(
+    () =>
+      validateRuntimeConfig(
+        createEnvironment({ URL_ENCODED_BODY_LIMIT: '512kb' })
+      ),
+    /URL_ENCODED_BODY_LIMIT must be a byte size between 1024 and 262144 bytes/
+  );
+  assert.throws(
+    () =>
+      validateRuntimeConfig(
+        createEnvironment({
+          HTTP_HEADERS_TIMEOUT_MS: '11000',
+          HTTP_REQUEST_TIMEOUT_MS: '10000',
+        })
+      ),
+    /HTTP_HEADERS_TIMEOUT_MS cannot exceed HTTP_REQUEST_TIMEOUT_MS/
+  );
+  assert.throws(
+    () =>
+      validateRuntimeConfig(
+        createEnvironment({ HTTP_MAX_HEADERS_COUNT: '1001' })
+      ),
+    /HTTP_MAX_HEADERS_COUNT must be an integer between 16 and 1000/
+  );
+});
+
+test('HTTP server configuration applies every validated connection limit', () => {
+  const policy = {
+    requestTimeoutMs: 20_000,
+    headersTimeoutMs: 10_000,
+    keepAliveTimeoutMs: 2_500,
+    maxHeadersCount: 64,
+    maxRequestsPerSocket: 50,
+  };
+  const server = {};
+
+  assert.equal(configureHttpServer(server, policy), server);
+  assert.equal(server.requestTimeout, policy.requestTimeoutMs);
+  assert.equal(server.headersTimeout, policy.headersTimeoutMs);
+  assert.equal(server.keepAliveTimeout, policy.keepAliveTimeoutMs);
+  assert.equal(server.maxHeadersCount, policy.maxHeadersCount);
+  assert.equal(
+    server.maxRequestsPerSocket,
+    policy.maxRequestsPerSocket
+  );
 });
 
 test('browser origins reject non-HTTP protocols and embedded credentials', () => {
@@ -231,7 +351,13 @@ test('global API limiter returns standard headers and a safe JSON error', async 
   const blocked = await fetch(`${server.baseUrl}/api/route-that-does-not-exist`);
 
   assert.equal(first.status, 404);
+  assert.equal(first.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await first.json(), {
+    succeed: false,
+    msg: 'Route does not exist',
+  });
   assert.equal(blocked.status, 429);
+  assert.equal(blocked.headers.get('cache-control'), 'no-store');
   assert.equal(blocked.headers.has('ratelimit'), true);
   assert.equal(blocked.headers.has('x-ratelimit-limit'), false);
   assert.deepEqual(await blocked.json(), {
@@ -240,20 +366,17 @@ test('global API limiter returns standard headers and a safe JSON error', async 
   });
 });
 
-test('login and contact submissions have independent stricter limiters', async (t) => {
+test('login and readiness probes have independent stricter limiters', async (t) => {
   const limiters = createRateLimiters({
     adminLogin: { limit: 1, windowMs: 60_000 },
     api: { limit: 100, windowMs: 60_000 },
-    contactSubmission: { limit: 1, windowMs: 60_000 },
-    readiness: { limit: 100, windowMs: 60_000 },
+    readiness: { limit: 1, windowMs: 60_000 },
   });
   const app = express();
 
   app.set('trust proxy', 0);
   app.post('/login', limiters.adminLogin, (_req, res) => res.sendStatus(204));
-  app.post('/contact', limiters.contactSubmission, (_req, res) =>
-    res.sendStatus(204)
-  );
+  app.get('/ready', limiters.readiness, (_req, res) => res.sendStatus(204));
 
   const server = await listen(app);
   t.after(server.close);
@@ -271,16 +394,12 @@ test('login and contact submissions have independent stricter limiters', async (
     'Too many login attempts. Please try again later.'
   );
 
+  // A separate limiter must still have its own untouched budget.
+  assert.equal((await fetch(`${server.baseUrl}/ready`)).status, 204);
+  const blockedReadiness = await fetch(`${server.baseUrl}/ready`);
+  assert.equal(blockedReadiness.status, 429);
   assert.equal(
-    (await fetch(`${server.baseUrl}/contact`, { method: 'POST' })).status,
-    204
-  );
-  const blockedContact = await fetch(`${server.baseUrl}/contact`, {
-    method: 'POST',
-  });
-  assert.equal(blockedContact.status, 429);
-  assert.equal(
-    (await blockedContact.json()).msg,
-    'Too many contact submissions. Please try again later.'
+    (await blockedReadiness.json()).msg,
+    'Too many readiness probes. Please try again later.'
   );
 });

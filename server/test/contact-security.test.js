@@ -1,184 +1,27 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const { Contact } = require('../models');
+const { sendEmailToClient } = require('../controllers/contact');
 const {
-  getAllMessage,
-  sendEmailToClient,
-  sendMessage,
-} = require('../controllers/contact');
-const {
-  normalizeContactMessage,
   normalizeEmailDeliveryRequest,
   normalizeSmsDeliveryRequest,
-  parseMessageListQuery,
 } = require('../utils/contactValidation');
 const { htmlCreator } = require('../utils/htmlTemplates');
 const { EmailCover } = require('../utils/TemplateCover');
 
-test('public contact input is normalized to an explicit persistence shape', () => {
-  assert.deepEqual(
-    normalizeContactMessage({
-      name: '  Ada   Lovelace  ',
-      phone: '+880 1712-345678',
-      email: 'Ada@Example.COM',
-      address: '  Dhaka   Bangladesh  ',
-      message: '  First line\r\nSecond line  ',
-    }),
-    {
-      name: 'Ada Lovelace',
-      phone: '01712345678',
-      email: 'Ada@example.com',
-      address: 'Dhaka Bangladesh',
-      message: 'First line\nSecond line',
-    }
-  );
-
-  assert.deepEqual(
-    normalizeContactMessage({
-      name: 'Grace Hopper',
-      phone: '01812345678',
-      email: '',
-      address: '   ',
-      message: 'Hello',
-    }),
-    {
-      name: 'Grace Hopper',
-      phone: '01812345678',
-      email: null,
-      address: null,
-      message: 'Hello',
-    }
-  );
-});
-
-test('public contact input rejects unknown, malformed, and oversized fields', () => {
-  const valid = {
-    name: 'Ada Lovelace',
-    phone: '01712345678',
-    message: 'Hello',
-  };
-
-  assert.throws(
-    () => normalizeContactMessage({ ...valid, isAdmin: true }),
-    /Unexpected field: isAdmin/
-  );
-  assert.throws(
-    () => normalizeContactMessage({ ...valid, phone: '12345' }),
-    /valid Bangladeshi mobile number/
-  );
-  assert.throws(
-    () => normalizeContactMessage({ ...valid, email: 'invalid@' }),
-    /valid email address/
-  );
-  assert.throws(
-    () => normalizeContactMessage({ ...valid, message: 'x'.repeat(5_001) }),
-    /between 1 and 5000/
-  );
-});
-
-test('sendMessage persists only normalized allowlisted fields', async () => {
-  const originalCreate = Contact.create;
-  let persisted;
-  let responseBody;
-  Contact.create = async (value) => {
-    persisted = value;
-    return value;
-  };
-
-  try {
-    await sendMessage(
-      {
-        body: {
-          name: '  Ada   Lovelace ',
-          phone: '8801712345678',
-          email: 'ada@EXAMPLE.COM',
-          address: '',
-          message: ' Hello ',
-        },
-      },
-      {
-        json(value) {
-          responseBody = value;
-        },
-      }
-    );
-
-    assert.deepEqual(persisted, {
-      name: 'Ada Lovelace',
-      phone: '01712345678',
-      email: 'ada@example.com',
-      address: null,
-      message: 'Hello',
-    });
-    assert.equal(responseBody.succeed, true);
-  } finally {
-    Contact.create = originalCreate;
-  }
-});
-
-test('message listing uses strict, bounded pagination while preserving result', async () => {
-  assert.deepEqual(parseMessageListQuery({}), {
-    page: 1,
-    limit: 50,
-    offset: 0,
-  });
-  assert.throws(
-    () => parseMessageListQuery({ limit: '101' }),
-    /must not exceed 100/
-  );
-  assert.throws(
-    () => parseMessageListQuery({ page: '1.5' }),
-    /positive integer/
-  );
-  assert.throws(
-    () => parseMessageListQuery({ sort: 'id' }),
-    /Unexpected field: sort/
-  );
-
-  const originalFindAndCountAll = Contact.findAndCountAll;
-  const messages = [{ id: 3 }, { id: 2 }];
-  let queryOptions;
-  let responseBody;
-  Contact.findAndCountAll = async (options) => {
-    queryOptions = options;
-    return { count: 42, rows: messages };
-  };
-
-  try {
-    await getAllMessage(
-      { query: { page: '2', limit: '20' } },
-      {
-        json(value) {
-          responseBody = value;
-        },
-      }
-    );
-
-    assert.deepEqual(queryOptions, {
-      order: [['id', 'DESC']],
-      limit: 20,
-      offset: 20,
-    });
-    assert.equal(responseBody.result, messages);
-    assert.deepEqual(responseBody.pagination, {
-      page: 2,
-      limit: 20,
-      total: 42,
-      totalPages: 3,
-    });
-  } finally {
-    Contact.findAndCountAll = originalFindAndCountAll;
-  }
-});
+// Outbound administrator messaging only. There is no public intake endpoint,
+// no stored inbox, and no contact-reply delivery state to reconcile.
 
 test('outbound email HTML escapes names and body while preserving line breaks', () => {
-  const email = htmlCreator('contact', {
+  const email = htmlCreator('custom', {
     client: { fullName: '<img src=x onerror="alert(1)">' },
-    info: { body: 'Hello <script>alert(1)</script> & goodbye\nNext line' },
+    info: {
+      subject: 'Project update',
+      body: 'Hello <script>alert(1)</script> & goodbye\nNext line',
+    },
   });
 
-  assert.equal(email.subject, 'We are here for you!');
+  assert.equal(email.subject, 'Project update');
   assert.equal(email.body.includes('<script>'), false);
   assert.equal(email.body.includes('<img'), false);
   assert.match(email.body, /&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt;/);
@@ -208,16 +51,16 @@ test('email wrapper is self-contained and contains no copied business data', () 
   assert.equal(wrapped.includes('https://'), false);
 });
 
-test('contact replies reject ambiguous IDs and oversized content before sending', async () => {
+test('outbound email rejects retired modes and oversized content before sending', async () => {
   await assert.rejects(
     sendEmailToClient(
       {
         params: { mode: 'contact' },
-        body: { id: '1anything', text: 'Reply' },
+        body: { id: '1', text: 'Reply' },
       },
       {}
     ),
-    /valid contact ID/
+    /Unsupported email delivery mode/
   );
 
   await assert.rejects(
@@ -245,7 +88,6 @@ test('outbound email requests are mode-specific, normalized, and bounded', () =>
       text: ' Hello\r\nWorld ',
     }),
     {
-      contactId: null,
       email: 'Ada@example.com',
       name: 'Ada Lovelace',
       subject: 'Portfolio enquiry',
@@ -253,17 +95,10 @@ test('outbound email requests are mode-specific, normalized, and bounded', () =>
     }
   );
 
-  assert.deepEqual(
-    normalizeEmailDeliveryRequest('contact', { id: '42', text: ' Reply ' }),
-    {
-      contactId: 42,
-      email: null,
-      name: null,
-      subject: null,
-      text: 'Reply',
-    }
+  assert.throws(
+    () => normalizeEmailDeliveryRequest('contact', { id: '42', text: 'Reply' }),
+    /Unsupported email delivery mode/
   );
-
   assert.throws(
     () =>
       normalizeEmailDeliveryRequest('custom', {
@@ -275,12 +110,13 @@ test('outbound email requests are mode-specific, normalized, and bounded', () =>
   );
   assert.throws(
     () =>
-      normalizeEmailDeliveryRequest('contact', {
+      normalizeEmailDeliveryRequest('custom', {
+        email: 'recipient@example.com',
+        subject: 'Subject',
+        text: 'Message',
         id: 1,
-        text: 'Reply',
-        email: 'ignored@example.com',
       }),
-    /Unexpected field: email/
+    /Unexpected field: id/
   );
   assert.throws(
     () => normalizeEmailDeliveryRequest('custom'),

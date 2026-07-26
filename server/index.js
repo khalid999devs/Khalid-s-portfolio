@@ -1,4 +1,5 @@
 require('dotenv').config({ quiet: true });
+const http = require('node:http');
 const path = require('path');
 const express = require('express');
 const cookieParser = require('cookie-parser');
@@ -20,10 +21,21 @@ const {
   createShutdownManager,
 } = require('./utils/serverLifecycle');
 const { closeMailTransporter } = require('./utils/sendMail');
+const { UPLOADS_ROOT } = require('./utils/uploadPaths');
 
 const MINIMUM_SECRET_LENGTH = 32;
 const ONE_MINUTE_MS = 60 * 1000;
 const ONE_HOUR_MS = 60 * ONE_MINUTE_MS;
+const ONE_KIBIBYTE = 1024;
+const ONE_MEBIBYTE = 1024 * ONE_KIBIBYTE;
+const IMMUTABLE_UPLOAD_CACHE_CONTROL =
+  'public, max-age=31536000, immutable';
+const REVALIDATED_UPLOAD_CACHE_CONTROL =
+  'public, no-cache, must-revalidate';
+const IMMUTABLE_IMAGE_UPLOAD_NAME =
+  /^(bannerImg|thumbnailContents|sliderContents)-\d{13,}-[a-f0-9]{24}-optimized\.webp$/u;
+const IMMUTABLE_VIDEO_UPLOAD_NAME =
+  /^videos-\d{13,}-[a-f0-9]{24}\.mp4$/u;
 
 const parseBoundedInteger = (
   env,
@@ -51,6 +63,90 @@ const parseBoundedInteger = (
   }
 
   return value;
+};
+
+const parseBoundedByteSize = (
+  env,
+  variableName,
+  { defaultValue, maximum, minimum }
+) => {
+  const rawValue = env[variableName];
+  if (rawValue === undefined || String(rawValue).trim() === '') {
+    return defaultValue;
+  }
+
+  const normalizedValue = String(rawValue).trim().toLowerCase();
+  const match = /^(\d+)(b|kb|mb)?$/u.exec(normalizedValue);
+  const unitMultipliers = {
+    b: 1n,
+    kb: 1024n,
+    mb: 1024n * 1024n,
+  };
+
+  if (!match) {
+    throw new Error(
+      `${variableName} must be a byte size between ${minimum} and ${maximum} bytes`
+    );
+  }
+
+  const value =
+    BigInt(match[1]) * unitMultipliers[match[2] || 'b'];
+  if (value < BigInt(minimum) || value > BigInt(maximum)) {
+    throw new Error(
+      `${variableName} must be a byte size between ${minimum} and ${maximum} bytes`
+    );
+  }
+
+  return Number(value);
+};
+
+const isImmutableUploadPath = (filePath) => {
+  if (typeof filePath !== 'string' || !path.isAbsolute(filePath)) return false;
+
+  const relativePath = path.relative(UPLOADS_ROOT, path.resolve(filePath));
+  if (
+    path.isAbsolute(relativePath) ||
+    relativePath === '..' ||
+    relativePath.startsWith(`..${path.sep}`)
+  ) {
+    return false;
+  }
+
+  const [rootSegment, projectId, fieldName, fileName, ...extraSegments] =
+    relativePath.split(path.sep);
+  if (
+    rootSegment !== 'projects' ||
+    !/^[1-9]\d*$/u.test(projectId || '') ||
+    !fileName ||
+    extraSegments.length
+  ) {
+    return false;
+  }
+
+  if (fieldName === 'videos') {
+    return IMMUTABLE_VIDEO_UPLOAD_NAME.test(fileName);
+  }
+
+  const imageName = IMMUTABLE_IMAGE_UPLOAD_NAME.exec(fileName);
+  return imageName?.[1] === fieldName;
+};
+
+const setUploadCacheHeaders = (res, filePath) => {
+  res.setHeader(
+    'Cache-Control',
+    isImmutableUploadPath(filePath)
+      ? IMMUTABLE_UPLOAD_CACHE_CONTROL
+      : REVALIDATED_UPLOAD_CACHE_CONTROL
+  );
+};
+
+const configureHttpServer = (server, policy) => {
+  server.requestTimeout = policy.requestTimeoutMs;
+  server.headersTimeout = policy.headersTimeoutMs;
+  server.keepAliveTimeout = policy.keepAliveTimeoutMs;
+  server.maxHeadersCount = policy.maxHeadersCount;
+  server.maxRequestsPerSocket = policy.maxRequestsPerSocket;
+  return server;
 };
 
 const parseAllowedOrigins = (value) => {
@@ -112,11 +208,14 @@ const validateRuntimeConfig = (env = process.env) => {
     throw new Error('NODE_ENV must be development, production, or test');
   }
 
-  if (
-    env.RESUME_FILE_PATH?.trim() &&
-    !path.isAbsolute(env.RESUME_FILE_PATH.trim())
-  ) {
-    throw new Error('RESUME_FILE_PATH must be an absolute path');
+  if (env.RESUME_FILE_PATH?.trim()) {
+    const resumeFilePath = env.RESUME_FILE_PATH.trim();
+    if (!path.isAbsolute(resumeFilePath)) {
+      throw new Error('RESUME_FILE_PATH must be an absolute path');
+    }
+    if (path.extname(resumeFilePath).toLowerCase() !== '.pdf') {
+      throw new Error('RESUME_FILE_PATH must identify a PDF file');
+    }
   }
 
   for (const variableName of ['ADMIN_SECRET', 'COOKIE_SECRET']) {
@@ -140,6 +239,9 @@ const validateRuntimeConfig = (env = process.env) => {
     allowedOrigins.some((origin) => new URL(origin).protocol !== 'https:')
   ) {
     throw new Error('REMOTE_CLIENT_APP must use HTTPS in production');
+  }
+  if (isProduction && env.DB_SSL !== 'true') {
+    throw new Error('DB_SSL=true is required in production');
   }
 
   const port = parseBoundedInteger(env, 'PORT', {
@@ -176,6 +278,70 @@ const validateRuntimeConfig = (env = process.env) => {
   const adminPasswordBcryptCost = parseBcryptCost(
     env.ADMIN_PASSWORD_BCRYPT_COST
   );
+  const bodyLimits = {
+    json: parseBoundedByteSize(env, 'JSON_BODY_LIMIT', {
+      defaultValue: 256 * ONE_KIBIBYTE,
+      minimum: ONE_KIBIBYTE,
+      maximum: ONE_MEBIBYTE,
+    }),
+    urlEncoded: parseBoundedByteSize(env, 'URL_ENCODED_BODY_LIMIT', {
+      defaultValue: 64 * ONE_KIBIBYTE,
+      minimum: ONE_KIBIBYTE,
+      maximum: 256 * ONE_KIBIBYTE,
+    }),
+  };
+  const httpServer = {
+    requestTimeoutMs: parseBoundedInteger(
+      env,
+      'HTTP_REQUEST_TIMEOUT_MS',
+      {
+        defaultValue: 300_000,
+        minimum: 10_000,
+        maximum: 600_000,
+      }
+    ),
+    headersTimeoutMs: parseBoundedInteger(
+      env,
+      'HTTP_HEADERS_TIMEOUT_MS',
+      {
+        defaultValue: 60_000,
+        minimum: 5_000,
+        maximum: 120_000,
+      }
+    ),
+    keepAliveTimeoutMs: parseBoundedInteger(
+      env,
+      'HTTP_KEEP_ALIVE_TIMEOUT_MS',
+      {
+        defaultValue: 5_000,
+        minimum: 1_000,
+        maximum: 60_000,
+      }
+    ),
+    maxHeadersCount: parseBoundedInteger(
+      env,
+      'HTTP_MAX_HEADERS_COUNT',
+      {
+        defaultValue: 100,
+        minimum: 16,
+        maximum: 1_000,
+      }
+    ),
+    maxRequestsPerSocket: parseBoundedInteger(
+      env,
+      'HTTP_MAX_REQUESTS_PER_SOCKET',
+      {
+        defaultValue: 1_000,
+        minimum: 1,
+        maximum: 100_000,
+      }
+    ),
+  };
+  if (httpServer.headersTimeoutMs > httpServer.requestTimeoutMs) {
+    throw new Error(
+      'HTTP_HEADERS_TIMEOUT_MS cannot exceed HTTP_REQUEST_TIMEOUT_MS'
+    );
+  }
 
   const rateLimits = {
     api: {
@@ -210,26 +376,6 @@ const validateRuntimeConfig = (env = process.env) => {
         }
       ),
     },
-    contactSubmission: {
-      windowMs: parseBoundedInteger(
-        env,
-        'CONTACT_RATE_LIMIT_WINDOW_MS',
-        {
-          defaultValue: ONE_HOUR_MS,
-          minimum: 1000,
-          maximum: 24 * ONE_HOUR_MS,
-        }
-      ),
-      limit: parseBoundedInteger(
-        env,
-        'CONTACT_RATE_LIMIT_MAX_REQUESTS',
-        {
-          defaultValue: 5,
-          minimum: 1,
-          maximum: 10_000,
-        }
-      ),
-    },
     readiness: {
       windowMs: parseBoundedInteger(env, 'READINESS_RATE_LIMIT_WINDOW_MS', {
         defaultValue: 15 * ONE_MINUTE_MS,
@@ -252,7 +398,9 @@ const validateRuntimeConfig = (env = process.env) => {
     adminPasswordBcryptCost,
     adminUserName,
     allowedOrigins,
+    bodyLimits,
     cookieSecret: env.COOKIE_SECRET,
+    httpServer,
     isProduction,
     port,
     rateLimits,
@@ -313,11 +461,13 @@ const createHelmetOptions = (isProduction) => ({
   referrerPolicy: { policy: 'no-referrer' },
 });
 
-const createRateLimitHandler = (message) => (_req, res, _next, options) =>
-  res.status(options.statusCode).json({
+const createRateLimitHandler = (message) => (_req, res, _next, options) => {
+  res.set('Cache-Control', 'no-store');
+  return res.status(options.statusCode).json({
     succeed: false,
     msg: message,
   });
+};
 
 const createLimiter = ({ limit, message, windowMs }) =>
   rateLimit({
@@ -337,10 +487,6 @@ const createRateLimiters = (rateLimits) => ({
   api: createLimiter({
     ...rateLimits.api,
     message: 'Too many requests. Please try again later.',
-  }),
-  contactSubmission: createLimiter({
-    ...rateLimits.contactSubmission,
-    message: 'Too many contact submissions. Please try again later.',
   }),
   readiness: createLimiter({
     ...rateLimits.readiness,
@@ -429,13 +575,12 @@ const createApp = (
 
   app.use('/api', limiters.api);
   app.post('/api/admin/login', limiters.adminLogin);
-  app.post('/api/contact/sendMessage', limiters.contactSubmission);
 
-  app.use(express.json({ limit: env.JSON_BODY_LIMIT || '256kb' }));
+  app.use(express.json({ limit: config.bodyLimits.json }));
   app.use(
     express.urlencoded({
       extended: false,
-      limit: env.URL_ENCODED_BODY_LIMIT || '64kb',
+      limit: config.bodyLimits.urlEncoded,
       parameterLimit: 100,
     })
   );
@@ -443,9 +588,10 @@ const createApp = (
 
   app.use(
     '/uploads',
-    express.static(path.join(__dirname, 'uploads'), {
+    express.static(UPLOADS_ROOT, {
       dotfiles: 'deny',
       index: false,
+      setHeaders: setUploadCacheHeaders,
     })
   );
 
@@ -468,9 +614,14 @@ const createApp = (
   return app;
 };
 
-const listenForConnections = (app, port, logger = console) =>
+const listenForConnections = (
+  app,
+  port,
+  logger = console,
+  httpServerPolicy
+) =>
   new Promise((resolve, reject) => {
-    const server = app.listen(port);
+    const server = http.createServer(app);
     const handleError = (error) => {
       server.off('listening', handleListening);
       reject(error);
@@ -481,8 +632,18 @@ const listenForConnections = (app, port, logger = console) =>
       resolve(server);
     };
 
-    server.once('error', handleError);
-    server.once('listening', handleListening);
+    try {
+      if (httpServerPolicy) {
+        configureHttpServer(server, httpServerPolicy);
+      }
+      server.once('error', handleError);
+      server.once('listening', handleListening);
+      server.listen(port);
+    } catch (error) {
+      server.off('error', handleError);
+      server.off('listening', handleListening);
+      reject(error);
+    }
   });
 
 const startServer = async ({
@@ -518,7 +679,8 @@ const startServer = async ({
     const server = await listenForConnections(
       app,
       runtimeConfig.port,
-      logger
+      logger,
+      runtimeConfig.httpServer
     );
     const shutdownManager = createShutdownManager({
       closeMailTransporter,
@@ -558,15 +720,16 @@ if (require.main === module) {
 }
 
 module.exports = {
+  configureHttpServer,
   createApp,
   createHealthRouter,
-  createHelmetOptions,
   createRateLimiters,
   createUnsafeRequestOriginGuard,
   parseAllowedOrigins,
   assertDatabaseReady,
   assertSettingsSingletonReady,
-  listenForConnections,
+  isImmutableUploadPath,
   startServer,
+  setUploadCacheHeaders,
   validateRuntimeConfig,
 };

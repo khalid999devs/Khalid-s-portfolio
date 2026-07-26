@@ -18,8 +18,7 @@ const htmlCreator = (mode, data) => {
   const rawBody = String(info.body || '').replace(/\r\n?/g, '\n').trim();
   const safeName = escapeHtml(rawName);
   const safeBody = asHtmlText(rawBody);
-  const subject =
-    mode === 'contact' ? 'We are here for you!' : info.subject;
+  const subject = info.subject;
 
   if (mode === 'newsletter') {
     return {

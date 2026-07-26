@@ -1,15 +1,6 @@
 const { BadRequestError } = require('../errors');
 const { emailResExp, mobileResExp } = require('./regex');
 
-const CONTACT_FIELDS = new Set([
-  'name',
-  'phone',
-  'email',
-  'address',
-  'message',
-]);
-const MESSAGE_QUERY_FIELDS = new Set(['page', 'limit']);
-const CONTACT_REPLY_FIELDS = new Set(['id', 'text']);
 const CUSTOM_EMAIL_FIELDS = new Set(['email', 'name', 'subject', 'text']);
 const CUSTOM_SMS_FIELDS = new Set(['message', 'phone']);
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
@@ -106,35 +97,8 @@ const normalizeMessage = (value) => {
   return normalized;
 };
 
-const parseContactId = (value) => {
-  let contactId = Number.NaN;
-
-  if (typeof value === 'number' && Number.isSafeInteger(value)) {
-    contactId = value;
-  } else if (typeof value === 'string' && /^[1-9]\d*$/.test(value)) {
-    contactId = Number(value);
-  }
-
-  if (!Number.isSafeInteger(contactId) || contactId < 1) {
-    throw new BadRequestError('A valid contact ID is required.');
-  }
-
-  return contactId;
-};
-
 const normalizeEmailDeliveryRequest = (mode, body) => {
   assertObject(body, 'Request body');
-
-  if (mode === 'contact') {
-    rejectUnknownFields(body, CONTACT_REPLY_FIELDS);
-    return {
-      contactId: parseContactId(body.id),
-      email: null,
-      name: null,
-      subject: null,
-      text: normalizeMessage(body.text),
-    };
-  }
 
   if (mode !== 'custom' && mode !== 'newsletter') {
     throw new BadRequestError('Unsupported email delivery mode.');
@@ -147,7 +111,6 @@ const normalizeEmailDeliveryRequest = (mode, body) => {
   }
 
   return {
-    contactId: null,
     email,
     name: normalizeSingleLine(body.name, 'name', {
       max: 100,
@@ -179,56 +142,7 @@ const normalizeSmsDeliveryRequest = (mode, body) => {
   };
 };
 
-const normalizeContactMessage = (body) => {
-  assertObject(body, 'Request body');
-  rejectUnknownFields(body, CONTACT_FIELDS);
-
-  return {
-    name: normalizeSingleLine(body.name, 'name', { min: 2, max: 100 }),
-    phone: normalizePhone(body.phone),
-    email: normalizeEmail(body.email),
-    address: normalizeSingleLine(body.address, 'address', {
-      max: 255,
-      optional: true,
-    }),
-    message: normalizeMessage(body.message),
-  };
-};
-
-const parsePositiveInteger = (value, field, fallback, max) => {
-  if (value === undefined) return fallback;
-  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) {
-    throw new BadRequestError(`${field} must be a positive integer.`);
-  }
-
-  const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed > max) {
-    throw new BadRequestError(`${field} must not exceed ${max}.`);
-  }
-
-  return parsed;
-};
-
-const parseMessageListQuery = (query = {}) => {
-  assertObject(query, 'Query');
-  rejectUnknownFields(query, MESSAGE_QUERY_FIELDS);
-
-  const page = parsePositiveInteger(query.page, 'page', 1, 100_000);
-  const limit = parsePositiveInteger(query.limit, 'limit', 50, 100);
-
-  return {
-    page,
-    limit,
-    offset: (page - 1) * limit,
-  };
-};
-
 module.exports = {
-  normalizeContactMessage,
   normalizeEmailDeliveryRequest,
-  normalizeEmail,
-  normalizeMessage,
-  normalizePhone,
   normalizeSmsDeliveryRequest,
-  parseMessageListQuery,
 };
