@@ -39,7 +39,7 @@ const VideoPreview = ({
         src={source || undefined}
         playsInline
         preload='metadata'
-        muted={!isPlaying}
+        muted
         aria-hidden='true'
         className='w-full h-full object-cover'
       ></video>
@@ -89,6 +89,7 @@ const Videos = ({
   handleDelete,
   disabled,
 }) => {
+  const maxUploadFiles = 4;
   const [videos, setVideos] = useState([]);
   const [uploadedVideos, setUploadedVideos] = useState([]);
   const [videoThumbnail, setVideoThumbnail] = useState(null);
@@ -102,36 +103,51 @@ const Videos = ({
     }
   }, [projectData, mode]);
 
-  const getVideoThumbnail = useCallback((file) => {
+  const getVideoThumbnail = useCallback((file, signal) => {
     return new Promise((resolve, reject) => {
       if (!file) return resolve(null);
 
       const video = document.createElement('video');
       const objectURL = URL.createObjectURL(file);
-      video.src = objectURL;
+      let cleanedUp = false;
       video.muted = true;
       video.playsInline = true;
       video.preload = 'metadata';
 
       const cleanup = () => {
+        if (cleanedUp) return;
+        cleanedUp = true;
         video.removeEventListener('loadeddata', handleLoadedData);
         video.removeEventListener('seeked', handleSeeked);
         video.removeEventListener('error', handleError);
+        signal?.removeEventListener('abort', handleAbort);
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
         URL.revokeObjectURL(objectURL);
-        video.src = '';
+      };
+
+      const resolveThumbnail = (thumbnail) => {
+        if (cleanedUp) return;
+        cleanup();
+        resolve(thumbnail);
+      };
+
+      const rejectThumbnail = (error) => {
+        if (cleanedUp) return;
+        cleanup();
+        reject(error);
       };
 
       const captureFrame = () => {
         const canvas = canvasRef.current;
         if (!canvas) {
-          cleanup();
-          reject(new Error('Canvas not available'));
+          rejectThumbnail(new Error('Canvas not available'));
           return;
         }
         const context = canvas.getContext('2d');
         if (!context || !video.videoWidth || !video.videoHeight) {
-          cleanup();
-          reject(new Error('Video frame is unavailable'));
+          rejectThumbnail(new Error('Video frame is unavailable'));
           return;
         }
 
@@ -146,9 +162,11 @@ const Videos = ({
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         canvas.toBlob(
           (blob) => {
-            cleanup();
-            if (blob) resolve(blob);
-            else reject(new Error('Video thumbnail could not be created'));
+            if (blob) resolveThumbnail(blob);
+            else
+              rejectThumbnail(
+                new Error('Video thumbnail could not be created')
+              );
           },
           'image/jpeg',
           0.75
@@ -166,48 +184,54 @@ const Videos = ({
       const handleSeeked = () => captureFrame();
 
       const handleError = (err) => {
-        cleanup();
-        reject(err);
+        rejectThumbnail(
+          err instanceof Error ? err : new Error('Video could not be decoded')
+        );
+      };
+
+      const handleAbort = () => {
+        rejectThumbnail(
+          new DOMException('Video thumbnail generation aborted', 'AbortError')
+        );
       };
 
       video.addEventListener('loadeddata', handleLoadedData);
       video.addEventListener('seeked', handleSeeked);
       video.addEventListener('error', handleError);
+      signal?.addEventListener('abort', handleAbort, { once: true });
+
+      if (signal?.aborted) {
+        handleAbort();
+        return;
+      }
+
+      video.src = objectURL;
+      video.load();
     });
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
 
     if (uploadedVideos.length > 0) {
       const latestVideo = uploadedVideos[uploadedVideos.length - 1];
-      getVideoThumbnail(latestVideo)
+      getVideoThumbnail(latestVideo, controller.signal)
         .then((thumbnail) => {
-          if (!cancelled) setVideoThumbnail(thumbnail);
+          setVideoThumbnail(thumbnail);
         })
-        .catch(() => {
-          if (!cancelled) setVideoThumbnail(null);
+        .catch((error) => {
+          if (error?.name !== 'AbortError') setVideoThumbnail(null);
         });
     } else {
       setVideoThumbnail(null);
     }
 
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [getVideoThumbnail, uploadedVideos]);
 
   const handleAddVideos = async () => {
-    // const newVideosWithThumbnails = await Promise.all(
-    //   uploadedVideos.map(async (item) => {
-    //     const thumbnail = await getVideoThumbnail(item);
-    //     return { file: item, thumbnail };
-    //   })
-    // );
-    if (uploadedVideos.length < 1) {
-      alert('Please Add a video first!');
-      return;
-    }
+    if (uploadedVideos.length < 1) return;
+
     if (await handleSubmit({ videos: uploadedVideos }, 'videos')) {
       setUploadedVideos([]);
       setVideoThumbnail(null);
@@ -245,9 +269,12 @@ const Videos = ({
                 dragActiveText={'Drop Videos here!'}
                 fileImg={videoThumbnail}
                 onLoad={(file) => {
-                  setUploadedVideos((prev) => [...prev, file]);
+                  setUploadedVideos((currentFiles) =>
+                    currentFiles.length < maxUploadFiles
+                      ? [...currentFiles, file]
+                      : currentFiles
+                  );
                 }}
-                mode={mode}
                 clearFileImg={() => {
                   setUploadedVideos([]);
                   setVideoThumbnail(null);
@@ -255,14 +282,16 @@ const Videos = ({
                 PlaceholderImgIcon={MdOutlineOndemandVideo}
                 video={true}
                 fileNumber={uploadedVideos?.length}
-                plaecholderIconCls='text-4xl!'
+                currentFileCount={uploadedVideos.length}
+                maxFiles={maxUploadFiles}
+                placeholderIconClass='text-4xl!'
               />
             </div>
           </div>
 
           <div className='flex w-full h-full items-end justify-end'>
             <PrimaryButton
-              disabled={disabled}
+              disabled={disabled || uploadedVideos.length < 1}
               state='small'
               text={mode === 'create' ? 'ADD' : 'SAVE'}
               Icon={IoMdAdd}

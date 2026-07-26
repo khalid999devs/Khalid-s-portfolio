@@ -1,8 +1,20 @@
-# React + Vite
+# Portfolio client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the React/Vite frontend for the portfolio. Repository-wide setup,
+quality gates, production requirements, and security notes live in the
+[root README](../README.md) and [security policy](../SECURITY.md).
 
-Currently, two official plugins are available:
+Common client-only commands:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```bash
+npm ci
+npm run dev
+npm test
+npm run lint
+npm run build
+npm run audit:dependencies
+```
+
+Production builds use same-origin `/api` and `/uploads` URLs by default. Set
+`VITE_API_URL` only when the API is intentionally hosted on another HTTPS
+origin.

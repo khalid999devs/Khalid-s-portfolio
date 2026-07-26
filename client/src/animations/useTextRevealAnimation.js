@@ -3,8 +3,6 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import usePrefersReducedMotion from '../hooks/usePrefersReducedMotion';
 
-// gsap.registerPlugin(ScrollTrigger);
-
 function getRandomCharacter() {
   const characters =
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -82,7 +80,6 @@ function useTextRevealAnimation(className, duration = 0.1) {
           onEnter: () => tl.play(),
           onLeaveBack: () => tl.seek(0).pause(),
           toggleActions: 'play none none none',
-          // markers: true,
         });
 
         animations.add({

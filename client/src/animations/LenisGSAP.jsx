@@ -15,17 +15,19 @@ export function LenisGSAP({ children }) {
 
   const lenisOptions = useMemo(
     () => ({
-      lerp: prefersReducedMotion ? 1 : 0.1,
-      duration: prefersReducedMotion ? 0 : 1.5,
-      syncTouch: !prefersReducedMotion,
-      smoothWheel: !prefersReducedMotion,
+      lerp: 0.1,
+      duration: 1.5,
+      syncTouch: true,
+      smoothWheel: true,
       autoRaf: false,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
     }),
-    [prefersReducedMotion]
+    []
   );
 
   useEffect(() => {
+    if (prefersReducedMotion) return undefined;
+
     function update(time) {
       lenisRef.current?.lenis?.raf(time * 1000);
     }
@@ -33,14 +35,9 @@ export function LenisGSAP({ children }) {
     gsap.ticker.add(update);
 
     return () => gsap.ticker.remove(update);
-  }, []);
+  }, [prefersReducedMotion]);
 
-  // Refresh ScrollTrigger when route changes
-  // useEffect(() => {
-  //   setTimeout(() => {
-  //     ScrollTrigger.refresh();
-  //   }, 100); // Small delay to ensure new content loads
-  //   }, [location.pathname]); // Runs on route change
+  if (prefersReducedMotion) return <>{children}</>;
 
   return (
     <ReactLenis

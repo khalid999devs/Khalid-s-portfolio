@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import SectionLabel from '../utils/SectionLabel';
 import { OutlinedSmallButton } from '../Buttons/OutlinedButton';
 import { useAppContext } from '../../App';
@@ -6,18 +6,13 @@ import { workingFields } from '../../Constants';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 
 const SkillsAndTechs = () => {
-  const [technologies, setTechnologies] = useState([]);
   const { settings } = useAppContext();
   const skillParentRef = useRef(null);
   const skillsRef = useRef(null);
-
-  useEffect(() => {
-    let techs = settings?.technologies;
-
-    if (techs) {
-      setTechnologies([techs.Languages, techs.Frontend, techs.Backend]);
-    }
-  }, [settings]);
+  const technologies = useMemo(
+    () => Object.values(settings?.technologies || {}),
+    [settings]
+  );
 
   useEffect(() => {
     let animationHandle;

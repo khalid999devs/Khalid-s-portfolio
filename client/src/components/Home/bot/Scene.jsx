@@ -13,9 +13,12 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import gsap from 'gsap';
 import PropTypes from 'prop-types';
 
-const SceneFallback = () => (
-  <div className='w-full h-full' aria-hidden='true' />
-);
+const SceneFallback = ({ fallback }) =>
+  fallback || <div className='w-full h-full' aria-hidden='true' />;
+
+SceneFallback.propTypes = {
+  fallback: PropTypes.node,
+};
 
 const disposeModel = (model) => {
   const geometries = new Set();
@@ -42,7 +45,7 @@ const disposeModel = (model) => {
   geometries.forEach((geometry) => geometry.dispose());
 };
 
-const Scene = ({ onLoad, isActive }) => {
+const Scene = ({ fallback, onError, onLoad, isActive }) => {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const [failed, setFailed] = useState(false);
@@ -63,7 +66,7 @@ const Scene = ({ onLoad, isActive }) => {
     let mixer;
     let model;
     let disposed = false;
-    let isIntersecting = true;
+    let isIntersecting = typeof IntersectionObserver !== 'function';
     let isRunning = false;
     let previousTime = performance.now();
 
@@ -112,7 +115,10 @@ const Scene = ({ onLoad, isActive }) => {
 
     const handleContextLost = (event) => {
       event.preventDefault();
-      if (!disposed) setFailed(true);
+      if (!disposed) {
+        onError?.();
+        setFailed(true);
+      }
     };
 
     try {
@@ -135,10 +141,14 @@ const Scene = ({ onLoad, isActive }) => {
       }
 
       if (typeof IntersectionObserver === 'function') {
-        visibilityObserver = new IntersectionObserver(([entry]) => {
-          isIntersecting = entry.isIntersecting;
-          updateRenderLoop();
-        });
+        visibilityObserver = new IntersectionObserver(
+          ([entry]) => {
+            isIntersecting =
+              entry.isIntersecting && entry.intersectionRatio >= 0.05;
+            updateRenderLoop();
+          },
+          { threshold: [0, 0.05] }
+        );
         visibilityObserver.observe(container);
       }
 
@@ -177,10 +187,14 @@ const Scene = ({ onLoad, isActive }) => {
         },
         undefined,
         () => {
-          if (!disposed) setFailed(true);
+          if (!disposed) {
+            onError?.();
+            setFailed(true);
+          }
         }
       );
     } catch {
+      onError?.();
       setFailed(true);
     }
 
@@ -206,10 +220,11 @@ const Scene = ({ onLoad, isActive }) => {
       }
 
       renderer?.dispose();
+      renderer?.forceContextLoss?.();
     };
-  }, [failed, onLoad]);
+  }, [failed, onError, onLoad]);
 
-  if (failed) return <SceneFallback />;
+  if (failed) return <SceneFallback fallback={fallback} />;
 
   return (
     <div
@@ -224,6 +239,8 @@ const Scene = ({ onLoad, isActive }) => {
 };
 
 Scene.propTypes = {
+  fallback: PropTypes.node,
+  onError: PropTypes.func,
   onLoad: PropTypes.func,
   isActive: PropTypes.bool,
 };

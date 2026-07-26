@@ -41,18 +41,15 @@ export const reqs = {
   DOWNLOAD_RESUME: '/api/settings/download-resume', //get
 
   //projects
-  GET_PROJECT: '/api/projects', //post
+  GET_PROJECT: '/api/projects', //get (legacy admin modes also support post)
   CREATE_PROJECT: '/api/projects/create', //post
-  UPDATE_PROJECT_CONTENT: '/api/projects/update-content', //put
   EDIT_PROJECT_INFOS: '/api/projects/edit-infos', //patch
   EDIT_PROJECT_CONTENTS: '/api/projects/edit-contents', //patch
   DELETE_PROJECT_CONTENTS: '/api/projects/delete-contents', //patch
   DELETE_PROJECT: '/api/projects/delete', //delete
   REORDER_PROJECTS: '/api/projects/reorder', //patch
 
-  //contacts
-  SEND_MESSAGE_FROM_CLIENT: '/api/contact/sendMessage', //post
-  GET_ALL_MESSAGES: '/api/contact/messages', //get
+  //outbound administrator messaging (no public intake exists)
   SEND_EMAIL_TO_CLIENT: '/api/contact/emailToClient', //post
   SEND_SMS_TO_CLIENT: '/api/contact/smsToClient/custom', //post
 };

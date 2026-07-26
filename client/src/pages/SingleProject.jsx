@@ -22,7 +22,15 @@ import { wordBlinkAnimation } from '../animations/wordBlinkAnimation';
 import PageTransition from '../animations/PageTransition';
 import ProjectSlider from '../components/project/ProjectSlider';
 import FloatingActionBtn from '../components/utils/FloatingActionBtn';
-import MetaCard from '../components/utils/MetaCard';
+import MetaCard, {
+  SITE_NAME,
+  SITE_ORIGIN,
+} from '../components/utils/MetaCard';
+import {
+  isValidProjectResponse,
+  parseProjectIdFromRoute,
+} from '../utils/projectResponse';
+import { handleImageFallback } from '../utils/imageFallback';
 
 const getProjectErrorType = (error) => {
   const status = error?.response?.status;
@@ -40,8 +48,9 @@ const SingleProject = () => {
     appData: { projects },
   } = useAppContext();
   const { value } = useParams();
+  const projectId = useMemo(() => parseProjectIdFromRoute(value), [value]);
   const [project, setProject] = useState({});
-  const [projLoading, setProjLoading] = useState(false);
+  const [projLoading, setProjLoading] = useState(true);
   useTextRevealAnimation('project-text-reveal');
   const projectDescParent = useRef(null);
   const projectDesc = useRef(null);
@@ -60,16 +69,7 @@ const SingleProject = () => {
   }, [project.value, projects]);
 
   useEffect(() => {
-    window.scrollTo({
-      left: 0,
-      top: 0,
-    });
-  }, [loc.pathname]);
-
-  useEffect(() => {
     const controller = new AbortController();
-    const spArr = (value || '').split('@');
-    const projectId = Number(spArr[spArr.length - 1]);
     const navigateToError = (errorType) => {
       navigate('/error', {
         replace: true,
@@ -80,7 +80,7 @@ const SingleProject = () => {
       });
     };
 
-    if (!Number.isSafeInteger(projectId) || projectId < 1) {
+    if (!projectId) {
       navigateToError('not-found');
       return () => controller.abort();
     }
@@ -88,31 +88,35 @@ const SingleProject = () => {
     setProject({});
     setProjLoading(true);
     axios
-      .post(
-        reqs.GET_PROJECT,
-        { mode: 'single', projectId },
-        { signal: controller.signal }
-      )
+      .get(`${reqs.GET_PROJECT}/${projectId}`, {
+        signal: controller.signal,
+      })
       .then((res) => {
-        if (res.data.succeed) {
+        if (controller.signal.aborted) return;
+
+        if (isValidProjectResponse(res.data, projectId)) {
           setProject(res.data.result);
-        } else {
+          setProjLoading(false);
+          return;
+        }
+
+        if (res.data?.succeed === false) {
           navigateToError(
             getProjectErrorType({
               response: { status: res.status, data: res.data },
             })
           );
+        } else {
+          navigateToError('service');
         }
-        setProjLoading(false);
       })
       .catch((error) => {
         if (controller.signal.aborted) return;
-        setProjLoading(false);
         navigateToError(getProjectErrorType(error));
       });
 
     return () => controller.abort();
-  }, [loc.pathname, navigate, value]);
+  }, [loc.pathname, navigate, projectId]);
 
   useEffect(() => {
     let animationHandle;
@@ -131,8 +135,55 @@ const SingleProject = () => {
     return () => animationHandle?.kill();
   }, [project]);
 
-  if (projLoading) {
-    return <Loader classes={'min-h-[250px]'} />;
+  const projectPreviewImage = useMemo(
+    () =>
+      project?.thumbnailContents?.length
+        ? reqFileWrapper(project.thumbnailContents[0].url)
+        : reqFileWrapper(project?.bannerImg),
+    [project]
+  );
+
+  // A CreativeWork entry per project gives search engines an explicit subject,
+  // author, and canonical URL for each case study rather than leaving them to
+  // infer one from the surrounding page copy.
+  const projectSchema = useMemo(() => {
+    if (!project?.id || !project?.title) return null;
+
+    const projectUrl = new URL(
+      `/singleProject/${project.value}@${project.id}`,
+      SITE_ORIGIN
+    ).href;
+
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'CreativeWork',
+      name: project.title,
+      headline: project.title,
+      url: projectUrl,
+      ...(project.overview ? { description: project.overview } : {}),
+      ...(projectPreviewImage ? { image: projectPreviewImage } : {}),
+      ...(Array.isArray(project.techStack) && project.techStack.length
+        ? { keywords: project.techStack.join(', ') }
+        : {}),
+      ...(project.category ? { genre: project.category } : {}),
+      author: {
+        '@type': 'Person',
+        name: SITE_NAME,
+        url: `${SITE_ORIGIN}/`,
+      },
+      isPartOf: {
+        '@type': 'CollectionPage',
+        name: 'Projects',
+        url: `${SITE_ORIGIN}/projects`,
+      },
+    };
+  }, [project, projectPreviewImage]);
+
+  if (projLoading || project.id !== projectId) {
+    // Reserve the loaded page's height. A short placeholder collapsing into a
+    // full-height article was the single largest layout shift on the site
+    // (~0.22 CLS on its own, past Google's 0.1 "good" threshold).
+    return <Loader classes={'min-h-screen'} />;
   }
 
   return (
@@ -140,11 +191,9 @@ const SingleProject = () => {
       <MetaCard
         title={project?.title}
         description={project?.overview}
-        image={
-          project.thumbnailContents && project.thumbnailContents.length
-            ? reqFileWrapper(project.thumbnailContents[0].url)
-            : reqFileWrapper(project?.bannerImg)
-        }
+        type='article'
+        image={projectPreviewImage}
+        structuredData={projectSchema}
       />
 
       {(project?.siteLink || project?.designLink) && (
@@ -199,14 +248,23 @@ const SingleProject = () => {
 
       <div className='w-full h-auto sec-x-padding relative'>
         {project.siteLink && <LiveProjectButton link={project.siteLink} />}
+        {/* A banner path carries no stored dimensions, so the box reserves its
+            own height. Leaving this to the image's intrinsic size shifted the
+            page by ~0.18 CLS once the file arrived. The banner is also the
+            largest element above the fold, so it loads eagerly at high
+            priority to keep LCP down. */}
         <img
           src={
             project.bannerImg
               ? reqFileWrapper(project.bannerImg)
               : projectPlaceholder
           }
-          className='w-full min-h-[200px] max-h-[300px] md:max-h-[400px] object-cover h-auto pointer-all'
+          className='w-full h-55 md:h-80 lg:h-100 object-cover pointer-all'
           alt={`${project.title || 'Project'} banner`}
+          onError={handleImageFallback}
+          loading='eager'
+          fetchPriority='high'
+          decoding='async'
         />
       </div>
 
@@ -225,7 +283,10 @@ const SingleProject = () => {
             <span className='text-xs sm:text-sm text-muted-main opacity-80 uppercase text-letter-reveal'>
               # TECH STACK
             </span>
-            <BsFillCaretRightFill className='text-muted-main text-xs' />
+            <BsFillCaretRightFill
+              aria-hidden='true'
+              className='text-muted-main text-xs'
+            />
           </div>
           <div className='flex flex-row flex-wrap gap-x-2 gap-y-3'>
             {project?.techStack?.map((prop, i) => (
@@ -270,15 +331,17 @@ const SingleProject = () => {
                 <div className='rounded-t-lg '>
                   <img
                     src={reqFileWrapper(
-                      nextProject?.thumbnailContents[0]?.url ||
+                      nextProject?.thumbnailContents?.[0]?.url ||
                         nextProject?.bannerImg
                     )}
+                    width={nextProject?.thumbnailContents?.[0]?.width}
+                    height={nextProject?.thumbnailContents?.[0]?.height}
                     alt={`${nextProject.title} thumbnail`}
+                    onError={handleImageFallback}
                     className='rounded-t-lg h-full'
                   />
                 </div>
               </Link>
-              {/* <HRLine classes={`!my-0`} /> */}
             </div>
 
             <div className='mt-10'>

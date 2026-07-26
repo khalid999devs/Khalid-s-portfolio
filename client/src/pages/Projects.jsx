@@ -1,32 +1,39 @@
 /* eslint-disable react-refresh/only-export-components */
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { OutlinedBigIcon } from '../components/Buttons/OutlinedButton';
 import { useAppContext } from '../App';
 import { reqFileWrapper } from '../axios/requests';
 import { FaArrowRightLong } from 'react-icons/fa6';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import PageTransition from '../animations/PageTransition';
 import MetaCard from '../components/utils/MetaCard';
+import LoadingSpinner from '../components/utils/LoadingSpinner';
+import { handleImageFallback } from '../utils/imageFallback';
 
 const Projects = () => {
-  const loc = useLocation();
   const {
     appData: { projects },
+    loading,
   } = useAppContext();
-  const [categories, setCategories] = useState([]);
   const [targetCat, setTargetCat] = useState('all');
-
-  useEffect(() => {
-    window.scrollTo({
-      left: 0,
-      top: 0,
-    });
-  }, [loc.pathname]);
-
-  useEffect(() => {
-    if (projects?.length > 0)
-      setCategories(['all', ...new Set(projects.map((item) => item.category))]);
-  }, [projects]);
+  const categories = useMemo(
+    () => [
+      'all',
+      ...new Set(
+        (projects || []).map((item) => item.category).filter(Boolean)
+      ),
+    ],
+    [projects]
+  );
+  const activeCategory = categories.includes(targetCat) ? targetCat : 'all';
+  const visibleProjects = useMemo(
+    () =>
+      (projects || []).filter(
+        (item) =>
+          activeCategory === 'all' || item.category === activeCategory
+      ),
+    [activeCategory, projects]
+  );
 
   return (
     <div className='w-full pb-28 min-h-screen screen-max-width pt-[160px] sec-x-padding'>
@@ -40,16 +47,16 @@ const Projects = () => {
           </h1>
         </div>
 
-        {categories?.length ? (
+        {projects?.length ? (
           <div className='flex flex-row flex-wrap gap-3 items-center justify-center md:justify-start'>
-            {categories?.map((item, key) => (
+            {categories.map((item) => (
               <OutlinedBigIcon
                 classes={`border-[0.2px]! border-onPrimary-main/50! rounded-[3px]! capitalize ${
-                  item === targetCat ? 'bg-white! text-black!' : ''
+                  item === activeCategory ? 'bg-white! text-black!' : ''
                 }`}
                 text={item}
-                key={key}
-                pressed={item === targetCat}
+                key={item}
+                pressed={item === activeCategory}
                 onClick={() => {
                   setTargetCat(item);
                 }}
@@ -61,14 +68,17 @@ const Projects = () => {
         )}
       </div>
 
-      {projects?.length ? (
+      {loading && !projects?.length ? (
+        <LoadingSpinner
+          className='min-h-[320px]'
+          label='Loading projects'
+          sizeClass='h-14 w-14'
+        />
+      ) : visibleProjects.length ? (
         <div className='mt-32 grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 items-start justify-start gap-8'>
-          {projects
-            ?.filter((item) => {
-              if (targetCat === 'all') return true;
-              return item.category === targetCat;
-            })
-            .map((item, key) => {
+          {visibleProjects.map((item, key) => {
+              const thumbnail = item.thumbnailContents?.[0];
+
               return (
                 <Link
                   to={`/singleProject/${item.value + '@' + item.id}`}
@@ -78,13 +88,17 @@ const Projects = () => {
                   <div className='w-full h-full rounded-lg overflow-hidden '>
                     <img
                       src={
-                        item.thumbnailContents && item.thumbnailContents.length
-                          ? reqFileWrapper(item.thumbnailContents[0].url)
+                        thumbnail
+                          ? reqFileWrapper(thumbnail.url)
                           : reqFileWrapper(item?.bannerImg)
                       }
+                      width={thumbnail?.width}
+                      height={thumbnail?.height}
                       alt={item.title}
+                      onError={handleImageFallback}
                       className='w-full max-h-[300px] lg:max-h-[350px] 2xl:max-h-[300px] h-auto object-cover rounded-lg transition-all duration-1000 group-hover:scale-[102%]'
                       loading='lazy'
+                      decoding='async'
                     />
                   </div>
 
@@ -114,7 +128,12 @@ const Projects = () => {
             })}
         </div>
       ) : (
-        <></>
+        <p
+          className='mt-32 text-center text-muted-light'
+          role='status'
+        >
+          No projects are available in this category yet.
+        </p>
       )}
     </div>
   );

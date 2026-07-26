@@ -20,7 +20,9 @@ export const downloadResume = async () => {
     window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 0);
     return true;
   } catch (err) {
-    alert('Error: ' + (err.response?.data?.msg || 'Failed to download file'));
-    return false;
+    throw new Error(
+      err.response?.data?.msg || 'Failed to download the resume',
+      { cause: err }
+    );
   }
 };

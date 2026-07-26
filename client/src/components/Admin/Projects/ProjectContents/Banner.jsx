@@ -32,7 +32,6 @@ const Banner = ({
                 setBanner(file);
               }
             }}
-            mode={mode}
             clearFileImg={() => {
               handleDelete('bannerImg').then((deleted) => {
                 if (deleted) setBanner({});

@@ -3,25 +3,9 @@ import { reqs } from './requests';
 
 export const deleteProject = async (
   projectId,
-  projectName,
-  setLoading = () => {},
-  setPopup
+  setLoading = () => {}
 ) => {
-  const userValidate = prompt(
-    `Please type "${projectName}" below and press 'ok' to delete it: `
-  );
-  if (userValidate !== projectName) {
-    if (userValidate === null) return { cancelled: true };
-    alert('Please Enter the exact Project name to delete!');
-    return { cancelled: true };
-  }
-
   setLoading(true);
-  setPopup?.({
-    text: 'Deleting...',
-    type: 'normal',
-    state: true,
-  });
 
   try {
     const res = await axios.delete(`${reqs.DELETE_PROJECT}/${projectId}`, {

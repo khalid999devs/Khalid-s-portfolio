@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import Popup from './Popup';
@@ -21,7 +21,7 @@ describe('Popup', () => {
   it('closes with Escape and restores focus to the invoking control', async () => {
     const user = userEvent.setup();
     const setPopup = vi.fn();
-    const { rerender } = render(
+    const { container, rerender } = render(
       <>
         <button type='button'>Open dialog</button>
         <Popup
@@ -48,6 +48,9 @@ describe('Popup', () => {
     );
 
     expect(screen.getByRole('dialog')).toHaveFocus();
+    expect(document.body).toHaveStyle({ overflow: 'hidden' });
+    expect(container).toHaveAttribute('aria-hidden', 'true');
+    expect(container.inert).toBe(true);
     await user.keyboard('{Escape}');
     expect(setPopup).toHaveBeenCalledOnce();
 
@@ -62,7 +65,10 @@ describe('Popup', () => {
         />
       </>
     );
-    expect(trigger).toHaveFocus();
+    await waitFor(() => expect(trigger).toHaveFocus());
+    expect(document.body.style.overflow).toBe('');
+    expect(container).not.toHaveAttribute('aria-hidden');
+    expect(container.inert).not.toBe(true);
   });
 
   it('keeps forward keyboard focus inside the modal controls', async () => {

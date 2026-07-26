@@ -14,23 +14,46 @@ import { isUpwork } from '../../config';
 import { formatBangladeshTime } from '../../utils/bangladeshTime';
 import gsap from 'gsap';
 import PropTypes from 'prop-types';
+import usePrefersReducedMotion from '../../hooks/usePrefersReducedMotion';
 
-const calculateRandomBlockDelay = (rowIndex, totalRows) => {
-  const blockDelay = Math.random() * 0.5;
-  const rowDelay = (totalRows - rowIndex - 1) * 0.05;
-  return blockDelay + rowDelay;
-};
-
-const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
+const PageNav = ({
+  isPageMenu,
+  isMenuPresent,
+  setIsPageMenu,
+  classes,
+  triggerRef,
+  onExitComplete,
+}) => {
   const timeRef = useRef(null);
   const contactTitleRef = useRef(null);
   const menuRef = useRef(null);
   const closeButtonRef = useRef(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
-    if (!isPageMenu) return undefined;
+    if (!isMenuPresent) return undefined;
 
     const triggerElement = triggerRef?.current;
+    const menuElement = menuRef.current;
+    const previousBodyOverflow = document.body.style.overflow;
+    const backgroundElements = menuElement?.parentElement
+      ? Array.from(menuElement.parentElement.children).filter(
+          (element) =>
+            element !== menuElement &&
+            !element.classList.contains('page-blocks-container')
+        )
+      : [];
+    const backgroundState = backgroundElements.map((element) => ({
+      element,
+      inert: element.inert,
+      ariaHidden: element.getAttribute('aria-hidden'),
+    }));
+
+    document.body.style.overflow = 'hidden';
+    backgroundElements.forEach((element) => {
+      element.inert = true;
+      element.setAttribute('aria-hidden', 'true');
+    });
     closeButtonRef.current?.focus();
 
     const handleKeyDown = (event) => {
@@ -61,9 +84,15 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousBodyOverflow;
+      backgroundState.forEach(({ element, inert, ariaHidden }) => {
+        element.inert = inert;
+        if (ariaHidden === null) element.removeAttribute('aria-hidden');
+        else element.setAttribute('aria-hidden', ariaHidden);
+      });
       triggerElement?.focus();
     };
-  }, [isPageMenu, setIsPageMenu, triggerRef]);
+  }, [isMenuPresent, setIsPageMenu, triggerRef]);
 
   useEffect(() => {
     let iid;
@@ -82,6 +111,8 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
   }, [isPageMenu]);
 
   useEffect(() => {
+    if (!isPageMenu || prefersReducedMotion) return undefined;
+
     const animations = [];
 
     if (contactTitleRef.current) {
@@ -101,7 +132,10 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
       animations.push(anim);
     }
 
-    const pageNavLinks = gsap.utils.toArray('.page-nav-links');
+    const pageNavLinks = gsap.utils.toArray(
+      '.page-nav-links',
+      menuRef.current
+    );
     if (pageNavLinks.length) {
       const anim = gsap.fromTo(
         pageNavLinks,
@@ -129,14 +163,14 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
         }
       });
     };
-  }, [isPageMenu]);
+  }, [isPageMenu, prefersReducedMotion]);
 
   const handleHamburgerClick = () => {
     setIsPageMenu(false);
   };
 
   return (
-    <AnimatePresence key={5435342}>
+    <AnimatePresence onExitComplete={onExitComplete}>
       {/* PageNav menu with sliding animation */}
       {isPageMenu && (
         <motion.div
@@ -145,14 +179,18 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
           role='dialog'
           aria-modal='true'
           aria-label='Site menu'
-          className={`transition-all duration-700 grid grid-rows-[auto_1fr] min-h-screen w-full sec-x-padding fixed top-0 left-0 bg-body-main screen-max-width z-50 ${
+          className={`transition-all duration-700 grid grid-rows-[auto_minmax(0,1fr)] h-dvh overflow-y-auto overscroll-contain w-full sec-x-padding fixed top-0 left-0 bg-body-main screen-max-width z-50 ${
             classes || ''
           }`}
-          initial={{ opacity: 1 }}
+          initial={prefersReducedMotion ? false : { opacity: 1 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transform: 'translateY(100%)' }}
+          exit={
+            prefersReducedMotion
+              ? { opacity: 0 }
+              : { opacity: 0, transform: 'translateY(100%)' }
+          }
           transition={{
-            duration: 1,
+            duration: prefersReducedMotion ? 0 : 1,
             ease: 'easeInOut',
           }}
         >
@@ -161,7 +199,6 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
             <div>
               <NavLogo
                 onClick={() => {
-                  document.body.style.overflowY = 'scroll';
                   setIsPageMenu(false); // Close menu on logo click
                 }}
               />
@@ -245,7 +282,7 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
                       BASED IN BANGLADESH — WORKING WORLDWIDE
                     </p>
                     <div className='flex items-center gap-4'>
-                      <div className='flex item-center gap-1 '>
+                      <div className='flex items-center gap-1 '>
                         <p className='text-[10px] md:text-xs text-montreal-mono'>
                           LOCAL TIME
                         </p>
@@ -289,30 +326,22 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
       )}
 
       {/* Page transition animation */}
-      {isPageMenu && (
+      {isPageMenu && !prefersReducedMotion && (
         <div
           className='page-blocks-container transition-in'
           key={423}
           aria-hidden='true'
         >
-          {Array.from({ length: 10 }).map((_, rowIndex) => (
-            <div className='row' key={rowIndex}>
-              {Array.from({ length: 11 }).map((_, blockIndex) => (
-                <motion.div
-                  key={blockIndex}
-                  className='block-motion'
-                  initial={{ scaleY: 1 }}
-                  animate={{ scaleY: 0 }}
-                  exit={{ scaleY: 0 }}
-                  transition={{
-                    duration: 1,
-                    ease: [0.22, 1, 0.36, 1],
-                    delay: calculateRandomBlockDelay(rowIndex, 10),
-                  }}
-                ></motion.div>
-              ))}
-            </div>
-          ))}
+          <motion.div
+            className='block-motion'
+            initial={{ scaleY: 1 }}
+            animate={{ scaleY: 0 }}
+            exit={{ scaleY: 0 }}
+            transition={{
+              duration: 0.55,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+          />
         </div>
       )}
     </AnimatePresence>
@@ -321,8 +350,10 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes, triggerRef }) => {
 
 PageNav.propTypes = {
   isPageMenu: PropTypes.bool,
+  isMenuPresent: PropTypes.bool,
   setIsPageMenu: PropTypes.func,
   classes: PropTypes.string,
+  onExitComplete: PropTypes.func,
   triggerRef: PropTypes.shape({
     current: PropTypes.object,
   }),

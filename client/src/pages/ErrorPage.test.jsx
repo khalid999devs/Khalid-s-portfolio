@@ -1,16 +1,29 @@
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import {
+  createMemoryRouter,
+  RouterProvider,
+} from 'react-router-dom';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import ErrorPage from './ErrorPage';
 
-const renderErrorPage = (state) =>
-  render(
-    <MemoryRouter initialEntries={[{ pathname: '/error', state }]}>
-      <Routes>
-        <Route path='/error' element={<ErrorPage />} />
-      </Routes>
-    </MemoryRouter>
+const renderErrorPage = (state) => {
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/error',
+        element: <ErrorPage />,
+        errorElement: <ErrorPage />,
+      },
+    ],
+    { initialEntries: [{ pathname: '/error', state }] }
   );
+
+  return render(<RouterProvider router={router} />);
+};
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('ErrorPage', () => {
   it('renders an actionable service error for a failed project request', () => {
@@ -44,6 +57,35 @@ describe('ErrorPage', () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Try Again' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('distinguishes an unexpected route failure from a missing page', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          loader: () => {
+            throw new Error('Sensitive internal detail');
+          },
+          element: <div>Never rendered</div>,
+          errorElement: <ErrorPage />,
+        },
+      ],
+      { initialEntries: ['/'] }
+    );
+
+    render(<RouterProvider router={router} />);
+
+    expect(
+      await screen.findByRole('heading', { name: '500' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Something went wrong' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Sensitive internal detail')
     ).not.toBeInTheDocument();
   });
 });

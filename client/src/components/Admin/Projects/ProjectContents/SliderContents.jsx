@@ -14,6 +14,8 @@ const SliderImagePreview = ({ item, index }) => {
   return source ? (
     <img
       src={source}
+      width={item?.width}
+      height={item?.height}
       className='w-full h-full object-cover'
       alt={`Project slider image ${index + 1}`}
     />
@@ -32,6 +34,7 @@ const SliderContents = ({
   handleDelete,
   disabled,
 }) => {
+  const maxUploadFiles = 8;
   const [sliderContents, setSliderContents] = useState([]);
   const [uploadedSliders, setUploadedSliders] = useState([]);
 
@@ -42,10 +45,8 @@ const SliderContents = ({
   }, [mode, projectData]);
 
   const handleAddSliderContents = async () => {
-    if (uploadedSliders.length < 1) {
-      alert('Please upload a Slider Content first!');
-      return;
-    }
+    if (uploadedSliders.length < 1) return;
+
     if (
       await handleSubmit(
         { sliderContents: uploadedSliders },
@@ -81,11 +82,17 @@ const SliderContents = ({
                 disabled={disabled}
                 dragActiveText={'Drop Slider Contents here!'}
                 fileImg={uploadedSliders[uploadedSliders.length - 1] || null}
-                onLoad={(file) => setUploadedSliders((prev) => [...prev, file])}
-                mode={mode}
+                onLoad={(file) =>
+                  setUploadedSliders((currentFiles) =>
+                    currentFiles.length < maxUploadFiles
+                      ? [...currentFiles, file]
+                      : currentFiles
+                  )
+                }
                 clearFileImg={() => setUploadedSliders([])}
                 fileNumber={uploadedSliders?.length}
-                // plaecholderIconCls='text-4xl!'
+                currentFileCount={uploadedSliders.length}
+                maxFiles={maxUploadFiles}
               />
             </div>
 
@@ -119,7 +126,7 @@ const SliderContents = ({
         {/* button */}
         <div className='flex w-full items-end justify-end'>
           <PrimaryButton
-            disabled={disabled}
+            disabled={disabled || uploadedSliders.length < 1}
             state='small'
             text={mode === 'create' ? 'DONE' : 'SAVE'}
             Icon={MdDone}

@@ -1,12 +1,11 @@
 import { useEffect, useRef } from 'react';
 import SectionLabel from '../utils/SectionLabel';
 import { GravityField, myPic } from '../../assets';
-import { OutlinedBigIcon } from '../Buttons/OutlinedButton';
 import SkillsAndTechs from './SkillsAndTechs';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 import useIsGreaterOrEqualMd from '../../hooks/useIsGreaterOrEqualMd';
-import { downloadResume } from '../../axios';
 import { useAppContext } from '../../App';
+import ResumeDownloadButton from '../utils/ResumeDownloadButton';
 
 const About = () => {
   const aboutTextRef = useRef(null);
@@ -49,15 +48,20 @@ const About = () => {
               src={GravityField}
               alt=''
               aria-hidden='true'
+              width='551'
+              height='633'
               className='w-full h-auto z-0'
               loading='lazy'
             />
             <img
               src={myPic}
+              width='338'
+              height='410'
               alt='Portrait of Khalid Ahammed'
               className='w-[72%] md:w-[70%] lg:w-[75%] xl:w-[65%] absolute top-[47%] left-[46%] h-auto z-10 object-cover saturate-[20%] transition-all duration-1000 hover:saturate-[100%] pointer-all'
               style={{ transform: 'translate(-50%,-50%)' }}
               loading='lazy'
+              decoding='async'
             />
           </div>
 
@@ -76,10 +80,7 @@ const About = () => {
             </p>
             {resumeAvailable && (
               <div className='inline-block m-auto md:m-0'>
-                <OutlinedBigIcon
-                  text={'DOWNLOAD CV'}
-                  onClick={downloadResume}
-                />
+                <ResumeDownloadButton />
               </div>
             )}
           </div>

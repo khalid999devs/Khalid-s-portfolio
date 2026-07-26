@@ -8,7 +8,7 @@ const NumberedText = ({ number, text, onClick, state = 'active' }) => {
       {...(onClick ? { type: 'button', onClick } : {})}
       aria-current={state === 'active' ? 'step' : undefined}
       className={`flex items-center gap-2 ${
-        onClick && 'cursor-pointer'
+        onClick ? 'cursor-pointer' : ''
       } select-none`}
     >
       <div
@@ -16,7 +16,7 @@ const NumberedText = ({ number, text, onClick, state = 'active' }) => {
           state === 'active'
             ? 'bg-primary-main text-black border-primary-main'
             : 'bg-transparent border-secondary-main text-muted-main'
-        } ${onClick && 'cursor-pointer'}`}
+        } ${onClick ? 'cursor-pointer' : ''}`}
       >
         {number || 1}
       </div>

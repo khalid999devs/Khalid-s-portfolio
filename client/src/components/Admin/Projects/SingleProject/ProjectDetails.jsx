@@ -13,6 +13,7 @@ import Thumbnails from '../ProjectContents/Thumbnails';
 import SliderContents from '../ProjectContents/SliderContents';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
+import ProjectDeleteDialog from '../ProjectDeleteDialog';
 
 const ProjectDetails = ({ mode = 'create', projectId }) => {
   const location = useLocation();
@@ -42,7 +43,12 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
     state: false,
   });
   const [loading, setLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [projectLoadState, setProjectLoadState] = useState(
+    mode === 'edit' ? 'loading' : 'ready'
+  );
+  const [projectLoadAttempt, setProjectLoadAttempt] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -74,44 +80,60 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
   useEffect(() => {
     const controller = new AbortController();
 
-    if (mode === 'edit') {
-      axios
-        .post(
-          reqs.GET_PROJECT,
-          { mode: 'single', projectId },
-          { signal: controller.signal }
-        )
-        .then((res) => {
-          if (res.data.succeed) {
-            setProjectData(res.data.result);
-          }
-        })
-        .catch((err) => {
-          if (controller.signal.aborted) return;
-          setPopup({
-            text: err.response?.data?.msg || 'An error occurred',
-            type: 'error',
-            state: true,
-          });
-        });
+    if (mode !== 'edit') {
+      setProjectLoadState('ready');
+      return () => controller.abort();
     }
 
+    setProjectLoadState('loading');
+    axios
+      .post(
+        reqs.GET_PROJECT,
+        { mode: 'single', projectId },
+        { signal: controller.signal }
+      )
+      .then((res) => {
+        if (!res.data.succeed || !res.data.result) {
+          throw new Error(res.data.msg || 'Project data could not be loaded');
+        }
+        setProjectData(res.data.result);
+        setProjectLoadState('ready');
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        const message =
+          err.response?.data?.msg ||
+          err.message ||
+          'Project data could not be loaded';
+        setProjectLoadState('error');
+        setPopup({
+          text: message,
+          type: 'error',
+          state: true,
+        });
+      });
+
     return () => controller.abort();
-  }, [mode, projectId]);
+  }, [mode, projectId, projectLoadAttempt]);
+
+  const formDisabled =
+    loading || (mode === 'edit' && projectLoadState !== 'ready');
 
   const handleDeleteProject = (projectId, projectName) => {
+    if (mode === 'edit' && !loading) {
+      setDeleteTarget({ id: projectId, name: projectName });
+    }
+  };
+
+  const confirmDeleteProject = ({ id: projectId }) => {
     if (mode === 'edit') {
-      deleteProject(projectId, projectName, setLoading, setPopup)
-        .then((data) => {
-          if (data.cancelled) return;
-          setPopup({
-            text: data.msg,
-            type: 'success',
-            state: true,
-          });
+      deleteProject(projectId, setLoading)
+        .then(() => {
+          setDeleteTarget(null);
           navigate('/admin/projects', { replace: true });
         })
         .catch((error) => {
+          setDeleteTarget(null);
           setPopup({
             text: error.msg || 'Something went wrong, please try again.',
             type: 'error',
@@ -292,9 +314,33 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
         setFormMode={setFormMode}
         projectId={projectData?.id}
         projectName={projectData?.title}
-        disabled={loading}
+        disabled={formDisabled}
       />
-      {formMode === 'info' ? (
+      {projectLoadState === 'loading' ? (
+        <div
+          className='min-h-[40vh] flex items-center justify-center text-muted-light'
+          role='status'
+          aria-live='polite'
+        >
+          Loading project…
+        </div>
+      ) : projectLoadState === 'error' ? (
+        <div
+          className='min-h-[40vh] flex flex-col items-center justify-center gap-4 text-center'
+          role='alert'
+        >
+          <p className='text-muted-light'>Project data could not be loaded.</p>
+          <button
+            type='button'
+            className='rounded-md border border-secondary-light px-4 py-2 text-sm hover:bg-primary-main hover:text-body-main'
+            onClick={() =>
+              setProjectLoadAttempt((currentAttempt) => currentAttempt + 1)
+            }
+          >
+            Retry
+          </button>
+        </div>
+      ) : formMode === 'info' ? (
         <div className='w-full h-full grid grid-cols-10 gap-6'>
           <ProjectTitles
             handleCreateProject={handleCreateProject}
@@ -303,11 +349,13 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
             setFormMode={setFormMode}
             projectData={projectData}
             handleUpdateProjectInfos={handleUpdateProjectInfos}
-            disabled={loading}
+            disabled={formDisabled}
           />
           <div className='w-full hidden lg:flex pt-10 items-start justify-center h-full col-span-3'>
             <img
               className='w-full h-auto'
+              width='381'
+              height='581'
               src={
                 mode === 'create' ? newProjIllustration : editProjIllustration
               }
@@ -325,38 +373,45 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
             mode={mode}
             projectData={projectData}
             handleSubmitData={handleUpdateProjectInfos}
-            disabled={loading}
+            disabled={formDisabled}
           />
           <Banner
             projectData={projectData}
             handleSubmit={handleEditProjectContents}
             handleDelete={handleDeleteProjectContents}
             mode={mode}
-            disabled={loading}
+            disabled={formDisabled}
           />
           <Videos
             projectData={projectData}
             mode={mode}
             handleDelete={handleDeleteProjectContents}
             handleSubmit={handleEditProjectContents}
-            disabled={loading}
+            disabled={formDisabled}
           />
           <Thumbnails
             projectData={projectData}
             mode={mode}
             handleDelete={handleDeleteProjectContents}
             handleSubmit={handleEditProjectContents}
-            disabled={loading}
+            disabled={formDisabled}
           />
           <SliderContents
             projectData={projectData}
             mode={mode}
             handleDelete={handleDeleteProjectContents}
             handleSubmit={handleEditProjectContents}
-            disabled={loading}
+            disabled={formDisabled}
           />
         </div>
       )}
+
+      <ProjectDeleteDialog
+        busy={loading}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDeleteProject}
+        project={deleteTarget}
+      />
 
       <Popup
         setPopup={setPopup}

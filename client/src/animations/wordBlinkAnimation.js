@@ -2,8 +2,6 @@ import gsap from 'gsap';
 import ScrollTrigger from 'gsap/ScrollTrigger';
 import { getReducedMotionMediaQuery } from '../utils/motionPreferences';
 
-// gsap.registerPlugin(ScrollTrigger);
-
 export function wordBlinkAnimation(
   element,
   isGreaterOrEqualMd,
@@ -58,8 +56,6 @@ export function wordBlinkAnimation(
   const scrollTriggerInstance = ScrollTrigger.create({
     trigger: parentElement,
     start: 'top 95%',
-    // markers: true,
-    // end: 'bottom 20%',
     onEnter: animate,
     onEnterBack: () => {
       if (backAnimate) animate();
@@ -86,7 +82,7 @@ export function wordBlinkAnimation(
   return animationHandle;
 }
 
-export let flickerEase =
+const flickerEase =
   "rough({ template: circ.easeOut, strength: 4, points: 50, taper: 'out', randomize: true, clamp:  true})";
 
 function animateWordSpans(wordSpans, activeTweens, isKilled) {
@@ -99,9 +95,7 @@ function animateWordSpans(wordSpans, activeTweens, isKilled) {
       opacity: () => Math.random() * 0.35 + 0.65,
       repeat: 2,
       yoyo: true,
-      // stagger: { each: 1, from: 'random' },
       ease: flickerEase,
-      // ease: 'power1.inOut',
       delay: randomDelay,
       onComplete: () => {
         activeTweens.delete(tween);

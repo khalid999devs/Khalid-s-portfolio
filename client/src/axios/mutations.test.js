@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('axios', () => ({
   default: {
@@ -12,35 +12,19 @@ import { deleteProject } from './projects';
 import { downloadResume } from './settings';
 
 describe('destructive project requests', () => {
-  beforeEach(() => {
-    vi.spyOn(window, 'alert').mockImplementation(() => {});
-  });
-
   afterEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
-  it('treats a cancelled confirmation as a safe no-op', async () => {
-    vi.spyOn(window, 'prompt').mockReturnValue(null);
-    const setLoading = vi.fn();
-
-    await expect(
-      deleteProject(4, 'Portfolio', setLoading, vi.fn())
-    ).resolves.toEqual({ cancelled: true });
-    expect(axios.delete).not.toHaveBeenCalled();
-    expect(setLoading).not.toHaveBeenCalled();
-  });
-
-  it('deletes only after an exact confirmation and always clears loading', async () => {
-    vi.spyOn(window, 'prompt').mockReturnValue('Portfolio');
+  it('performs a confirmed delete request and always clears loading', async () => {
     axios.delete.mockResolvedValue({
       data: { succeed: true, msg: 'Project deleted.' },
     });
     const setLoading = vi.fn();
 
     await expect(
-      deleteProject(4, 'Portfolio', setLoading, vi.fn())
+      deleteProject(4, setLoading)
     ).resolves.toMatchObject({ succeed: true });
     expect(axios.delete).toHaveBeenCalledWith('/api/projects/delete/4', {
       withCredentials: true,

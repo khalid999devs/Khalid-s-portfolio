@@ -1,4 +1,4 @@
-export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
 export const getReducedMotionMediaQuery = () =>
   typeof window !== 'undefined' && typeof window.matchMedia === 'function'

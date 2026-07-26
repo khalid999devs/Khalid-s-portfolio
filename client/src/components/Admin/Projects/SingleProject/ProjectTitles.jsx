@@ -231,7 +231,6 @@ const ProjectTitles = ({
         <div className='flex items-center gap-3 justify-center'>
           <PrimaryButton
             disabled={disabled}
-            // state='small'
             text={mode === 'create' ? 'Create Project' : 'NEXT PAGE'}
             Icon={mode === 'create' ? MdDone : null}
             classes={``}
@@ -244,7 +243,6 @@ const ProjectTitles = ({
           {mode === 'edit' && (
             <PrimaryButton
               disabled={disabled}
-              // state='small'
               text={'UPDATE'}
               Icon={IoArrowUp}
               classes={``}

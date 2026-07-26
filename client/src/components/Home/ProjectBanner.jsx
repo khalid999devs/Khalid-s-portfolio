@@ -5,20 +5,18 @@ import { ScrollMouseAnime } from '../../assets';
 import { useEffect, useRef } from 'react';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import useDocumentHeight from '../../hooks/useDocumentHeight';
 import usePrefersReducedMotion from '../../hooks/usePrefersReducedMotion';
 
 const ProjectBanner = () => {
-  const projecsParentRef = useRef(null);
-  const documentHeight = useDocumentHeight();
+  const projectsParentRef = useRef(null);
   const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     const animationHandles = [];
 
-    if (projecsParentRef.current && !prefersReducedMotion) {
+    if (projectsParentRef.current && !prefersReducedMotion) {
       const animatingElements = [
-        ...document.querySelectorAll('.blink-animate'),
+        ...projectsParentRef.current.querySelectorAll('.blink-animate'),
       ];
 
       if (animatingElements.length > 0) {
@@ -26,7 +24,7 @@ const ProjectBanner = () => {
           const handle = wordBlinkAnimation(
             ele,
             null,
-            projecsParentRef.current,
+            projectsParentRef.current,
             true,
             false
           );
@@ -40,9 +38,9 @@ const ProjectBanner = () => {
 
   useEffect(() => {
     let projectParentScrollTInstance;
-    if (projecsParentRef.current && !prefersReducedMotion) {
+    if (projectsParentRef.current && !prefersReducedMotion) {
       projectParentScrollTInstance = ScrollTrigger.create({
-        trigger: projecsParentRef.current,
+        trigger: projectsParentRef.current,
         pin: true,
         pinSpacing: false,
         scrub: 0.2,
@@ -53,11 +51,11 @@ const ProjectBanner = () => {
     return () => {
       if (projectParentScrollTInstance) projectParentScrollTInstance.kill();
     };
-  }, [documentHeight, prefersReducedMotion]);
+  }, [prefersReducedMotion]);
 
   return (
     <div
-      ref={projecsParentRef}
+      ref={projectsParentRef}
       className='pt-16 min-h-screen w-full pb-16 flex items-center justify-center relative'
     >
       <div className='flex flex-col w-full justify-center -translate-y-3'>
@@ -107,6 +105,8 @@ const ProjectBanner = () => {
       >
         <img
           src={ScrollMouseAnime}
+          width='150'
+          height='150'
           className='w-10 opacity-20'
           alt=''
           aria-hidden='true'

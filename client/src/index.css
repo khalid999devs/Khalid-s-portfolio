@@ -13,10 +13,11 @@
   --color-muted-dark: #a8a8aa;
   --color-body-main: #161616;
 
-  --breakpoint-mds: 770px;
-  --breakpoint-mdl: 860px;
-  --breakpoint-2xl: 1380px;
-  --breakpoint-3xl: 1520px;
+  /* Keep every breakpoint in rem so Tailwind can sort media queries by size. */
+  --breakpoint-mds: 48.125rem;
+  --breakpoint-mdl: 53.75rem;
+  --breakpoint-2xl: 86.25rem;
+  --breakpoint-3xl: 95rem;
 }
 
 @font-face {
@@ -251,16 +252,28 @@ canvas {
   }
 }
 
-/* cursor animation */
-.cursor-grid-cell {
-  width: 50px;
-  height: 50px;
-  border: 0.01px solid rgba(255, 255, 255, 0.005);
-  transition: border-color 0.3s ease;
+@property --cursor-grid-opacity {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
 }
 
-.cursor-grid-highlight {
-  border-color: rgba(255, 255, 255, 0.3);
+/* Lightweight cursor grid: one composited layer instead of thousands of nodes. */
+.cursor-grid {
+  --cursor-grid-x: 50vw;
+  --cursor-grid-y: 50vh;
+  --cursor-grid-opacity: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+    radial-gradient(
+      circle 80px at var(--cursor-grid-x) var(--cursor-grid-y),
+      rgba(255, 255, 255, calc(0.09 * var(--cursor-grid-opacity))),
+      transparent 75%
+  );
+  background-size: 50px 50px, 50px 50px, 100% 100%;
+  contain: strict;
+  transition: --cursor-grid-opacity 0.35s ease;
 }
 
 /* Michibot interactive styles */
@@ -295,7 +308,7 @@ canvas {
   border: 1px solid rgba(255, 255, 255, 0.15);
   padding: 14px 24px;
   border-radius: 8px;
-  font-family: 'Montreal Mono', monospace;
+  font-family: 'PP Neue Montreal Mono', monospace;
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 1.2px;
@@ -346,4 +359,18 @@ canvas {
 .michibot-tooltip .highlight-text {
   color: #6366f1;
   font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-flicker,
+  .text-flicker::after,
+  .cursor-grid,
+  .michibot-tooltip {
+    transition-duration: 0.01ms !important;
+  }
+
+  .text-flicker:hover,
+  .michibot-active {
+    animation: none !important;
+  }
 }

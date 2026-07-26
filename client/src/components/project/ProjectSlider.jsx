@@ -1,27 +1,28 @@
 import { useEffect, useRef } from 'react';
+import { handleImageFallback } from '../../utils/imageFallback';
 import { reqFileWrapper } from '../../axios/requests';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useLocation } from 'react-router-dom';
-import useDocumentHeight from '../../hooks/useDocumentHeight';
 import PropTypes from 'prop-types';
+import usePrefersReducedMotion from '../../hooks/usePrefersReducedMotion';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const ProjectSlider = ({ sliderContents }) => {
   const sliderRef = useRef(null);
   const containerRef = useRef(null);
-  const documentHeight = useDocumentHeight();
   const scrollTriggerRef = useRef(null);
   const location = useLocation();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     const slider = sliderRef.current;
     const container = containerRef.current;
 
-    if (!slider || !container) return;
+    if (!slider || !container || prefersReducedMotion) return undefined;
 
-    let mm = gsap.matchMedia();
+    const mm = gsap.matchMedia();
 
     mm.add('(min-width: 768px)', () => {
       const totalWidth = slider.scrollWidth - container.offsetWidth;
@@ -63,22 +64,37 @@ const ProjectSlider = ({ sliderContents }) => {
     return () => {
       mm.revert();
     };
-  }, [sliderContents, documentHeight, location.pathname]);
+  }, [
+    sliderContents,
+    location.pathname,
+    prefersReducedMotion,
+  ]);
 
   return (
     <div
       ref={containerRef}
-      className='w-full overflow-hidden sec-x-padding min-h-screen mt-20 relative flex items-center'
+      className={`w-full sec-x-padding mt-20 relative flex items-center ${
+        prefersReducedMotion
+          ? 'overflow-visible min-h-0'
+          : 'overflow-hidden min-h-0 md:min-h-screen'
+      }`}
     >
-      {/* Slider for md and larger screens */}
       <div
         ref={sliderRef}
-        className='hidden md:flex w-full flex-row gap-2 md:gap-3.5 lg:gap-4 overflow-visible pointer-all'
+        className={`w-full gap-4 md:gap-3.5 lg:gap-4 overflow-visible pointer-all ${
+          prefersReducedMotion
+            ? 'grid grid-cols-1'
+            : 'flex flex-col md:flex-row'
+        }`}
       >
         {sliderContents?.map((item, index) => (
           <div
             key={item.id}
-            className='max-w-[98%] lg:max-w-[80%] rounded-[18px] h-auto shrink-0 pointer-all overflow-hidden bg-body-main'
+            className={`rounded-[18px] h-auto shrink-0 pointer-all overflow-hidden bg-body-main ${
+              prefersReducedMotion
+                ? 'w-full'
+                : 'w-full md:max-w-[98%] lg:max-w-[80%]'
+            }`}
           >
             <a
               href={reqFileWrapper(item?.url)}
@@ -89,32 +105,13 @@ const ProjectSlider = ({ sliderContents }) => {
             >
               <img
                 src={reqFileWrapper(item?.url)}
+                width={item.width}
+                height={item.height}
                 className='w-full h-auto rounded-[18px] max-h-[85vh] cursor-pointer transition-all duration-1000 hover:scale-[101%]'
                 alt={item.alt || `Project detail ${index + 1}`}
-              />
-            </a>
-          </div>
-        ))}
-      </div>
-
-      {/* Separate slider for mobile screens */}
-      <div className='flex md:hidden w-full flex-col gap-4 overflow-visible pointer-all'>
-        {sliderContents?.map((item, index) => (
-          <div
-            key={item.id}
-            className='w-full rounded-[18px] h-auto shrink-0 pointer-all overflow-hidden bg-body-main'
-          >
-            <a
-              href={reqFileWrapper(item?.url)}
-              target='_blank'
-              rel='noopener noreferrer'
-              aria-label={`Open project image ${index + 1} at full size`}
-              className='block'
-            >
-              <img
-                src={reqFileWrapper(item?.url)}
-                className='w-full h-auto rounded-[18px] max-h-[85vh] cursor-pointer transition-all duration-500 hover:scale-[102%]'
-                alt={item.alt || `Project detail ${index + 1}`}
+                onError={handleImageFallback}
+                loading='lazy'
+                decoding='async'
               />
             </a>
           </div>
@@ -129,6 +126,8 @@ ProjectSlider.propTypes = {
     PropTypes.shape({
       url: PropTypes.string,
       alt: PropTypes.string,
+      width: PropTypes.number,
+      height: PropTypes.number,
     })
   ),
 };

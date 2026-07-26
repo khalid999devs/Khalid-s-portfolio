@@ -1,33 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import NavLogo from './Admin/NavLogo';
 import { Link } from 'react-router-dom';
-import { OutlinedSmallButton } from '../Buttons/OutlinedButton';
 import PageNav from './PageNav';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 import { isUpwork } from '../../config';
 import { upworkedSocialLinks } from '../../Constants';
-import { downloadResume } from '../../axios';
+import ResumeDownloadButton from '../utils/ResumeDownloadButton';
 import PropTypes from 'prop-types';
 
 const Navbar = ({ resumeAvailable = false }) => {
   const [isPageMenu, setIsPageMenu] = useState(false);
+  const [isPageMenuPresent, setIsPageMenuPresent] = useState(false);
   const navBarRef = useRef(null);
   const menuButtonRef = useRef(null);
-
-  useEffect(() => {
-    if (isPageMenu) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-  }, [isPageMenu]);
-
-  useEffect(
-    () => () => {
-      document.body.style.overflow = '';
-    },
-    []
-  );
 
   useEffect(() => {
     const animationHandles = [];
@@ -66,10 +51,7 @@ const Navbar = ({ resumeAvailable = false }) => {
           </div>
           {resumeAvailable && (
             <div className='hidden sm:inline-block'>
-              <OutlinedSmallButton
-                text={'My Resume'}
-                onClick={downloadResume}
-              />
+              <ResumeDownloadButton size='small' />
             </div>
           )}
           <div className='flex items-center justify-between gap-6 text-sm'>
@@ -107,8 +89,8 @@ const Navbar = ({ resumeAvailable = false }) => {
               aria-controls='site-menu'
               className='w-8 h-auto grid gap-1.5 select-none cursor-pointer'
               onClick={() => {
+                setIsPageMenuPresent(true);
                 setIsPageMenu(true);
-                // document.body.style.overflowY = 'hidden';
               }}
             >
               <span
@@ -130,8 +112,10 @@ const Navbar = ({ resumeAvailable = false }) => {
       {/* nav menu page */}
       <PageNav
         isPageMenu={isPageMenu}
+        isMenuPresent={isPageMenuPresent}
         setIsPageMenu={setIsPageMenu}
         triggerRef={menuButtonRef}
+        onExitComplete={() => setIsPageMenuPresent(false)}
       />
     </>
   );

@@ -14,6 +14,8 @@ const ThumbnailPreview = ({ item, index }) => {
   return source ? (
     <img
       src={source}
+      width={item?.width}
+      height={item?.height}
       className='w-full h-full object-cover'
       alt={`Project thumbnail ${index + 1}`}
     />
@@ -32,6 +34,7 @@ const Thumbnails = ({
   handleDelete,
   disabled,
 }) => {
+  const maxUploadFiles = 8;
   const [thumbnails, setThumbnails] = useState([]);
   const [uploadedThumbnails, setUploadedThumbnails] = useState([]);
 
@@ -42,11 +45,8 @@ const Thumbnails = ({
   }, [mode, projectData]);
 
   const handleAddThumbnails = async () => {
-    if (uploadedThumbnails.length < 1) {
-      alert('Please upload a thumbnail first!');
-      return;
-    }
-    // setThumbnails((thumbnails) => [...thumbnails, ...uploadedThumbnails]);
+    if (uploadedThumbnails.length < 1) return;
+
     if (
       await handleSubmit(
         { thumbnailContents: uploadedThumbnails },
@@ -87,12 +87,17 @@ const Thumbnails = ({
                   uploadedThumbnails[uploadedThumbnails.length - 1] || null
                 }
                 onLoad={(file) =>
-                  setUploadedThumbnails((prev) => [...prev, file])
+                  setUploadedThumbnails((currentFiles) =>
+                    currentFiles.length < maxUploadFiles
+                      ? [...currentFiles, file]
+                      : currentFiles
+                  )
                 }
-                mode={mode}
                 clearFileImg={() => setUploadedThumbnails([])}
                 fileNumber={uploadedThumbnails?.length}
-                plaecholderIconCls='text-4xl!'
+                currentFileCount={uploadedThumbnails.length}
+                maxFiles={maxUploadFiles}
+                placeholderIconClass='text-4xl!'
               />
             </div>
 
@@ -126,7 +131,7 @@ const Thumbnails = ({
         {/* button */}
         <div className='flex w-full items-end justify-end'>
           <PrimaryButton
-            disabled={disabled}
+            disabled={disabled || uploadedThumbnails.length < 1}
             state='small'
             text={mode === 'create' ? 'DONE' : 'SAVE'}
             Icon={MdDone}

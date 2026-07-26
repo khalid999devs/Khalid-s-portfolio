@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { IoImageOutline } from 'react-icons/io5';
 import { RiImageAddLine } from 'react-icons/ri';
 import { IoClose } from 'react-icons/io5';
-import { handleCompressImg } from '../../utils/FileProcessing/ImageCompression';
 import PrimaryButton from '../Buttons/PrimaryButton';
 import { reqFileWrapper } from '../../axios/requests';
 import { FaVideo } from 'react-icons/fa';
@@ -15,9 +14,7 @@ const IMAGE_ACCEPT = {
   'image/webp': ['.webp'],
 };
 const VIDEO_ACCEPT = {
-  'audio/wav': ['.wav'],
   'video/mp4': ['.mp4'],
-  'video/x-matroska': ['.mkv'],
 };
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
@@ -26,25 +23,36 @@ const ImgFileUploader = ({
   fileImg,
   onLoad,
   type = 'multiple',
-  compress = { state: false, maxSizeMb: 0.5, maxWidthOrHeight: 1920 },
   clearFileImg,
-  dropContainerClass,
-  imageContainerClass,
-  thumbnail = false,
+  dropContainerClass = '',
+  imageContainerClass = '',
   defaultImg,
-  processText,
   PlaceholderImgIcon,
   dataURL = false,
   video = false,
   fileNumber,
-  plaecholderIconCls,
+  placeholderIconClass = '',
   maxFiles,
+  currentFileCount = 0,
   disabled = false,
 }) => {
-  const [loading, setLoading] = useState(false);
   const [processError, setProcessError] = useState('');
   const [previewSource, setPreviewSource] = useState(null);
-  const processingGenerationRef = useRef(0);
+  const configuredMaxFiles = maxFiles ?? (video ? 4 : 8);
+  const remainingFiles =
+    type === 'multiple'
+      ? Math.max(configuredMaxFiles - currentFileCount, 0)
+      : 1;
+  const uploadDisabled = disabled || remainingFiles === 0;
+  const remainingFileLabel = `${video ? 'video' : 'image'}${
+    remainingFiles === 1 ? '' : 's'
+  }`;
+  const capacityError =
+    currentFileCount > 0
+      ? `You can select ${remainingFiles} more ${remainingFileLabel} in this batch.`
+      : `You can select at most ${configuredMaxFiles} ${
+          video ? 'videos' : 'images'
+        } at a time.`;
 
   useEffect(() => {
     const previewValue = fileImg || defaultImg;
@@ -65,82 +73,57 @@ const ImgFileUploader = ({
   }, [dataURL, defaultImg, fileImg]);
 
   const onDrop = useCallback(
-    async (acceptedFiles) => {
-      if (!acceptedFiles.length) return;
+    (acceptedFiles) => {
+      if (!acceptedFiles.length || uploadDisabled) return;
 
-      const generation = ++processingGenerationRef.current;
-      setLoading(true);
-      setProcessError('');
+      const filesToProcess =
+        type === 'multiple'
+          ? acceptedFiles.slice(0, remainingFiles)
+          : acceptedFiles.slice(0, 1);
 
-      try {
-        const processedFiles = await Promise.all(
-          acceptedFiles.map(async (file) => {
-            if (!compress.state || video) return { file, processed: file };
-
-            const processed = await handleCompressImg(
-              file,
-              compress.maxSizeMb,
-              compress.maxWidthOrHeight
-            );
-            return { file, processed };
-          })
-        );
-
-        if (generation !== processingGenerationRef.current) return;
-        processedFiles.forEach(({ file, processed }) => {
-          if (thumbnail) {
-            onLoad(file, processed);
-          } else {
-            onLoad(processed);
-          }
-        });
-      } catch {
-        if (generation === processingGenerationRef.current) {
-          setProcessError('The selected file could not be processed.');
-        }
-      } finally {
-        if (generation === processingGenerationRef.current) {
-          setLoading(false);
-        }
+      if (filesToProcess.length < acceptedFiles.length) {
+        setProcessError(capacityError);
       }
+
+      if (filesToProcess.length === acceptedFiles.length) {
+        setProcessError('');
+      }
+
+      filesToProcess.forEach((file) => onLoad(file));
     },
     [
-      compress.state,
-      compress.maxSizeMb,
-      compress.maxWidthOrHeight,
-      thumbnail,
       onLoad,
-      video,
+      uploadDisabled,
+      type,
+      remainingFiles,
+      capacityError,
     ]
   );
 
-  const handleDropRejected = useCallback((rejections) => {
-    const firstError = rejections[0]?.errors?.[0]?.code;
-    setProcessError(
-      firstError === 'file-too-large'
-        ? 'Files must be no larger than 25 MB.'
-        : firstError === 'too-many-files'
-        ? 'Too many files were selected.'
-        : 'Select a supported file type.'
-    );
-  }, []);
+  const handleDropRejected = useCallback(
+    (rejections) => {
+      const firstError = rejections[0]?.errors?.[0]?.code;
+      setProcessError(
+        firstError === 'file-too-large'
+          ? 'Files must be no larger than 25 MB.'
+          : firstError === 'too-many-files'
+          ? capacityError
+          : 'Select a supported file type.'
+      );
+    },
+    [capacityError]
+  );
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     accept: video ? VIDEO_ACCEPT : IMAGE_ACCEPT,
-    maxFiles: type === 'multiple' ? maxFiles || (video ? 4 : 8) : 1,
+    maxFiles: type === 'multiple' ? configuredMaxFiles : 1,
     maxSize: MAX_UPLOAD_BYTES,
     noKeyboard: false,
     onDrop,
     onDropRejected: handleDropRejected,
     multiple: type === 'multiple',
-    disabled,
+    disabled: uploadDisabled,
   });
-
-  useEffect(() => {
-    return () => {
-      processingGenerationRef.current += 1;
-    };
-  }, []);
 
   if (previewSource) {
     return (
@@ -178,9 +161,17 @@ const ImgFileUploader = ({
             <FaVideo />
           </div>
         )}
+        {processError && (
+          <p
+            role='alert'
+            className='absolute left-2 right-2 top-2 rounded bg-red-800 px-2 py-1 text-center text-xs text-primary-main'
+          >
+            {processError}
+          </p>
+        )}
         <div className='absolute left-0 bottom-0 w-max'>
           <PrimaryButton
-            disabled={disabled}
+            disabled={uploadDisabled}
             type='button'
             state='small'
             text={video ? 'Add video' : 'Add Image'}
@@ -188,7 +179,7 @@ const ImgFileUploader = ({
             classes={'py-1! px-1.5! rounded-none text-xs text-body-main'}
             onClick={open}
           />
-          <input {...getInputProps()} />
+          <input {...getInputProps()} disabled={uploadDisabled} />
         </div>
       </div>
     );
@@ -197,49 +188,42 @@ const ImgFileUploader = ({
       <div
         {...getRootProps({
           role: 'button',
+          'aria-disabled': uploadDisabled,
           'aria-label': video
             ? 'Upload video files'
             : `Upload ${type === 'multiple' ? 'image files' : 'an image'}`,
         })}
         className={
           `flex w-full h-full items-center justify-center relative flex-col border-2 border-secondary-main border-dashed p-4 rounded-lg ${
-            disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+            uploadDisabled
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer'
           } ` +
           dropContainerClass
         }
       >
         <input
           {...getInputProps()}
+          disabled={uploadDisabled}
           multiple={type === 'multiple' ? true : false}
         />
         <div className='w-[80%] flex text-center items-center justify-center flex-col gap-2 group'>
           {PlaceholderImgIcon ? (
             <PlaceholderImgIcon
               className={
-                'text-5xl text-muted-main opacity-80 ' + plaecholderIconCls
+                'text-5xl text-muted-main opacity-80 ' +
+                placeholderIconClass
               }
             />
           ) : (
             <IoImageOutline
               className={
-                'text-5xl text-muted-main opacity-80 ' + plaecholderIconCls
+                'text-5xl text-muted-main opacity-80 ' +
+                placeholderIconClass
               }
             />
           )}
 
-          {/* <p className={'w-full opacity-80 break-keep! ' + textClasses}>
-            {placeholderText ||
-              `Drop your ${type === 'multiple' ? 'Images' : 'Image'}`}{' '}
-            <br /> or{' '}
-            <span
-              className={
-                'text-blue-600 text-sm duration-500 group-hover:underline ' +
-                textClasses
-              }
-            >
-              click to browse
-            </span>
-          </p> */}
         </div>
         <div
           role='status'
@@ -251,24 +235,7 @@ const ImgFileUploader = ({
         >
           {dragActiveText || 'Drop files here'}
         </div>
-        {loading && (
-          <div
-            role='status'
-            aria-live='polite'
-            className='absolute top-[50%] left-[50%] text-body-main bg-primary-main/95 rounded-lg w-[97%] h-[95%] text-lg font-medium flex flex-col justify-center items-center text-base text-center p-3'
-            style={{ transform: 'translate(-50%,-50%)' }}
-          >
-            <img
-              src='/Images/loading.gif'
-              className='w-[25px] h-[25px]'
-              alt='Loading...'
-            />
-            <p className='text-xs text-body-main font-medium break-words'>
-              {processText || 'Processing Image'}
-            </p>
-          </div>
-        )}
-        {processError && !loading && (
+        {processError && (
           <p
             role='alert'
             className='absolute bottom-2 left-2 right-2 rounded bg-red-800 px-2 py-1 text-center text-xs text-primary-main'
@@ -282,30 +249,21 @@ const ImgFileUploader = ({
 };
 
 ImgFileUploader.propTypes = {
-  mode: PropTypes.string,
   dragActiveText: PropTypes.string,
   fileImg: PropTypes.oneOfType([PropTypes.object, PropTypes.string]),
   onLoad: PropTypes.func.isRequired,
   type: PropTypes.string,
-  compress: PropTypes.shape({
-    state: PropTypes.bool,
-    maxSizeMb: PropTypes.number,
-    maxWidthOrHeight: PropTypes.number,
-  }),
   clearFileImg: PropTypes.func,
-  placeholderText: PropTypes.string,
   dropContainerClass: PropTypes.string,
   imageContainerClass: PropTypes.string,
-  thumbnail: PropTypes.bool,
-  textClasses: PropTypes.string,
   defaultImg: PropTypes.string,
-  processText: PropTypes.string,
   PlaceholderImgIcon: PropTypes.elementType,
   dataURL: PropTypes.bool,
   video: PropTypes.bool,
   fileNumber: PropTypes.number,
-  plaecholderIconCls: PropTypes.string,
+  placeholderIconClass: PropTypes.string,
   maxFiles: PropTypes.number,
+  currentFileCount: PropTypes.number,
   disabled: PropTypes.bool,
 };
 

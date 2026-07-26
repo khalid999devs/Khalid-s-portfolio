@@ -5,31 +5,26 @@ import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 import { isUpwork } from '../../config';
 import { textBlinkAnimateByWord } from '../../animations/textBlinkAnimateByWord';
 import { useMichibotInteraction } from '../../hooks/useMichibotInteraction';
+import { MainRobotImg } from '../../assets';
+import useSceneCapability from '../../hooks/useSceneCapability';
 
 const Scene = lazy(() => import('./bot/Scene'));
 
-const supportsWebGL = () => {
-  if (typeof document === 'undefined') return false;
-
-  try {
-    const canvas = document.createElement('canvas');
-    const contextOptions = { failIfMajorPerformanceCaveat: true };
-    const context =
-      canvas.getContext('webgl2', contextOptions) ||
-      canvas.getContext('webgl', contextOptions) ||
-      canvas.getContext('experimental-webgl', contextOptions);
-
-    if (!context) return false;
-
-    context.getExtension('WEBGL_lose_context')?.loseContext();
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-const BotPlaceholder = () => (
-  <div className='w-full h-full' aria-hidden='true' />
+const RobotFallback = () => (
+  <div
+    className='flex h-full w-full items-center justify-center'
+    aria-hidden='true'
+  >
+    <img
+      src={MainRobotImg}
+      width='146'
+      height='193'
+      alt=''
+      className='h-[193px] w-[146px] object-contain'
+      decoding='async'
+      fetchPriority='high'
+    />
+  </div>
 );
 
 const Hero = () => {
@@ -40,7 +35,9 @@ const Hero = () => {
   const heroRef = useRef(null);
   const botContainerRef = useRef(null);
   const [showTooltip, setShowTooltip] = useState(false);
-  const [sceneStatus, setSceneStatus] = useState('checking');
+  const [sceneRequested, setSceneRequested] = useState(false);
+  const [sceneFailed, setSceneFailed] = useState(false);
+  const [sceneAttempt, setSceneAttempt] = useState(0);
 
   const {
     isActive,
@@ -50,10 +47,42 @@ const Hero = () => {
     setIsLoaded,
     handleClick,
   } = useMichibotInteraction(botContainerRef, heroRef);
+  const sceneCapability = useSceneCapability({
+    isDesktop,
+    prefersReducedMotion,
+  });
+  const isSceneLoading = sceneRequested && !isLoaded && !sceneFailed;
 
   const handleSceneLoad = useCallback(() => {
+    setSceneFailed(false);
     setIsLoaded(true);
   }, [setIsLoaded]);
+
+  const handleSceneError = useCallback(() => {
+    setSceneFailed(true);
+    setIsLoaded(false);
+  }, [setIsLoaded]);
+
+  const handleBotClick = useCallback(() => {
+    if (!sceneCapability.eligible || isSceneLoading) return;
+
+    if (!sceneRequested || sceneFailed) {
+      setSceneFailed(false);
+      setIsLoaded(false);
+      setSceneRequested(true);
+      setSceneAttempt((attempt) => attempt + 1);
+      return;
+    }
+
+    handleClick();
+  }, [
+    handleClick,
+    isSceneLoading,
+    sceneCapability.eligible,
+    sceneFailed,
+    sceneRequested,
+    setIsLoaded,
+  ]);
 
   useEffect(() => {
     const animationHandles = [];
@@ -91,40 +120,29 @@ const Hero = () => {
   }, []);
 
   useEffect(() => {
-    // The decorative model is intentionally desktop-only and motion-sensitive.
-    // Avoid downloading ~2 MB of deferred 3D code/assets for mobile and
-    // reduced-motion users who cannot use the interaction.
-    if (!isDesktop || prefersReducedMotion || !supportsWebGL()) {
-      setSceneStatus('unavailable');
-      return undefined;
-    }
+    if (sceneCapability.eligible) return;
 
-    setSceneStatus('waiting');
+    setSceneRequested(false);
+    setSceneFailed(false);
+    setIsLoaded(false);
+    setShowTooltip(false);
+  }, [sceneCapability.eligible, setIsLoaded]);
 
-    const showScene = () => setSceneStatus('ready');
-    let idleCallbackId;
-    let fallbackTimerId;
+  const botActionLabel = !sceneCapability.eligible
+    ? 'Interactive 3D Michi Bot is unavailable on this device'
+    : sceneFailed
+    ? 'Retry loading the interactive 3D Michi Bot'
+    : !sceneRequested
+    ? 'Enable the interactive 3D Michi Bot'
+    : isSceneLoading
+    ? 'Loading the interactive 3D Michi Bot'
+    : 'Toggle the interactive Michi Bot';
 
-    if (typeof window.requestIdleCallback === 'function') {
-      idleCallbackId = window.requestIdleCallback(showScene, {
-        timeout: 2000,
-      });
-    } else {
-      fallbackTimerId = window.setTimeout(showScene, 1200);
-    }
-
-    return () => {
-      if (
-        idleCallbackId !== undefined &&
-        typeof window.cancelIdleCallback === 'function'
-      ) {
-        window.cancelIdleCallback(idleCallbackId);
-      }
-      if (fallbackTimerId !== undefined) {
-        window.clearTimeout(fallbackTimerId);
-      }
-    };
-  }, [isDesktop, prefersReducedMotion]);
+  const tooltipText = sceneFailed
+    ? 'Retry 3D'
+    : sceneRequested
+    ? 'Click me to see magic! ✨'
+    : 'Enable interactive 3D';
 
   return (
     <div
@@ -150,34 +168,63 @@ const Hero = () => {
             <button
               type='button'
               ref={botContainerRef}
-              aria-label='Toggle the interactive Michi Bot'
-              aria-pressed={isActive}
-              disabled={!isDesktop || !isLoaded || prefersReducedMotion}
+              aria-label={botActionLabel}
+              aria-pressed={isLoaded ? isActive : undefined}
+              aria-busy={isSceneLoading}
+              aria-disabled={isSceneLoading || undefined}
+              disabled={!sceneCapability.eligible}
               className={`pointer-all absolute w-[350px] h-[300px] left-[100%] -translate-x-1/2 transition-all duration-300 disabled:pointer-events-none ${
-                isDesktop && isLoaded ? 'cursor-pointer' : ''
+                sceneCapability.eligible && !isSceneLoading
+                  ? 'cursor-pointer'
+                  : ''
               } ${isActive ? 'z-50 michibot-active' : 'z-40'}`}
-              onClick={handleClick}
+              onClick={handleBotClick}
               onMouseEnter={() =>
-                isDesktop && isLoaded && !isActive && setShowTooltip(true)
+                sceneCapability.eligible &&
+                !isSceneLoading &&
+                !isActive &&
+                setShowTooltip(true)
               }
               onMouseLeave={() => setShowTooltip(false)}
+              onFocus={() =>
+                sceneCapability.eligible &&
+                !isSceneLoading &&
+                !isActive &&
+                setShowTooltip(true)
+              }
+              onBlur={() => setShowTooltip(false)}
             >
-              {isDesktop && isLoaded && !isActive && (
+              {sceneCapability.eligible && !isSceneLoading && !isActive && (
                 <div
                   className={`michibot-tooltip ${showTooltip ? 'show' : ''}`}
                 >
-                  <span className='highlight-text'>Click</span> me to see magic!
-                  ✨
+                  <span className='highlight-text'>
+                    {sceneFailed ? 'Retry' : sceneRequested ? 'Click' : 'Enable'}
+                  </span>{' '}
+                  {tooltipText.replace(/^(Retry|Click|Enable)\s*/u, '')}
                 </div>
               )}
-              {sceneStatus === 'ready' ? (
-                <Suspense fallback={<BotPlaceholder />}>
-                  <Scene onLoad={handleSceneLoad} isActive={isActive} />
+              {sceneRequested ? (
+                <Suspense fallback={<RobotFallback />}>
+                  <Scene
+                    key={sceneAttempt}
+                    fallback={<RobotFallback />}
+                    onError={handleSceneError}
+                    onLoad={handleSceneLoad}
+                    isActive={isActive}
+                  />
                 </Suspense>
               ) : (
-                <BotPlaceholder />
+                <RobotFallback />
               )}
             </button>
+            <span className='sr-only' role='status' aria-live='polite'>
+              {isSceneLoading
+                ? 'Loading interactive 3D model.'
+                : sceneFailed
+                ? 'The interactive 3D model could not be loaded.'
+                : ''}
+            </span>
           </div>
         </div>
         <p

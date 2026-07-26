@@ -1,13 +1,21 @@
-import { useCallback, useEffect, useId, useRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
+import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import PrimaryButton from '../Buttons/PrimaryButton';
-import { loadingGif } from '../../assets';
 import PropTypes from 'prop-types';
+import LoadingSpinner from './LoadingSpinner';
 
 const Popup = ({
   text,
-  classes,
-  textClasses,
+  classes = '',
+  textClasses = '',
   type = '',
   state,
   setPopup,
@@ -17,8 +25,11 @@ const Popup = ({
   onClose,
 }) => {
   const alertRef = useRef();
+  const overlayRef = useRef();
   const timeline = useRef();
   const previousFocusRef = useRef(null);
+  const wasOpenRef = useRef(false);
+  const [isPresent, setIsPresent] = useState(Boolean(state));
   const popupId = useId();
   const titleId = `${popupId}-title`;
   const messageId = `${popupId}-message`;
@@ -28,16 +39,28 @@ const Popup = ({
     onClose?.();
   }, [onClose, setPopup]);
 
+  useLayoutEffect(() => {
+    if (state && !wasOpenRef.current && !previousFocusRef.current) {
+      previousFocusRef.current = document.activeElement;
+    }
+    wasOpenRef.current = Boolean(state);
+  }, [state]);
+
   useEffect(() => {
     const el = alertRef.current;
+    timeline.current?.kill();
+
+    if (state && !isPresent) {
+      setIsPresent(true);
+      return undefined;
+    }
+    if (!isPresent || !el) return undefined;
+
     const reduceMotion =
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || false;
     const duration = reduceMotion ? 0 : state ? 0.2 : 0.3;
 
     if (state) {
-      if (!previousFocusRef.current) {
-        previousFocusRef.current = document.activeElement;
-      }
       timeline.current = gsap.timeline();
       timeline.current
         .to(el, {
@@ -49,7 +72,6 @@ const Popup = ({
             scale: 1,
             opacity: 1,
             duration,
-            onComplete: () => el?.focus(),
           },
           0
         );
@@ -63,6 +85,7 @@ const Popup = ({
         })
         .to(el, {
           display: 'none',
+          onComplete: () => setIsPresent(false),
         });
     }
 
@@ -71,10 +94,35 @@ const Popup = ({
       timeline?.current?.kill();
       gsap.killTweensOf(el);
     };
-  }, [state]);
+  }, [isPresent, state]);
 
-  useEffect(() => {
-    if (!state) return undefined;
+  useLayoutEffect(() => {
+    if (!isPresent) return undefined;
+
+    if (!previousFocusRef.current) {
+      previousFocusRef.current = document.activeElement;
+    }
+    const previousBodyOverflow = document.body.style.overflow;
+    const overlayElement = overlayRef.current;
+    const backgroundElements = Array.from(document.body.children).filter(
+      (element) =>
+        element !== overlayElement &&
+        (!overlayElement || !element.contains(overlayElement))
+    );
+    const backgroundState = backgroundElements.map((element) => ({
+      ariaHidden: element.getAttribute('aria-hidden'),
+      element,
+      inert: element.inert,
+    }));
+
+    document.body.style.overflow = 'hidden';
+    backgroundElements.forEach((element) => {
+      element.inert = true;
+      element.setAttribute('aria-hidden', 'true');
+    });
+    if (state) {
+      alertRef.current?.focus({ preventScroll: true });
+    }
 
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
@@ -108,18 +156,43 @@ const Popup = ({
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      if (previousFocusRef.current instanceof HTMLElement) {
-        previousFocusRef.current.focus();
+      document.body.style.overflow = previousBodyOverflow;
+      backgroundState.forEach(({ ariaHidden, element, inert }) => {
+        element.inert = inert;
+        if (ariaHidden === null) element.removeAttribute('aria-hidden');
+        else element.setAttribute('aria-hidden', ariaHidden);
+      });
+      const returnFocusTarget = previousFocusRef.current;
+      if (
+        returnFocusTarget?.isConnected &&
+        typeof returnFocusTarget.focus === 'function'
+      ) {
+        returnFocusTarget.focus({ preventScroll: true });
       }
-      previousFocusRef.current = null;
     };
-  }, [closePop, loading, state]);
+  }, [closePop, isPresent, loading, state]);
 
-  return (
+  useLayoutEffect(() => {
+    if (isPresent) return;
+
+    const returnFocusTarget = previousFocusRef.current;
+    alertRef.current?.blur();
+    if (
+      returnFocusTarget?.isConnected &&
+      typeof returnFocusTarget.focus === 'function'
+    ) {
+      returnFocusTarget.focus({ preventScroll: true });
+    }
+    previousFocusRef.current = null;
+  }, [isPresent]);
+
+  const popup = (
     <div
-      aria-hidden={!state}
+      ref={overlayRef}
+      aria-hidden={!isPresent}
+      data-portfolio-modal=''
       className={`fixed inset-0 z-[100] items-center justify-center bg-black/65 p-4 ${
-        state ? 'flex' : 'hidden'
+        isPresent ? 'flex' : 'hidden'
       }`}
     >
       <div
@@ -131,7 +204,7 @@ const Popup = ({
         aria-labelledby={titleId}
         aria-describedby={messageId}
         tabIndex='-1'
-        className={`p-4 px-5 flex-col items-center justify-between gap-4 min-h-[200px] max-w-[400px] w-full ${
+        className={`p-4 px-5 scale-0 opacity-0 flex-col items-center justify-between gap-4 min-h-[200px] max-w-[400px] w-full ${
           type === 'success'
             ? 'bg-green-700'
             : type === 'error'
@@ -168,13 +241,11 @@ const Popup = ({
         </p>
 
         {loading ? (
-          <div className='w-full flex-grow flex items-start justify-center'>
-            <img
-              src={loadingGif}
-              className='w-[100px] h-[100px]'
-              alt='Loading'
-            />
-          </div>
+          <LoadingSpinner
+            className='w-full flex-grow items-start'
+            label={text || 'Request in progress'}
+            sizeClass='h-16 w-16'
+          />
         ) : (
           <div className='flex items-center justify-center gap-3 mb-3 w-full'>
             <PrimaryButton
@@ -191,11 +262,12 @@ const Popup = ({
       </div>
     </div>
   );
+
+  return createPortal(popup, document.body);
 };
 
 Popup.propTypes = {
   text: PropTypes.string,
-  icon: PropTypes.elementType,
   classes: PropTypes.string,
   textClasses: PropTypes.string,
   type: PropTypes.string,

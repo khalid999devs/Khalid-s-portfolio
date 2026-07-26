@@ -58,7 +58,7 @@ const Footer = () => {
                 BASED IN BANGLADESH — WORKING WORLDWIDE{' '}
               </p>
               <div className='flex items-center gap-4'>
-                <div className='flex item-center gap-1 '>
+                <div className='flex items-center gap-1 '>
                   <p className='text-xs text-montreal-mono'>LOCAL TIME</p>
                   <BiSolidRightArrow
                     aria-hidden='true'
