@@ -1,8 +1,9 @@
 const { randomBytes } = require('crypto');
 const { constants, existsSync, mkdirSync } = require('fs');
-const { open } = require('fs/promises');
-const { resolve } = require('path');
+const { open, stat, unlink } = require('fs/promises');
+const { basename, parse, resolve } = require('path');
 const multer = require('multer');
+const sharp = require('sharp');
 const { BadRequestError } = require('../errors');
 const {
   UPLOADS_ROOT,
@@ -32,13 +33,15 @@ const FILE_POLICIES = Object.freeze({
   }),
   videos: Object.freeze({
     'video/mp4': '.mp4',
-    'video/x-matroska': '.mkv',
-    'video/mkv': '.mkv',
-    'audio/wav': '.wav',
-    'audio/x-wav': '.wav',
-    'audio/wave': '.wav',
   }),
 });
+const IMAGE_OUTPUT_POLICIES = Object.freeze({
+  bannerImg: Object.freeze({ maxDimension: 1_920 }),
+  thumbnailContents: Object.freeze({ maxDimension: 1_280 }),
+  sliderContents: Object.freeze({ maxDimension: 2_560 }),
+});
+const MAX_IMAGE_PIXELS = 40_000_000;
+const IMAGE_PROCESSING_TIMEOUT_SECONDS = 20;
 
 const getProjectUploadKey = (req) => {
   const projectId = String(req.params?.id || '');
@@ -68,19 +71,6 @@ const FILE_SIGNATURE_VALIDATORS = Object.freeze({
     buffer.subarray(8, 12).toString('ascii') === 'WEBP',
   'video/mp4': (buffer) =>
     buffer.length >= 12 && buffer.subarray(4, 8).toString('ascii') === 'ftyp',
-  'video/x-matroska': (buffer) =>
-    startsWithBytes(buffer, [0x1a, 0x45, 0xdf, 0xa3]),
-  'video/mkv': (buffer) =>
-    startsWithBytes(buffer, [0x1a, 0x45, 0xdf, 0xa3]),
-  'audio/wav': (buffer) =>
-    buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
-    buffer.subarray(8, 12).toString('ascii') === 'WAVE',
-  'audio/x-wav': (buffer) =>
-    buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
-    buffer.subarray(8, 12).toString('ascii') === 'WAVE',
-  'audio/wave': (buffer) =>
-    buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
-    buffer.subarray(8, 12).toString('ascii') === 'WAVE',
 });
 
 const getUploadedFiles = (req) =>
@@ -109,6 +99,68 @@ const validateFileSignature = async (file) => {
   }
 };
 
+const optimizeUploadedImage = async (file) => {
+  const policy = IMAGE_OUTPUT_POLICIES[file?.fieldname];
+  if (!policy) return file;
+
+  const inputPath = file.path;
+  const parsedPath = parse(inputPath);
+  const outputPath = resolve(
+    parsedPath.dir,
+    `${parsedPath.name}-optimized.webp`
+  );
+
+  try {
+    const image = sharp(inputPath, {
+      failOn: 'warning',
+      limitInputPixels: MAX_IMAGE_PIXELS,
+      sequentialRead: true,
+    });
+    const metadata = await image.metadata();
+    if (
+      !Number.isSafeInteger(metadata.width) ||
+      !Number.isSafeInteger(metadata.height) ||
+      metadata.width < 1 ||
+      metadata.height < 1 ||
+      (metadata.pages || 1) !== 1
+    ) {
+      throw new BadRequestError(
+        'Uploaded images must be a single decodable frame'
+      );
+    }
+
+    const output = await image
+      .timeout({ seconds: IMAGE_PROCESSING_TIMEOUT_SECONDS })
+      .rotate()
+      .resize({
+        fit: 'inside',
+        height: policy.maxDimension,
+        width: policy.maxDimension,
+        withoutEnlargement: true,
+      })
+      .toColourspace('srgb')
+      .webp({ effort: 4, quality: 82, smartSubsample: true })
+      .toFile(outputPath);
+    await unlink(inputPath);
+
+    file.path = outputPath;
+    file.filename = basename(outputPath);
+    file.mimetype = 'image/webp';
+    file.size = (await stat(outputPath)).size;
+    file.width = output.width;
+    file.height = output.height;
+    return file;
+  } catch (error) {
+    // libvips can leave a partial destination behind when encoding fails.
+    // Always attempt to remove it, even when `toFile()` never returned.
+    await unlink(outputPath).catch(() => {});
+    if (error instanceof BadRequestError) throw error;
+    throw new BadRequestError(
+      'An uploaded image could not be decoded and optimized safely'
+    );
+  }
+};
+
 const cleanupRequestUploads = async (req) => {
   await Promise.all(
     getUploadedFiles(req).map(async (file) => {
@@ -125,14 +177,17 @@ const validateUploadedFiles = async (req, _res, next) => {
   const files = getUploadedFiles(req);
 
   try {
-    const validationResults = await Promise.all(
-      files.map(validateFileSignature)
-    );
+    const validationResults = await Promise.all(files.map(validateFileSignature));
 
     if (validationResults.some((isValid) => !isValid)) {
       throw new BadRequestError(
         'An uploaded file does not match its declared media type'
       );
+    }
+
+    // Bound peak native memory by processing request images sequentially.
+    for (const file of files) {
+      await optimizeUploadedImage(file);
     }
 
     next();
@@ -212,7 +267,10 @@ const upload = multer({
 // Expose immutable policy data for focused tests without coupling tests to
 // Multer's private internals.
 upload.FILE_POLICIES = FILE_POLICIES;
+upload.IMAGE_OUTPUT_POLICIES = IMAGE_OUTPUT_POLICIES;
+upload.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS;
 upload.getProjectUploadKey = getProjectUploadKey;
+upload.optimizeUploadedImage = optimizeUploadedImage;
 upload.validateFileSignature = validateFileSignature;
 upload.validateUploadedFiles = validateUploadedFiles;
 

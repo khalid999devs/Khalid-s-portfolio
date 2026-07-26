@@ -162,8 +162,6 @@ const rotateAdminPassword = async ({
 
 module.exports = {
   DEFAULT_BCRYPT_COST,
-  MAXIMUM_PASSWORD_BYTES,
-  MINIMUM_PASSWORD_LENGTH,
   bootstrapAdmin,
   normalizeAdminUserName,
   parseBcryptCost,

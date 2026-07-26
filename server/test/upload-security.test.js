@@ -11,6 +11,7 @@ const {
 const { tmpdir } = require('node:os');
 const { join, resolve } = require('node:path');
 const test = require('node:test');
+const sharp = require('sharp');
 
 const upload = require('../middlewares/uploadFile');
 const deleteFile = require('../utils/deleteFile');
@@ -32,11 +33,13 @@ test('legacy uploads/... database paths remain compatible', () => {
   );
 });
 
-test('upload paths reject absolute, backslash, traversal, and non-upload paths', () => {
+test('upload paths reject absolute, URL markers, traversal, and non-upload paths', () => {
   const invalidPaths = [
     '/etc/passwd',
     'C:\\Windows\\system.ini',
     'uploads\\projects\\1\\bannerImg\\banner.webp',
+    'uploads/projects/1/bannerImg/banner.webp?download=true',
+    'uploads/projects/1/bannerImg/banner.webp#preview',
     'uploads/../index.js',
     'uploads/projects/../../index.js',
     'server/uploads/projects/1/bannerImg/banner.webp',
@@ -61,6 +64,11 @@ test('absolute Multer paths are converted to public stored paths only inside upl
   );
   assert.throws(() => toStoredUploadPath(resolve(UPLOADS_ROOT, '../index.js')));
   assert.throws(() => toStoredUploadPath('../outside.txt'));
+  assert.throws(() =>
+    toStoredUploadPath(
+      resolve(UPLOADS_ROOT, 'projects/42/videos/example.mp4#preview')
+    )
+  );
 });
 
 test('legacy relative Multer paths are independent of process cwd', () => {
@@ -129,6 +137,8 @@ test('deleteFile rejects an upload path that escapes through a symlink', async (
 test('upload policy is exact, field-aware, and does not trust active extensions', () => {
   assert.equal(upload.FILE_POLICIES.bannerImg['image/webp'], '.webp');
   assert.equal(upload.FILE_POLICIES.videos['video/mp4'], '.mp4');
+  assert.equal(upload.FILE_POLICIES.videos['video/x-matroska'], undefined);
+  assert.equal(upload.FILE_POLICIES.videos['audio/wav'], undefined);
   assert.equal(upload.FILE_POLICIES.bannerImg['text/html'], undefined);
   assert.equal(upload.FILE_POLICIES.videos['image/jpeg'], undefined);
 
@@ -223,6 +233,81 @@ test('a spoofed file rejects the request and all request files are removed', asy
 
     assert.equal(existsSync(validFile), false);
     assert.equal(existsSync(spoofedFile), false);
+  } finally {
+    rmSync(testDirectory, { recursive: true, force: true });
+  }
+});
+
+test('uploaded images are bounded, normalized to WebP, and expose safe metadata', async () => {
+  const testDirectory = resolve(
+    UPLOADS_ROOT,
+    `image-optimization-test-${process.pid}-${Date.now()}`
+  );
+  const inputPath = resolve(testDirectory, 'banner.png');
+  mkdirSync(testDirectory, { recursive: true });
+
+  try {
+    await sharp({
+      create: {
+        background: { alpha: 1, b: 30, g: 20, r: 10 },
+        channels: 4,
+        height: 1_000,
+        width: 2_000,
+      },
+    })
+      .png()
+      .toFile(inputPath);
+
+    const file = {
+      fieldname: 'bannerImg',
+      filename: 'banner.png',
+      mimetype: 'image/png',
+      path: inputPath,
+    };
+
+    assert.equal(await upload.validateFileSignature(file), true);
+    const optimized = await upload.optimizeUploadedImage(file);
+    const metadata = await sharp(optimized.path).metadata();
+
+    assert.equal(optimized, file);
+    assert.equal(existsSync(inputPath), false);
+    assert.equal(existsSync(optimized.path), true);
+    assert.equal(optimized.mimetype, 'image/webp');
+    assert.match(optimized.filename, /-optimized\.webp$/u);
+    assert.equal(optimized.width, 1_920);
+    assert.equal(optimized.height, 960);
+    assert.equal(metadata.format, 'webp');
+    assert.equal(metadata.width, 1_920);
+    assert.equal(metadata.height, 960);
+    assert.equal(metadata.exif, undefined);
+    assert.ok(Number.isSafeInteger(optimized.size) && optimized.size > 0);
+  } finally {
+    rmSync(testDirectory, { recursive: true, force: true });
+  }
+});
+
+test('image optimization rejects undecodable input without leaving a destination', async () => {
+  const testDirectory = resolve(
+    UPLOADS_ROOT,
+    `image-optimization-failure-test-${process.pid}-${Date.now()}`
+  );
+  const inputPath = resolve(testDirectory, 'thumbnail.png');
+  const outputPath = resolve(testDirectory, 'thumbnail-optimized.webp');
+  mkdirSync(testDirectory, { recursive: true });
+  writeFileSync(inputPath, Buffer.from('not actually an image'));
+
+  try {
+    await assert.rejects(
+      upload.optimizeUploadedImage({
+        fieldname: 'thumbnailContents',
+        filename: 'thumbnail.png',
+        mimetype: 'image/png',
+        path: inputPath,
+      }),
+      /could not be decoded and optimized safely/
+    );
+    assert.equal(existsSync(inputPath), true);
+    assert.equal(existsSync(outputPath), false);
   } finally {
     rmSync(testDirectory, { recursive: true, force: true });
   }

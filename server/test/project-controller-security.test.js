@@ -16,6 +16,7 @@ const {
   validateProjectIdParam,
 } = require('../controllers/projects');
 const projectRouter = require('../routers/projects');
+const adminValidate = require('../middlewares/adminTokenVerify');
 const { UPLOADS_ROOT } = require('../utils/uploadPaths');
 
 test('update-content rejects client-controlled stored media paths', async () => {
@@ -80,6 +81,8 @@ test('edit-contents rejects extra body fields before persistence', async () => {
 
 test('a controller failure removes newly written uploads', async () => {
   const originalFindByPk = projects.findByPk;
+  const originalTransaction = sequelize.transaction;
+  const transaction = { LOCK: { UPDATE: 'UPDATE' } };
   const testDirectory = resolve(
     UPLOADS_ROOT,
     `controller-cleanup-test-${process.pid}-${Date.now()}`
@@ -88,6 +91,7 @@ test('a controller failure removes newly written uploads', async () => {
 
   mkdirSync(testDirectory, { recursive: true });
   writeFileSync(testFile, 'test');
+  sequelize.transaction = async (callback) => callback(transaction);
   projects.findByPk = async () => null;
 
   try {
@@ -115,6 +119,7 @@ test('a controller failure removes newly written uploads', async () => {
 
     assert.equal(existsSync(testFile), false);
   } finally {
+    sequelize.transaction = originalTransaction;
     projects.findByPk = originalFindByPk;
     rmSync(testDirectory, { recursive: true, force: true });
   }
@@ -283,8 +288,15 @@ test('route ids are rejected before Multer can create upload directories', () =>
     const multerIndex = handlers.findIndex(
       (handler) => handler.name === 'multerMiddleware'
     );
+    const isPublicRead = layer.route.methods.get === true;
 
-    assert.equal(validatorIndex, 1, `${layer.route.path} validates after auth`);
+    assert.equal(
+      validatorIndex,
+      isPublicRead ? 0 : 1,
+      isPublicRead
+        ? `${layer.route.path} validates its public id first`
+        : `${layer.route.path} validates after auth`
+    );
     if (multerIndex !== -1) {
       assert.ok(
         validatorIndex < multerIndex,
@@ -292,6 +304,16 @@ test('route ids are rejected before Multer can create upload directories', () =>
       );
     }
   }
+});
+
+test('legacy detailed project reads require administrator authentication', () => {
+  const detailedReadRoute = projectRouter.stack.find(
+    (layer) =>
+      layer.route?.path === '/' && layer.route.methods.post === true
+  );
+
+  assert.ok(detailedReadRoute);
+  assert.equal(detailedReadRoute.route.stack[0].handle, adminValidate);
 });
 
 test('single-project lookup parses a canonical positive id and preserves stored response data', async () => {
@@ -353,6 +375,8 @@ test('single-project lookup rejects malformed, unsafe, and out-of-range ids', as
 
 test('project information is Unicode-normalized, trimmed, bounded, and deduplicated', async () => {
   const originalFindByPk = projects.findByPk;
+  const originalTransaction = sequelize.transaction;
+  const transaction = { LOCK: { UPDATE: 'UPDATE' } };
   let updatedData;
   let responseBody;
   const state = {
@@ -373,6 +397,7 @@ test('project information is Unicode-normalized, trimmed, bounded, and deduplica
       return { ...state };
     },
   };
+  sequelize.transaction = async (callback) => callback(transaction);
   projects.findByPk = async () => project;
 
   try {
@@ -404,6 +429,7 @@ test('project information is Unicode-normalized, trimmed, bounded, and deduplica
     assert.deepEqual(responseBody.result.role, ['Lead', 'Developer']);
     assert.deepEqual(responseBody.result.techStack, ['Node.js', 'React']);
   } finally {
+    sequelize.transaction = originalTransaction;
     projects.findByPk = originalFindByPk;
   }
 });
@@ -444,12 +470,16 @@ test('project information rejects unsafe URLs and invalid bounded arrays before 
 
 test('banner replacement preserves the existing no-content-id upload contract', async () => {
   const originalFindByPk = projects.findByPk;
+  const originalTransaction = sequelize.transaction;
+  const transaction = { LOCK: { UPDATE: 'UPDATE' } };
   const testDirectory = resolve(
     UPLOADS_ROOT,
     `banner-contract-test-${process.pid}-${Date.now()}`
   );
   const testFile = resolve(testDirectory, 'bannerImg-contract.webp');
   let savedFields;
+  let savedTransaction;
+  let lookupOptions;
   let responseBody;
   const state = {
     id: 4,
@@ -463,16 +493,21 @@ test('banner replacement preserves the existing no-content-id upload contract', 
 
   mkdirSync(testDirectory, { recursive: true });
   writeFileSync(testFile, 'test');
-  projects.findByPk = async () => ({
-    ...state,
-    async save(options) {
-      savedFields = options.fields;
-      state.bannerImg = this.bannerImg;
-    },
-    get() {
-      return { ...state };
-    },
-  });
+  sequelize.transaction = async (callback) => callback(transaction);
+  projects.findByPk = async (_id, options) => {
+    lookupOptions = options;
+    return {
+      ...state,
+      async save(options) {
+        savedFields = options.fields;
+        savedTransaction = options.transaction;
+        state.bannerImg = this.bannerImg;
+      },
+      get() {
+        return { ...state };
+      },
+    };
+  };
 
   try {
     await editProjectContents(
@@ -495,9 +530,85 @@ test('banner replacement preserves the existing no-content-id upload contract', 
     );
 
     assert.deepEqual(savedFields, ['bannerImg']);
+    assert.equal(savedTransaction, transaction);
+    assert.equal(lookupOptions.transaction, transaction);
+    assert.equal(lookupOptions.lock, 'UPDATE');
     assert.equal(responseBody.succeed, true);
     assert.match(state.bannerImg, /^uploads\//u);
   } finally {
+    sequelize.transaction = originalTransaction;
+    projects.findByPk = originalFindByPk;
+    rmSync(testDirectory, { recursive: true, force: true });
+  }
+});
+
+test('an uncertain commit never deletes a newly referenced upload', async () => {
+  const originalFindByPk = projects.findByPk;
+  const originalTransaction = sequelize.transaction;
+  const transaction = { LOCK: { UPDATE: 'UPDATE' } };
+  const testDirectory = resolve(
+    UPLOADS_ROOT,
+    `uncertain-commit-test-${process.pid}-${Date.now()}`
+  );
+  const testFile = resolve(testDirectory, 'bannerImg-uncertain.webp');
+  const lookupOptions = [];
+  const state = {
+    id: 4,
+    bannerImg: null,
+    role: '["Developer"]',
+    techStack: '[]',
+    videos: '[]',
+    thumbnailContents: '[]',
+    sliderContents: '[]',
+  };
+
+  mkdirSync(testDirectory, { recursive: true });
+  writeFileSync(testFile, 'test');
+  projects.findByPk = async (_id, options) => {
+    lookupOptions.push(options);
+    return {
+      ...state,
+      async save() {
+        state.bannerImg = this.bannerImg;
+      },
+    };
+  };
+  sequelize.transaction = async (callback) => {
+    await callback(transaction);
+    throw new Error('Commit acknowledgment was lost');
+  };
+
+  try {
+    await assert.rejects(
+      () =>
+        editProjectContents(
+          {
+            body: { mode: 'bannerImg', replaceItem: 'true' },
+            files: {
+              bannerImg: [
+                {
+                  fieldname: 'bannerImg',
+                  filename: 'bannerImg-uncertain.webp',
+                  mimetype: 'image/webp',
+                  path: testFile,
+                  size: 4,
+                },
+              ],
+            },
+            params: { id: '4' },
+          },
+          {}
+        ),
+      /Commit acknowledgment was lost/u
+    );
+
+    assert.equal(lookupOptions.length, 2);
+    assert.equal(lookupOptions[0].transaction, transaction);
+    assert.equal(lookupOptions[1], undefined);
+    assert.match(state.bannerImg, /^uploads\//u);
+    assert.equal(existsSync(testFile), true);
+  } finally {
+    sequelize.transaction = originalTransaction;
     projects.findByPk = originalFindByPk;
     rmSync(testDirectory, { recursive: true, force: true });
   }
@@ -505,6 +616,8 @@ test('banner replacement preserves the existing no-content-id upload contract', 
 
 test('content append enforces a bounded stored collection and cleans the rejected upload', async () => {
   const originalFindByPk = projects.findByPk;
+  const originalTransaction = sequelize.transaction;
+  const transaction = { LOCK: { UPDATE: 'UPDATE' } };
   const testDirectory = resolve(
     UPLOADS_ROOT,
     `content-limit-test-${process.pid}-${Date.now()}`
@@ -517,6 +630,7 @@ test('content append enforces a bounded stored collection and cleans the rejecte
 
   mkdirSync(testDirectory, { recursive: true });
   writeFileSync(testFile, 'test');
+  sequelize.transaction = async (callback) => callback(transaction);
   projects.findByPk = async () => ({ videos: JSON.stringify(existingVideos) });
 
   try {
@@ -543,6 +657,7 @@ test('content append enforces a bounded stored collection and cleans the rejecte
     );
     assert.equal(existsSync(testFile), false);
   } finally {
+    sequelize.transaction = originalTransaction;
     projects.findByPk = originalFindByPk;
     rmSync(testDirectory, { recursive: true, force: true });
   }

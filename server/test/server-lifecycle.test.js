@@ -8,6 +8,7 @@ const express = require('express');
 const { createHealthRouter } = require('../index');
 const {
   closeDatabaseConnection,
+  closeHttpServer,
   createShutdownManager,
 } = require('../utils/serverLifecycle');
 
@@ -58,7 +59,9 @@ test('health endpoints expose only stable status and readiness fails closed', as
 
 test('graceful shutdown is idempotent, drains HTTP, and closes Sequelize', async () => {
   const events = [];
+  const exitCodes = [];
   const processTarget = new EventEmitter();
+  processTarget.exit = (code) => exitCodes.push(code);
   const lifecycleState = { isShuttingDown: false };
   const server = {
     close(callback) {
@@ -102,6 +105,7 @@ test('graceful shutdown is idempotent, drains HTTP, and closes Sequelize', async
   ]);
   assert.equal(processTarget.listenerCount('SIGINT'), 0);
   assert.equal(processTarget.listenerCount('SIGTERM'), 0);
+  assert.deepEqual(exitCodes, []);
 });
 
 test('database shutdown rejects within its configured deadline', async () => {
@@ -120,10 +124,151 @@ test('database shutdown rejects within its configured deadline', async () => {
   assert.ok(Date.now() - startedAt < 1_000);
 });
 
-test('SIGTERM triggers the same graceful shutdown path', async () => {
+test('HTTP force-close failures reject in a controlled aggregate', async () => {
+  const forceCloseError = new Error('force-close failed');
+
+  await assert.rejects(
+    closeHttpServer(
+      {
+        close() {},
+        closeAllConnections() {
+          throw forceCloseError;
+        },
+      },
+      5
+    ),
+    (error) =>
+      error instanceof AggregateError &&
+      error.errors.some((item) => item === forceCloseError) &&
+      error.errors.some((item) => /did not drain/u.test(item.message))
+  );
+});
+
+test('graceful shutdown passes only the remaining monotonic deadline to database cleanup', async () => {
   const processTarget = new EventEmitter();
   const lifecycleState = { isShuttingDown: false };
+  const cleanupBudgets = [];
+  let currentTime = 1_000;
+  const manager = createShutdownManager({
+    closeDatabaseConnectionFn: async (_sequelize, remainingMs) => {
+      cleanupBudgets.push(['database', remainingMs]);
+    },
+    closeHttpServerFn: async (_server, remainingMs) => {
+      cleanupBudgets.push(['http', remainingMs]);
+      currentTime += 75;
+      throw new Error('HTTP close failed');
+    },
+    lifecycleState,
+    now: () => currentTime,
+    processTarget,
+    sequelize: {},
+    server: {},
+    timeoutMs: 100,
+  });
+
+  await assert.rejects(
+    () => manager.shutdown(),
+    (error) =>
+      error instanceof AggregateError &&
+      error.errors.length === 1 &&
+      error.errors[0].message === 'HTTP close failed'
+  );
+
+  assert.deepEqual(cleanupBudgets, [
+    ['http', 100],
+    ['database', 25],
+  ]);
+});
+
+test('a second termination signal forces exit during graceful shutdown', async () => {
+  const processTarget = new EventEmitter();
+  const exitCodes = [];
+  const loggedErrors = [];
+  processTarget.exit = (code) => exitCodes.push(code);
+  const manager = createShutdownManager({
+    closeDatabaseConnectionFn: async () => {},
+    closeHttpServerFn: async () => {
+      throw new Error('HTTP server did not drain');
+    },
+    lifecycleState: { isShuttingDown: false },
+    logger: { error: (message) => loggedErrors.push(message) },
+    processTarget,
+    sequelize: {},
+    server: {},
+    timeoutMs: 1_000,
+  });
+
+  processTarget.emit('SIGTERM');
+  processTarget.emit('SIGTERM');
+
+  assert.deepEqual(exitCodes, [1]);
+  assert.match(loggedErrors[0], /forcing process exit/u);
+  await assert.rejects(
+    () => manager.shutdown(),
+    (error) =>
+      error instanceof AggregateError &&
+      error.errors.some((item) => /did not drain/u.test(item.message))
+  );
+});
+
+test('a first-signal shutdown failure exits with status one', async () => {
+  const processTarget = new EventEmitter();
+  const exitCodes = [];
+  processTarget.exit = (code) => exitCodes.push(code);
+  const manager = createShutdownManager({
+    closeDatabaseConnectionFn: async () => {},
+    closeHttpServerFn: async () => {
+      throw new Error('HTTP close failed');
+    },
+    lifecycleState: { isShuttingDown: false },
+    logger: { error() {} },
+    processTarget,
+    sequelize: {},
+    server: {},
+    timeoutMs: 1_000,
+  });
+
+  processTarget.emit('SIGTERM');
+  await assert.rejects(() => manager.shutdown(), /Graceful shutdown failed/u);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(exitCodes, [1]);
+});
+
+test('the first-signal watchdog forces exit at the absolute deadline', () => {
+  const processTarget = new EventEmitter();
+  const exitCodes = [];
+  const loggedErrors = [];
+  let watchdog;
+  processTarget.exit = (code) => exitCodes.push(code);
+  createShutdownManager({
+    closeHttpServerFn: () => new Promise(() => {}),
+    lifecycleState: { isShuttingDown: false },
+    logger: { error: (message) => loggedErrors.push(message) },
+    processTarget,
+    sequelize: {},
+    server: {},
+    setTimeoutFn(callback, timeoutMs) {
+      assert.equal(timeoutMs, 1_000);
+      watchdog = callback;
+      return 1;
+    },
+    timeoutMs: 1_000,
+  });
+
+  processTarget.emit('SIGTERM');
+  watchdog();
+
+  assert.deepEqual(exitCodes, [1]);
+  assert.match(loggedErrors[0], /exceeded 1000 milliseconds/u);
+});
+
+test('SIGTERM completes cleanup and exits with status zero', async () => {
+  const processTarget = new EventEmitter();
+  const lifecycleState = { isShuttingDown: false };
+  const exitCodes = [];
   let databaseClosed = false;
+  processTarget.exit = (code) => exitCodes.push(code);
   const manager = createShutdownManager({
     lifecycleState,
     logger: { error() {} },
@@ -146,4 +291,5 @@ test('SIGTERM triggers the same graceful shutdown path', async () => {
 
   assert.equal(lifecycleState.isShuttingDown, true);
   assert.equal(databaseClosed, true);
+  assert.deepEqual(exitCodes, [0]);
 });

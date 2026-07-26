@@ -4,6 +4,10 @@ const assert = require('node:assert/strict');
 const { Readable } = require('node:stream');
 const test = require('node:test');
 const { compare } = require('bcryptjs');
+const {
+  listMigrationFiles,
+  TRANSACTIONAL_TABLES,
+} = require('../utils/databaseReadiness');
 
 const {
   bootstrapAdmin,
@@ -161,8 +165,14 @@ test('admin CLI checks migrations, consumes stdin, and always closes Sequelize',
         },
       };
     },
-    async query() {
-      return [{ name: '20260722000000-baseline-schema.js' }];
+    async query(sql) {
+      if (sql.includes('information_schema')) {
+        return TRANSACTIONAL_TABLES.map((tableName) => ({
+          engine: 'InnoDB',
+          tableName,
+        }));
+      }
+      return listMigrationFiles().map((name) => ({ name }));
     },
   });
 

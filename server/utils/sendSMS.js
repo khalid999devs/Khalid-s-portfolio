@@ -1,6 +1,12 @@
 const https = require('node:https');
 const { URL, URLSearchParams } = require('node:url');
+const {
+  ProviderCapacityError,
+  ProviderDeadlineError,
+  createProviderExecutor,
+} = require('./providerExecution');
 
+const DEFAULT_MAX_CONCURRENCY = 3;
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_RESPONSE_BYTES = 4_096;
 
@@ -17,13 +23,23 @@ const providerMessages = {
 };
 
 const clientInputStatuses = new Set(['1002', '1003', '1004', '1005']);
+const smsExecutor = createProviderExecutor({ providerName: 'SMS' });
 
 class SmsDeliveryError extends Error {
-  constructor(message = 'SMS delivery is temporarily unavailable.') {
+  constructor(
+    message = 'SMS delivery is temporarily unavailable.',
+    {
+      code = 'SMS_DELIVERY_FAILED',
+      deliveryOutcome = 'unknown',
+      statusCode = 502,
+    } = {}
+  ) {
     super(message);
     this.name = 'SmsDeliveryError';
-    this.statusCode = 502;
-    this.code = 'SMS_DELIVERY_FAILED';
+    this.statusCode = statusCode;
+    this.code = code;
+    this.deliveryOutcome = deliveryOutcome;
+    this.deliveryOutcomeAmbiguous = deliveryOutcome === 'unknown';
   }
 }
 
@@ -41,6 +57,33 @@ const requireConfigValue = (environment, key) => {
   }
 
   return value.trim();
+};
+
+const parseBoundedInteger = (
+  environment,
+  key,
+  { defaultValue, minimum, maximum }
+) => {
+  const rawValue = environment[key];
+  if (rawValue === undefined || String(rawValue).trim() === '') {
+    return defaultValue;
+  }
+
+  const normalizedValue = String(rawValue).trim();
+  if (!/^\d+$/u.test(normalizedValue)) {
+    throw configurationError(
+      `${key} must be between ${minimum} and ${maximum}.`
+    );
+  }
+
+  const value = Number(normalizedValue);
+  if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+    throw configurationError(
+      `${key} must be between ${minimum} and ${maximum}.`
+    );
+  }
+
+  return value;
 };
 
 const getSmsConfig = (environment = process.env) => {
@@ -70,17 +113,18 @@ const getSmsConfig = (environment = process.env) => {
     );
   }
 
-  const timeoutMs = environment.SMS_TIMEOUT_MS
-    ? Number(environment.SMS_TIMEOUT_MS)
-    : DEFAULT_TIMEOUT_MS;
+  const maxConcurrency = parseBoundedInteger(
+    environment,
+    'SMS_MAX_CONCURRENCY',
+    { defaultValue: DEFAULT_MAX_CONCURRENCY, minimum: 1, maximum: 10 }
+  );
+  const timeoutMs = parseBoundedInteger(environment, 'SMS_TIMEOUT_MS', {
+    defaultValue: DEFAULT_TIMEOUT_MS,
+    minimum: 1_000,
+    maximum: 30_000,
+  });
 
-  if (!Number.isInteger(timeoutMs) || timeoutMs < 1_000 || timeoutMs > 30_000) {
-    throw configurationError(
-      'SMS_TIMEOUT_MS must be between 1000 and 30000 milliseconds.'
-    );
-  }
-
-  return { endpoint, password, timeoutMs, username };
+  return { endpoint, maxConcurrency, password, timeoutMs, username };
 };
 
 const validateSmsPayload = (numbers, message) => {
@@ -95,6 +139,8 @@ const validateSmsPayload = (numbers, message) => {
     const error = new Error('A valid SMS recipient is required.');
     error.code = 'SMS_INPUT_INVALID';
     error.statusCode = 400;
+    error.deliveryOutcome = 'not-attempted';
+    error.deliveryOutcomeAmbiguous = false;
     throw error;
   }
 
@@ -102,6 +148,8 @@ const validateSmsPayload = (numbers, message) => {
     const error = new Error('SMS message must be between 1 and 1000 characters.');
     error.code = 'SMS_INPUT_INVALID';
     error.statusCode = 400;
+    error.deliveryOutcome = 'not-attempted';
+    error.deliveryOutcomeAmbiguous = false;
     throw error;
   }
 
@@ -145,66 +193,216 @@ const parseProviderResponse = (body) => {
   };
 };
 
-const performRequest = ({ body, options }, request = https.request) =>
+const performRequest = (
+  { body, options },
+  request = https.request,
+  {
+    clearTimeoutFn = clearTimeout,
+    setTimeoutFn = setTimeout,
+    signal,
+  } = {}
+) =>
   new Promise((resolve, reject) => {
+    let deadlineTimer;
+    let req;
     let settled = false;
 
-    const fail = (error) => {
+    const cleanup = () => {
+      clearTimeoutFn(deadlineTimer);
+      signal?.removeEventListener('abort', handleAbort);
+    };
+
+    const fail = (
+      error,
+      { destroyRequest = false, response } = {}
+    ) => {
       if (settled) return;
       settled = true;
+      cleanup();
+
+      if (response) {
+        try {
+          response.destroy();
+        } catch (_error) {
+          // The original bounded provider error remains authoritative.
+        }
+      }
+      if (destroyRequest && req) {
+        try {
+          req.destroy(error);
+        } catch (_error) {
+          // The promise is still rejected below even if a fake/broken request
+          // object cannot be destroyed cleanly.
+        }
+      }
+
       reject(error);
     };
 
-    const req = request(options, (response) => {
-      let responseBody = '';
-      let responseBytes = 0;
+    const succeed = (value) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(value);
+    };
 
-      if (
-        response.statusCode < 200 ||
-        response.statusCode >= 300 ||
-        response.headers.location
-      ) {
-        response.resume();
-        fail(Object.assign(new Error('Unexpected SMS provider status.'), {
-          code: 'SMS_PROVIDER_HTTP_ERROR',
-        }));
-        return;
-      }
+    const timeoutError = () =>
+      Object.assign(new Error('SMS provider request timed out.'), {
+        code: 'SMS_PROVIDER_TIMEOUT',
+        deliveryOutcome: 'unknown',
+        deliveryOutcomeAmbiguous: true,
+      });
 
-      response.setEncoding('utf8');
-      response.on('data', (chunk) => {
-        responseBytes += Buffer.byteLength(chunk);
-        if (responseBytes > MAX_RESPONSE_BYTES) {
-          response.destroy();
-          fail(Object.assign(new Error('SMS provider response is too large.'), {
-            code: 'SMS_PROVIDER_RESPONSE_TOO_LARGE',
-          }));
+    function handleAbort() {
+      const error =
+        signal.reason instanceof Error ? signal.reason : timeoutError();
+      fail(error, { destroyRequest: true });
+    }
+
+    if (signal?.aborted) {
+      fail(
+        signal.reason instanceof Error ? signal.reason : timeoutError()
+      );
+      return;
+    }
+
+    signal?.addEventListener('abort', handleAbort, { once: true });
+    deadlineTimer = setTimeoutFn(() => {
+      fail(timeoutError(), { destroyRequest: true });
+    }, options.timeout);
+
+    try {
+      req = request(options, (response) => {
+        let responseBody = '';
+        let responseBytes = 0;
+        let responseEnded = false;
+        const statusCode = response.statusCode;
+
+        if (
+          !Number.isInteger(statusCode) ||
+          statusCode < 200 ||
+          statusCode >= 300 ||
+          response.headers?.location
+        ) {
+          fail(
+            Object.assign(
+              new Error('Unexpected SMS provider status.'),
+              { code: 'SMS_PROVIDER_HTTP_ERROR' }
+            ),
+            { destroyRequest: true, response }
+          );
           return;
         }
-        responseBody += chunk;
-      });
-      response.on('end', () => {
-        if (settled) return;
-        settled = true;
-        resolve(responseBody);
-      });
-      response.on('error', fail);
-    });
 
-    req.on('timeout', () => {
-      req.destroy(
-        Object.assign(new Error('SMS provider request timed out.'), {
-          code: 'SMS_PROVIDER_TIMEOUT',
-        })
-      );
-    });
-    req.on('error', fail);
-    req.end(body);
+        try {
+          response.setEncoding('utf8');
+        } catch (error) {
+          fail(error, { destroyRequest: true, response });
+          return;
+        }
+
+        response.on('data', (chunk) => {
+          if (settled) return;
+          responseBytes += Buffer.byteLength(chunk);
+          if (responseBytes > MAX_RESPONSE_BYTES) {
+            fail(
+              Object.assign(
+                new Error('SMS provider response is too large.'),
+                { code: 'SMS_PROVIDER_RESPONSE_TOO_LARGE' }
+              ),
+              { destroyRequest: true, response }
+            );
+            return;
+          }
+          responseBody += chunk;
+        });
+        response.on('end', () => {
+          responseEnded = true;
+          succeed(responseBody);
+        });
+        response.on('aborted', () => {
+          fail(
+            Object.assign(
+              new Error('SMS provider response was aborted.'),
+              { code: 'SMS_PROVIDER_RESPONSE_ABORTED' }
+            ),
+            { destroyRequest: true }
+          );
+        });
+        response.on('close', () => {
+          if (responseEnded || response.complete) return;
+          fail(
+            Object.assign(
+              new Error('SMS provider response closed prematurely.'),
+              { code: 'SMS_PROVIDER_RESPONSE_INCOMPLETE' }
+            ),
+            { destroyRequest: true }
+          );
+        });
+        response.on('error', (error) => {
+          fail(error, { destroyRequest: true });
+        });
+      });
+    } catch (error) {
+      fail(error);
+      return;
+    }
+
+    if (settled) {
+      try {
+        req.destroy();
+      } catch (_error) {
+        // The response callback already settled the operation.
+      }
+      return;
+    }
+
+    try {
+      if (
+        typeof req?.on !== 'function' ||
+        typeof req?.end !== 'function' ||
+        typeof req?.destroy !== 'function'
+      ) {
+        throw new Error('SMS provider request object is invalid.');
+      }
+      req.on('timeout', () => {
+        fail(timeoutError(), { destroyRequest: true });
+      });
+      req.on('error', fail);
+      req.end(body);
+    } catch (error) {
+      fail(error, { destroyRequest: true });
+    }
   });
 
 const safeProviderCode = (error) => {
   const value = error?.code || 'UNKNOWN';
   return String(value).replace(/[^A-Z0-9_-]/gi, '').slice(0, 40) || 'UNKNOWN';
+};
+
+const toSmsDeliveryError = (error) => {
+  if (error instanceof SmsDeliveryError) return error;
+
+  if (error instanceof ProviderCapacityError) {
+    return new SmsDeliveryError(undefined, {
+      code: 'SMS_CAPACITY_EXCEEDED',
+      deliveryOutcome: 'not-attempted',
+      statusCode: 503,
+    });
+  }
+
+  if (
+    error instanceof ProviderDeadlineError ||
+    error?.code === 'SMS_PROVIDER_TIMEOUT'
+  ) {
+    return new SmsDeliveryError(undefined, {
+      code: 'SMS_DELIVERY_TIMEOUT',
+      deliveryOutcome: 'unknown',
+      statusCode: 504,
+    });
+  }
+
+  return new SmsDeliveryError();
 };
 
 const sendSMS = async (numbers, message) => {
@@ -220,11 +418,20 @@ const sendSMS = async (numbers, message) => {
     console.error('SMS delivery configuration is invalid.', {
       code: safeProviderCode(error),
     });
-    throw new SmsDeliveryError();
+    throw new SmsDeliveryError(undefined, {
+      code: 'SMS_PREPARATION_INVALID',
+      deliveryOutcome: 'not-attempted',
+    });
   }
 
   try {
-    const body = await performRequest(request);
+    const body = await smsExecutor.execute(
+      ({ signal }) => performRequest(request, https.request, { signal }),
+      {
+        capacity: config.maxConcurrency,
+        timeoutMs: config.timeoutMs,
+      }
+    );
     const result = parseProviderResponse(body);
 
     if (result.status === '1101') {
@@ -251,7 +458,7 @@ const sendSMS = async (numbers, message) => {
     console.error('SMS delivery failed.', {
       code: safeProviderCode(error),
     });
-    throw new SmsDeliveryError();
+    throw toSmsDeliveryError(error);
   }
 };
 
@@ -261,4 +468,5 @@ module.exports.buildSmsRequest = buildSmsRequest;
 module.exports.getSmsConfig = getSmsConfig;
 module.exports.parseProviderResponse = parseProviderResponse;
 module.exports.performRequest = performRequest;
+module.exports.toSmsDeliveryError = toSmsDeliveryError;
 module.exports.validateSmsPayload = validateSmsPayload;

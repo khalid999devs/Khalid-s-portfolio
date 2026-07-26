@@ -39,6 +39,28 @@ const CONTENT_ITEM_LIMITS = {
   thumbnailContents: 64,
   sliderContents: 64,
 };
+const PROJECT_RESPONSE_FIELDS = [
+  'id',
+  'title',
+  'value',
+  'category',
+  'subtitle',
+  'overview',
+  'role',
+  'siteLink',
+  'designLink',
+  'codeLink',
+  'date',
+  'locationYear',
+  'techStack',
+  'bannerImg',
+  'videos',
+  'thumbnailContents',
+  'sliderContents',
+  'displayOrder',
+  'createdAt',
+  'updatedAt',
+];
 
 const MAX_DATABASE_ID = 2_147_483_647;
 const MAX_PROJECT_CREATE_ATTEMPTS = 3;
@@ -378,6 +400,44 @@ const cleanupUploadedFiles = async (req) => {
   );
 };
 
+const cleanupUploadsAfterUncertainCommit = async (req, projectId) => {
+  let referencedPaths;
+
+  try {
+    const project = await projects.findByPk(projectId);
+    referencedPaths = new Set(
+      project
+        ? [
+            project.bannerImg,
+            ...collectContentPaths(project, 'videos'),
+            ...collectContentPaths(project, 'sliderContents'),
+            ...collectContentPaths(project, 'thumbnailContents'),
+          ].filter(Boolean)
+        : []
+    );
+  } catch (error) {
+    // A commit error can mean that MySQL committed but the acknowledgment was
+    // lost. If the verification read also fails, preserving a possible orphan
+    // is safer than deleting a file that a committed row may now reference.
+    console.error(
+      'Unable to reconcile uploads after an uncertain database commit',
+      error
+    );
+    return;
+  }
+
+  await Promise.all(
+    getUploadedFiles(req).map(async (file) => {
+      try {
+        const storedPath = toStoredUploadPath(file.path);
+        if (!referencedPaths.has(storedPath)) await deleteFile(storedPath);
+      } catch (error) {
+        console.error('Unable to reconcile an uncertain upload safely', error);
+      }
+    })
+  );
+};
+
 const deleteStoredFilesSafely = async (storedPaths) => {
   await Promise.all(
     [...new Set(storedPaths.filter(Boolean))].map(async (storedPath) => {
@@ -398,6 +458,8 @@ const publicFileMetadata = (file, storedPath) => ({
   mimetype: file.mimetype,
   path: storedPath,
   size: file.size,
+  ...(Number.isSafeInteger(file.width) ? { width: file.width } : {}),
+  ...(Number.isSafeInteger(file.height) ? { height: file.height } : {}),
 });
 
 const createContentItem = (file, metadataKey, id) => {
@@ -408,14 +470,17 @@ const createContentItem = (file, metadataKey, id) => {
       id ||
       `${Date.now()}-${randomBytes(8).toString('hex')}`,
     url: storedPath,
+    ...(Number.isSafeInteger(file.width) ? { width: file.width } : {}),
+    ...(Number.isSafeInteger(file.height) ? { height: file.height } : {}),
     [metadataKey]: publicFileMetadata(file, storedPath),
   };
 };
 
 const projectForResponse = (project) => {
-  const data = project.get
+  const rawData = project.get
     ? project.get({ plain: true })
     : { ...project };
+  const data = pickFields(rawData, PROJECT_RESPONSE_FIELDS);
 
   ARRAY_FIELDS.forEach((field) => {
     if (hasOwn(data, field)) {
@@ -426,10 +491,51 @@ const projectForResponse = (project) => {
   return data;
 };
 
+const publicContentItem = (item) => {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+
+  return pickFields(item, ['id', 'url', 'width', 'height']);
+};
+
+const projectForPublicResponse = (project, { compact = false } = {}) => {
+  const data = projectForResponse(project);
+  delete data.createdAt;
+  delete data.updatedAt;
+
+  for (const field of ['videos', 'thumbnailContents', 'sliderContents']) {
+    if (!Array.isArray(data[field])) continue;
+    const content = data[field].map(publicContentItem).filter(Boolean);
+    data[field] =
+      compact && field === 'thumbnailContents' ? content.slice(0, 1) : content;
+  }
+
+  return data;
+};
+
+const setPublicReadCache = (res) => {
+  res.set(
+    'Cache-Control',
+    'public, no-cache, must-revalidate'
+  );
+};
+
 const collectContentPaths = (project, field) =>
   parseStoredArray(project[field], field)
     .map((item) => item?.url)
     .filter(Boolean);
+
+const findLockedProject = async (projectId, transaction) => {
+  const project = await projects.findByPk(projectId, {
+    lock: transaction.LOCK?.UPDATE,
+    transaction,
+  });
+
+  if (!project) {
+    throw new BadRequestError('Please enter the correct project id');
+  }
+
+  return project;
+};
 
 const createProject = async (req, res) => {
   const body = req.body || {};
@@ -524,9 +630,11 @@ const createProject = async (req, res) => {
 
 const updateProjectContents = async (req, res) => {
   let committed = false;
+  let transactionWorkCompleted = false;
+  let projectId;
 
   try {
-    const projectId = parsePositiveProjectId(req.params?.id);
+    projectId = parsePositiveProjectId(req.params?.id);
     const body = req.body || {};
     // Older clients included title because it once selected the upload folder.
     // Accept but ignore it; the immutable route id now chooses the folder.
@@ -541,35 +649,37 @@ const updateProjectContents = async (req, res) => {
     normalizeScalarFields(data, URL_FIELDS);
     normalizeArrayFieldsForStorage(data, ['techStack']);
 
-    const project = await projects.findByPk(projectId);
-    if (!project) {
-      throw new BadRequestError('Please enter the correct project id');
-    }
-
-    const stalePaths = [];
     const uploadedFiles = req.files || {};
+    const { project, stalePaths } = await sequelize.transaction(
+      async (transaction) => {
+        const project = await findLockedProject(projectId, transaction);
+        const stalePaths = [];
 
-    if (uploadedFiles.bannerImg?.length) {
-      if (project.bannerImg) stalePaths.push(project.bannerImg);
-      data.bannerImg = toStoredUploadPath(uploadedFiles.bannerImg[0].path);
-    }
+        if (uploadedFiles.bannerImg?.length) {
+          if (project.bannerImg) stalePaths.push(project.bannerImg);
+          data.bannerImg = toStoredUploadPath(uploadedFiles.bannerImg[0].path);
+        }
 
-    ['videos', 'sliderContents', 'thumbnailContents'].forEach((field) => {
-      if (uploadedFiles[field]?.length) {
-        stalePaths.push(...collectContentPaths(project, field));
-        data[field] = JSON.stringify(
-          uploadedFiles[field].map((file) =>
-            createContentItem(file, CONTENT_METADATA_KEYS[field])
-          )
-        );
+        ['videos', 'sliderContents', 'thumbnailContents'].forEach((field) => {
+          if (uploadedFiles[field]?.length) {
+            stalePaths.push(...collectContentPaths(project, field));
+            data[field] = JSON.stringify(
+              uploadedFiles[field].map((file) =>
+                createContentItem(file, CONTENT_METADATA_KEYS[field])
+              )
+            );
+          }
+        });
+
+        if (Object.keys(data).length === 0) {
+          throw new BadRequestError('No supported project content was provided');
+        }
+
+        await project.update(data, { transaction });
+        transactionWorkCompleted = true;
+        return { project, stalePaths };
       }
-    });
-
-    if (Object.keys(data).length === 0) {
-      throw new BadRequestError('No supported project content was provided');
-    }
-
-    await project.update(data);
+    );
     committed = true;
     await deleteStoredFilesSafely(stalePaths);
 
@@ -579,7 +689,13 @@ const updateProjectContents = async (req, res) => {
       result: projectForResponse(project),
     });
   } catch (error) {
-    if (!committed) await cleanupUploadedFiles(req);
+    if (!committed) {
+      if (transactionWorkCompleted) {
+        await cleanupUploadsAfterUncertainCommit(req, projectId);
+      } else {
+        await cleanupUploadedFiles(req);
+      }
+    }
     throw error;
   }
 };
@@ -615,12 +731,11 @@ const editProjectInfos = async (req, res) => {
     throw new BadRequestError('No supported project information was provided');
   }
 
-  const project = await projects.findByPk(projectId);
-  if (!project) {
-    throw new BadRequestError('Please enter the correct project id');
-  }
-
-  await project.update(data);
+  const project = await sequelize.transaction(async (transaction) => {
+    const project = await findLockedProject(projectId, transaction);
+    await project.update(data, { transaction });
+    return project;
+  });
 
   res.json({
     succeed: true,
@@ -631,9 +746,11 @@ const editProjectInfos = async (req, res) => {
 
 const editProjectContents = async (req, res) => {
   let committed = false;
+  let transactionWorkCompleted = false;
+  let projectId;
 
   try {
-    const projectId = parsePositiveProjectId(req.params?.id);
+    projectId = parsePositiveProjectId(req.params?.id);
     const body = req.body || {};
     assertOnlyFields(body, [
       'mode',
@@ -672,56 +789,60 @@ const editProjectContents = async (req, res) => {
       throw new BadRequestError('This operation requires exactly one file');
     }
 
-    const project = await projects.findByPk(projectId);
-    if (!project) {
-      throw new BadRequestError('Please enter the correct project id');
-    }
+    const { project, stalePaths } = await sequelize.transaction(
+      async (transaction) => {
+        const project = await findLockedProject(projectId, transaction);
+        const stalePaths = [];
+        if (mode === 'bannerImg') {
+          if (project.bannerImg) stalePaths.push(project.bannerImg);
+          project.bannerImg = toStoredUploadPath(modeFiles[0].path);
+        } else {
+          const contentItems = parseStoredArray(project[mode], mode);
+          const metadataKey = CONTENT_METADATA_KEYS[mode];
 
-    const stalePaths = [];
-    if (mode === 'bannerImg') {
-      if (project.bannerImg) stalePaths.push(project.bannerImg);
-      project.bannerImg = toStoredUploadPath(modeFiles[0].path);
-    } else {
-      const contentItems = parseStoredArray(project[mode], mode);
-      const metadataKey = CONTENT_METADATA_KEYS[mode];
+          if (replaceItem) {
+            const itemIndex = contentItems.findIndex(
+              (item) =>
+                item &&
+                typeof item === 'object' &&
+                String(item.id) === normalizedContentId
+            );
+            if (itemIndex === -1) {
+              throw new BadRequestError(
+                'The requested project content was not found'
+              );
+            }
 
-      if (replaceItem) {
-        const itemIndex = contentItems.findIndex(
-          (item) =>
-            item &&
-            typeof item === 'object' &&
-            String(item.id) === normalizedContentId
-        );
-        if (itemIndex === -1) {
-          throw new BadRequestError('The requested project content was not found');
+            if (contentItems[itemIndex].url) {
+              stalePaths.push(contentItems[itemIndex].url);
+            }
+            contentItems[itemIndex] = createContentItem(
+              modeFiles[0],
+              metadataKey,
+              contentItems[itemIndex].id
+            );
+          } else {
+            if (
+              contentItems.length + modeFiles.length >
+              CONTENT_ITEM_LIMITS[mode]
+            ) {
+              throw new BadRequestError(
+                `${mode} cannot contain more than ${CONTENT_ITEM_LIMITS[mode]} items`
+              );
+            }
+            contentItems.push(
+              ...modeFiles.map((file) => createContentItem(file, metadataKey))
+            );
+          }
+
+          project[mode] = JSON.stringify(contentItems);
         }
 
-        if (contentItems[itemIndex].url) {
-          stalePaths.push(contentItems[itemIndex].url);
-        }
-        contentItems[itemIndex] = createContentItem(
-          modeFiles[0],
-          metadataKey,
-          contentItems[itemIndex].id
-        );
-      } else {
-        if (
-          contentItems.length + modeFiles.length >
-          CONTENT_ITEM_LIMITS[mode]
-        ) {
-          throw new BadRequestError(
-            `${mode} cannot contain more than ${CONTENT_ITEM_LIMITS[mode]} items`
-          );
-        }
-        contentItems.push(
-          ...modeFiles.map((file) => createContentItem(file, metadataKey))
-        );
+        await project.save({ fields: [mode], transaction });
+        transactionWorkCompleted = true;
+        return { project, stalePaths };
       }
-
-      project[mode] = JSON.stringify(contentItems);
-    }
-
-    await project.save({ fields: [mode] });
+    );
     committed = true;
     await deleteStoredFilesSafely(stalePaths);
 
@@ -731,7 +852,13 @@ const editProjectContents = async (req, res) => {
       result: projectForResponse(project),
     });
   } catch (error) {
-    if (!committed) await cleanupUploadedFiles(req);
+    if (!committed) {
+      if (transactionWorkCompleted) {
+        await cleanupUploadsAfterUncertainCommit(req, projectId);
+      } else {
+        await cleanupUploadedFiles(req);
+      }
+    }
     throw error;
   }
 };
@@ -749,35 +876,36 @@ const deleteProjectContents = async (req, res) => {
     mode !== 'bannerImg'
   );
 
-  const project = await projects.findByPk(projectId);
-  if (!project) {
-    throw new BadRequestError('Please enter the correct project id');
-  }
+  const stalePaths = await sequelize.transaction(async (transaction) => {
+    const project = await findLockedProject(projectId, transaction);
+    const stalePaths = [];
+    if (mode === 'bannerImg') {
+      if (project.bannerImg) stalePaths.push(project.bannerImg);
+      project.bannerImg = null;
+    } else {
+      const contentItems = parseStoredArray(project[mode], mode);
+      const itemIndex = contentItems.findIndex(
+        (item) =>
+          item &&
+          typeof item === 'object' &&
+          String(item.id) === normalizedContentId
+      );
+      if (itemIndex === -1) {
+        throw new BadRequestError(
+          'The requested project content was not found'
+        );
+      }
 
-  const stalePaths = [];
-  if (mode === 'bannerImg') {
-    if (project.bannerImg) stalePaths.push(project.bannerImg);
-    project.bannerImg = null;
-  } else {
-    const contentItems = parseStoredArray(project[mode], mode);
-    const itemIndex = contentItems.findIndex(
-      (item) =>
-        item &&
-        typeof item === 'object' &&
-        String(item.id) === normalizedContentId
-    );
-    if (itemIndex === -1) {
-      throw new BadRequestError('The requested project content was not found');
+      if (contentItems[itemIndex].url) {
+        stalePaths.push(contentItems[itemIndex].url);
+      }
+      contentItems.splice(itemIndex, 1);
+      project[mode] = JSON.stringify(contentItems);
     }
 
-    if (contentItems[itemIndex].url) {
-      stalePaths.push(contentItems[itemIndex].url);
-    }
-    contentItems.splice(itemIndex, 1);
-    project[mode] = JSON.stringify(contentItems);
-  }
-
-  await project.save({ fields: [mode] });
+    await project.save({ fields: [mode], transaction });
+    return stalePaths;
+  });
   await deleteStoredFilesSafely(stalePaths);
 
   res.json({
@@ -788,21 +916,20 @@ const deleteProjectContents = async (req, res) => {
 
 const deleteProject = async (req, res) => {
   const projectId = parsePositiveProjectId(req.params?.id);
-  const project = await projects.findByPk(projectId);
-  if (!project) {
-    throw new BadRequestError('Please enter the correct project id');
-  }
+  const storedPaths = await sequelize.transaction(async (transaction) => {
+    const project = await findLockedProject(projectId, transaction);
+    const paths = [
+      project.bannerImg,
+      ...collectContentPaths(project, 'videos'),
+      ...collectContentPaths(project, 'sliderContents'),
+      ...collectContentPaths(project, 'thumbnailContents'),
+    ];
 
-  const storedPaths = [
-    project.bannerImg,
-    ...collectContentPaths(project, 'videos'),
-    ...collectContentPaths(project, 'sliderContents'),
-    ...collectContentPaths(project, 'thumbnailContents'),
-  ];
-
-  // Remove the database record first. A failed filesystem cleanup leaves an
-  // orphan for maintenance; deleting files first could leave broken DB rows.
-  await project.destroy();
+    // Remove the database record first. A failed filesystem cleanup leaves an
+    // orphan for maintenance; deleting files first could leave broken DB rows.
+    await project.destroy({ transaction });
+    return paths;
+  });
   await deleteStoredFilesSafely(storedPaths);
 
   res.json({
@@ -870,6 +997,52 @@ const getProjects = async (req, res) => {
     succeed: true,
     msg: 'Successfully fetched project data!',
     result,
+  });
+};
+
+const getPublicProjects = async (_req, res) => {
+  const projectRows = await projects.findAll({
+    attributes: [
+      'id',
+      'title',
+      'value',
+      'bannerImg',
+      'category',
+      'subtitle',
+      'role',
+      'date',
+      'thumbnailContents',
+      'displayOrder',
+    ],
+    order: [
+      ['displayOrder', 'ASC'],
+      ['id', 'ASC'],
+    ],
+  });
+
+  setPublicReadCache(res);
+  res.json({
+    succeed: true,
+    msg: 'Successfully fetched project data!',
+    result: projectRows.map((project) =>
+      projectForPublicResponse(project, { compact: true })
+    ),
+  });
+};
+
+const getPublicProject = async (req, res) => {
+  const project = await projects.findByPk(req.projectId);
+  if (!project) {
+    const error = new Error('The requested project was not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  setPublicReadCache(res);
+  res.json({
+    succeed: true,
+    msg: 'Successfully fetched project data!',
+    result: projectForPublicResponse(project),
   });
 };
 
@@ -956,6 +1129,9 @@ module.exports = {
   deleteProjectContents,
   deleteProject,
   getProjects,
+  getPublicProject,
+  getPublicProjects,
+  projectForPublicResponse,
   reorderProjects,
   validateProjectIdParam,
 };

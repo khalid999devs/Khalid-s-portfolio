@@ -7,6 +7,10 @@ const errorHandlerMiddleware = (err, req, res, next) => {
     return next(err);
   }
 
+  // Error bodies can describe authentication, validation, or transient
+  // resource state. Never let browsers or intermediaries retain them.
+  res.set('Cache-Control', 'no-store');
+
   const isServerError = !err.statusCode || err.statusCode >= 500;
 
   if (isServerError) {
@@ -18,7 +22,9 @@ const errorHandlerMiddleware = (err, req, res, next) => {
           .slice(1, 6)
           .map((frame) => frame.trim())
       : [];
-    console.error(`${req.method} ${req.originalUrl}`, {
+    // `req.path` excludes the query string, which may contain user-provided
+    // identifiers or accidental credentials even on an unknown route.
+    console.error(`${req.method} ${req.path || '<unknown>'}`, {
       code: String(err.code || 'UNEXPECTED').slice(0, 64),
       name: String(err.name || 'Error').slice(0, 64),
       stackFrames,

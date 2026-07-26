@@ -1,7 +1,16 @@
 const assert = require('node:assert/strict');
+const { mkdir, mkdtemp, rm, writeFile } = require('node:fs/promises');
+const { tmpdir } = require('node:os');
+const path = require('node:path');
 const test = require('node:test');
 
-const { normalizeTechnologies } = require('../controllers/settings');
+const {
+  isResumeAvailable,
+  resolveResumeFilePath,
+} = require('../controllers/settings');
+const {
+  normalizeTechnologies,
+} = require('../utils/technologySettings');
 
 test('technology settings are trimmed, bounded, and normalized', () => {
   const technologies = normalizeTechnologies({
@@ -77,5 +86,57 @@ test('technology settings reject a serialized value larger than MySQL TEXT', () 
   assert.throws(
     () => normalizeTechnologies(technologies),
     /storage limit/
+  );
+});
+
+test('resume availability requires a readable regular PDF with a PDF signature', async () => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), 'portfolio-resume-test-')
+  );
+  const validResume = path.join(directory, 'resume.pdf');
+  const spoofedResume = path.join(directory, 'spoofed.pdf');
+  const wrongExtension = path.join(directory, 'resume.txt');
+  const directoryWithPdfName = path.join(directory, 'folder.pdf');
+
+  try {
+    await writeFile(validResume, '%PDF-1.7\nvalid test document');
+    await writeFile(spoofedResume, '<html>not a PDF</html>');
+    await writeFile(wrongExtension, '%PDF-1.7\nwrong extension');
+    await mkdir(directoryWithPdfName);
+
+    assert.equal(
+      await isResumeAvailable({ RESUME_FILE_PATH: validResume }),
+      true
+    );
+    assert.equal(
+      await isResumeAvailable({ RESUME_FILE_PATH: spoofedResume }),
+      false
+    );
+    assert.equal(
+      await isResumeAvailable({ RESUME_FILE_PATH: wrongExtension }),
+      false
+    );
+    assert.equal(
+      await isResumeAvailable({
+        RESUME_FILE_PATH: directoryWithPdfName,
+      }),
+      false
+    );
+    assert.equal(
+      await isResumeAvailable({
+        RESUME_FILE_PATH: path.join(directory, 'missing.pdf'),
+      }),
+      false
+    );
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+});
+
+test('resume path resolution preserves an explicitly configured absolute path', () => {
+  const resumePath = path.join(tmpdir(), 'portfolio-resume.pdf');
+  assert.equal(
+    resolveResumeFilePath({ RESUME_FILE_PATH: ` ${resumePath} ` }),
+    resumePath
   );
 });

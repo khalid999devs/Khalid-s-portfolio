@@ -48,6 +48,64 @@ test('database TLS verifies certificates and supports an explicit CA', () => {
   assert.equal(config.dialectOptions.ssl.ca, 'first line\nsecond line');
 });
 
+test('database TLS configuration rejects ambiguous boolean values', () => {
+  assert.throws(
+    () =>
+      execFileSync(
+        process.execPath,
+        ['-e', `require(${JSON.stringify(configPath)})`],
+        {
+          env: {
+            NODE_ENV: 'test',
+            PATH: process.env.PATH,
+            DB_SSL: 'TRUE',
+          },
+          stdio: 'pipe',
+        }
+      ),
+    /DB_SSL must be either true or false/
+  );
+});
+
+test('database TLS configuration rejects a CA when TLS is disabled', () => {
+  assert.throws(
+    () =>
+      execFileSync(
+        process.execPath,
+        ['-e', `require(${JSON.stringify(configPath)})`],
+        {
+          env: {
+            NODE_ENV: 'test',
+            PATH: process.env.PATH,
+            DB_SSL: 'false',
+            DB_SSL_CA: 'configured-but-disabled',
+          },
+          stdio: 'pipe',
+        }
+      ),
+    /DB_SSL_CA requires DB_SSL=true/
+  );
+});
+
+test('production database connections cannot disable certificate-verified TLS', () => {
+  assert.throws(
+    () =>
+      execFileSync(
+        process.execPath,
+        ['-e', `require(${JSON.stringify(configPath)})`],
+        {
+          env: {
+            NODE_ENV: 'production',
+            PATH: process.env.PATH,
+            DB_SSL: 'false',
+          },
+          stdio: 'pipe',
+        }
+      ),
+    /DB_SSL=true is required in production/
+  );
+});
+
 test('invalid pool sizes fail before a database connection is attempted', () => {
   assert.throws(
     () =>

@@ -18,6 +18,14 @@ const parseInteger = (name, fallback, minimum, maximum) => {
   return value;
 };
 
+const parseBoolean = (name, fallback) => {
+  const rawValue = process.env[name];
+  if (rawValue === undefined || rawValue === '') return fallback;
+  if (rawValue === 'true') return true;
+  if (rawValue === 'false') return false;
+  throw new Error(`${name} must be either true or false`);
+};
+
 const createPool = (defaultMaximum) => {
   const max = parseInteger('DB_POOL_MAX', defaultMaximum, 1, 100);
   const min = parseInteger('DB_POOL_MIN', 0, 0, 20);
@@ -40,11 +48,22 @@ const createPool = (defaultMaximum) => {
 };
 
 const createTlsOptions = () => {
-  if (process.env.DB_SSL !== 'true') return undefined;
+  const tlsEnabled = parseBoolean('DB_SSL', false);
+  const certificateAuthority = process.env.DB_SSL_CA;
+
+  if (!tlsEnabled) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('DB_SSL=true is required in production');
+    }
+    if (certificateAuthority) {
+      throw new Error('DB_SSL_CA requires DB_SSL=true');
+    }
+    return undefined;
+  }
 
   const ssl = { rejectUnauthorized: true };
-  if (process.env.DB_SSL_CA) {
-    ssl.ca = process.env.DB_SSL_CA.replace(/\\n/g, '\n');
+  if (certificateAuthority) {
+    ssl.ca = certificateAuthority.replace(/\\n/g, '\n');
   }
 
   return { ssl };

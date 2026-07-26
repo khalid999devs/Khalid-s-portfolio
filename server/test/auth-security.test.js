@@ -48,6 +48,7 @@ test('production only accepts HTTPS browser origins', () => {
     DB_HOST: 'db.internal',
     DB_NAME: 'portfolio',
     DB_PASS: 'database-password',
+    DB_SSL: 'true',
     DB_USER: 'portfolio-user',
     NODE_ENV: 'production',
     REMOTE_CLIENT_APP: 'http://portfolio.example.test',
@@ -66,6 +67,16 @@ test('production only accepts HTTPS browser origins', () => {
   assert.deepEqual(config.allowedOrigins, [
     'https://portfolio.example.test',
   ]);
+
+  assert.throws(
+    () =>
+      validateRuntimeConfig({
+        ...productionEnv,
+        DB_SSL: 'false',
+        REMOTE_CLIENT_APP: 'https://portfolio.example.test',
+      }),
+    /DB_SSL=true is required in production/
+  );
 });
 
 test('allowed origins are normalized and malformed URLs reject', () => {

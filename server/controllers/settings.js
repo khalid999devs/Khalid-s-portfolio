@@ -2,34 +2,52 @@ const { settings } = require('../models');
 const { BadRequestError, NotFoundError } = require('../errors');
 const fs = require('node:fs');
 const path = require('path');
+const {
+  normalizeTechnologies,
+  parseStoredTechnologies,
+} = require('../utils/technologySettings');
 
-const MAX_TECHNOLOGY_GROUPS = 50;
-const MAX_ITEMS_PER_GROUP = 100;
-const MAX_ITEM_LENGTH = 100;
-const MAX_TECHNOLOGIES_BYTES = 60 * 1024;
-const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/u;
-const FORBIDDEN_OBJECT_KEYS = new Set([
-  '__proto__',
-  'constructor',
-  'prototype',
-]);
 const DEFAULT_RESUME_PATH = path.resolve(
   __dirname,
   '../uploads/assets/Resume_Khalid_Ahammed.pdf'
 );
+const MAX_RESUME_BYTES = 20 * 1024 * 1024;
+const PDF_SIGNATURE = Buffer.from('%PDF-', 'ascii');
 
 const resolveResumeFilePath = (environment = process.env) =>
   environment.RESUME_FILE_PATH?.trim() || DEFAULT_RESUME_PATH;
 
 const isResumeAvailable = async (environment = process.env) => {
+  const filePath = resolveResumeFilePath(environment);
+  if (path.extname(filePath).toLowerCase() !== '.pdf') return false;
+
+  let file;
   try {
-    await fs.promises.access(
-      resolveResumeFilePath(environment),
-      fs.constants.R_OK
+    file = await fs.promises.open(filePath, fs.constants.O_RDONLY);
+    const stats = await file.stat();
+    if (
+      !stats.isFile() ||
+      stats.size < PDF_SIGNATURE.length ||
+      stats.size > MAX_RESUME_BYTES
+    ) {
+      return false;
+    }
+
+    const signature = Buffer.alloc(PDF_SIGNATURE.length);
+    const { bytesRead } = await file.read(
+      signature,
+      0,
+      signature.length,
+      0
     );
-    return true;
+    return (
+      bytesRead === PDF_SIGNATURE.length &&
+      signature.equals(PDF_SIGNATURE)
+    );
   } catch (_error) {
     return false;
+  } finally {
+    await file?.close().catch(() => {});
   }
 };
 
@@ -40,100 +58,6 @@ const assertOnlyTechnologies = (body) => {
 
   if (unexpectedField) {
     throw new BadRequestError(`Unexpected field: ${unexpectedField}`);
-  }
-};
-
-const normalizeTechnologies = (value) => {
-  let technologies = value;
-
-  if (typeof technologies === 'string') {
-    try {
-      technologies = JSON.parse(technologies);
-    } catch (_error) {
-      throw new BadRequestError('Technologies must be a valid object');
-    }
-  }
-
-  if (
-    !technologies ||
-    typeof technologies !== 'object' ||
-    Array.isArray(technologies)
-  ) {
-    throw new BadRequestError('Technologies must be an object');
-  }
-
-  const entries = Object.entries(technologies);
-  if (entries.length > MAX_TECHNOLOGY_GROUPS) {
-    throw new BadRequestError(
-      `Technologies must contain at most ${MAX_TECHNOLOGY_GROUPS} groups`
-    );
-  }
-
-  const normalized = Object.create(null);
-  const seenGroupNames = new Set();
-  entries.forEach(([rawGroupName, rawItems]) => {
-    const groupName = rawGroupName.normalize('NFC').trim();
-    const groupComparisonKey = groupName.toLocaleLowerCase('en-US');
-    if (
-      !groupName ||
-      [...groupName].length > 64 ||
-      CONTROL_CHARACTERS.test(groupName) ||
-      FORBIDDEN_OBJECT_KEYS.has(groupName) ||
-      seenGroupNames.has(groupComparisonKey)
-    ) {
-      throw new BadRequestError('Technology group names are invalid');
-    }
-    seenGroupNames.add(groupComparisonKey);
-
-    if (
-      !Array.isArray(rawItems) ||
-      rawItems.length > MAX_ITEMS_PER_GROUP
-    ) {
-      throw new BadRequestError(
-        `Each technology group must contain at most ${MAX_ITEMS_PER_GROUP} items`
-      );
-    }
-
-    const seen = new Set();
-    normalized[groupName] = rawItems.map((rawItem) => {
-      if (typeof rawItem !== 'string') {
-        throw new BadRequestError('Technology names must be strings');
-      }
-
-      const item = rawItem.normalize('NFC').trim();
-      if (
-        !item ||
-        [...item].length > MAX_ITEM_LENGTH ||
-        CONTROL_CHARACTERS.test(item)
-      ) {
-        throw new BadRequestError(
-          `Technology names must be between 1 and ${MAX_ITEM_LENGTH} characters`
-        );
-      }
-
-      const comparisonKey = item.toLocaleLowerCase('en-US');
-      if (seen.has(comparisonKey)) {
-        throw new BadRequestError(
-          `Duplicate technology in group: ${groupName}`
-        );
-      }
-      seen.add(comparisonKey);
-      return item;
-    });
-  });
-
-  if (Buffer.byteLength(JSON.stringify(normalized), 'utf8') > MAX_TECHNOLOGIES_BYTES) {
-    throw new BadRequestError('Technologies exceed the storage limit');
-  }
-
-  return normalized;
-};
-
-const parseStoredTechnologies = (value) => {
-  try {
-    return normalizeTechnologies(value);
-  } catch (_error) {
-    throw new Error('Stored settings contain invalid technologies data');
   }
 };
 
@@ -202,6 +126,7 @@ const getSettings = async (req, res) => {
     );
   }
 
+  res.set('Cache-Control', 'public, no-cache, must-revalidate');
   res.json({
     succeed: true,
     result: settingsRes,
@@ -217,6 +142,7 @@ const downloadResume = async (req, res, next) => {
     return;
   }
 
+  res.set('Cache-Control', 'no-store');
   res.download(filePath, 'Resume_Khalid_Ahammed.pdf', (err) => {
     if (err) {
       next(new BadRequestError('Failed to download resume'));

@@ -1,5 +1,7 @@
 const {
   getProjects,
+  getPublicProject,
+  getPublicProjects,
   createProject,
   updateProjectContents,
   editProjectInfos,
@@ -19,8 +21,18 @@ const projectUploadFields = [
   { name: 'thumbnailContents', maxCount: 8 },
   { name: 'sliderContents', maxCount: 8 },
 ];
+const noStore = (_req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+};
 
-router.post('/', getProjects);
+router.get('/', getPublicProjects);
+router.get(
+  '/:id',
+  validateProjectIdParam,
+  getPublicProject
+);
+router.post('/', adminValidate, noStore, getProjects);
 router.post('/create', adminValidate, createProject);
 
 router.put(

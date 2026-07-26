@@ -2,25 +2,44 @@ const nodemailer = require('nodemailer');
 
 const { htmlCreator } = require('./htmlTemplates');
 const { EmailCover } = require('./TemplateCover');
+const {
+  ProviderCapacityError,
+  ProviderDeadlineError,
+  createProviderExecutor,
+} = require('./providerExecution');
 
 const DEFAULT_SMTP_PORT = 465;
 const DEFAULT_FROM_NAME = 'Khalid Ahammed';
 const DEFAULT_CONNECTION_TIMEOUT_MS = 10_000;
+const DEFAULT_DELIVERY_TIMEOUT_MS = 45_000;
+const DEFAULT_DNS_TIMEOUT_MS = 10_000;
 const DEFAULT_GREETING_TIMEOUT_MS = 10_000;
 const DEFAULT_SOCKET_TIMEOUT_MS = 30_000;
 const DEFAULT_POOL_MAX_CONNECTIONS = 3;
 const DEFAULT_POOL_MAX_MESSAGES = 100;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DELIVERY_ATTEMPT_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 let cachedTransporter;
 let cachedTransportOptions;
+const mailExecutor = createProviderExecutor({ providerName: 'Email' });
 
 class EmailDeliveryError extends Error {
-  constructor(message = 'Email delivery is temporarily unavailable.') {
+  constructor(
+    message = 'Email delivery is temporarily unavailable.',
+    {
+      code = 'EMAIL_DELIVERY_FAILED',
+      deliveryOutcome = 'unknown',
+      statusCode = 502,
+    } = {}
+  ) {
     super(message);
     this.name = 'EmailDeliveryError';
-    this.statusCode = 502;
-    this.code = 'EMAIL_DELIVERY_FAILED';
+    this.statusCode = statusCode;
+    this.code = code;
+    this.deliveryOutcome = deliveryOutcome;
+    this.deliveryOutcomeAmbiguous = deliveryOutcome === 'unknown';
   }
 }
 
@@ -81,15 +100,11 @@ const getMailConfig = (environment = process.env) => {
   const host = requireConfigValue(environment, 'MAIL_HOST');
   const user = requireConfigValue(environment, 'SERVER_EMAIL');
   const password = requireConfigValue(environment, 'MAIL_PASS');
-  const port = environment.MAIL_PORT
-    ? Number(environment.MAIL_PORT)
-    : DEFAULT_SMTP_PORT;
-
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    const error = new Error('MAIL_PORT must be a valid TCP port.');
-    error.code = 'EMAIL_CONFIGURATION_INVALID';
-    throw error;
-  }
+  const port = parseBoundedInteger(environment, 'MAIL_PORT', {
+    defaultValue: DEFAULT_SMTP_PORT,
+    minimum: 1,
+    maximum: 65_535,
+  });
 
   if (!EMAIL_PATTERN.test(user) || user.length > 254) {
     const error = new Error('SERVER_EMAIL must be a valid email address.');
@@ -100,10 +115,24 @@ const getMailConfig = (environment = process.env) => {
   const secure = parseBoolean(environment.MAIL_SECURE, port === 465);
   const fromName =
     environment.MAIL_FROM_NAME?.trim() || DEFAULT_FROM_NAME;
+  const deliveryTimeoutMs = parseBoundedInteger(
+    environment,
+    'MAIL_DELIVERY_TIMEOUT_MS',
+    {
+      defaultValue: DEFAULT_DELIVERY_TIMEOUT_MS,
+      minimum: 1_000,
+      maximum: 120_000,
+    }
+  );
   const connectionTimeout = parseBoundedInteger(
     environment,
     'MAIL_CONNECTION_TIMEOUT_MS',
     { defaultValue: DEFAULT_CONNECTION_TIMEOUT_MS, minimum: 1_000, maximum: 60_000 }
+  );
+  const dnsTimeout = parseBoundedInteger(
+    environment,
+    'MAIL_DNS_TIMEOUT_MS',
+    { defaultValue: DEFAULT_DNS_TIMEOUT_MS, minimum: 1_000, maximum: 60_000 }
   );
   const greetingTimeout = parseBoundedInteger(
     environment,
@@ -127,6 +156,7 @@ const getMailConfig = (environment = process.env) => {
   );
 
   return {
+    deliveryTimeoutMs,
     fromName,
     fromAddress: user,
     transport: {
@@ -136,10 +166,14 @@ const getMailConfig = (environment = process.env) => {
       secure,
       requireTLS: !secure,
       connectionTimeout,
+      dnsTimeout,
       greetingTimeout,
       socketTimeout,
       maxConnections,
       maxMessages,
+      // Automatic SMTP replay can duplicate a message when a connection dies
+      // after remote acceptance but before the client sees the final response.
+      maxRequeues: 0,
       auth: {
         user,
         pass: password,
@@ -160,10 +194,12 @@ const hasSameTransportOptions = (left, right) =>
   left.secure === right.secure &&
   left.requireTLS === right.requireTLS &&
   left.connectionTimeout === right.connectionTimeout &&
+  left.dnsTimeout === right.dnsTimeout &&
   left.greetingTimeout === right.greetingTimeout &&
   left.socketTimeout === right.socketTimeout &&
   left.maxConnections === right.maxConnections &&
   left.maxMessages === right.maxMessages &&
+  left.maxRequeues === right.maxRequeues &&
   left.auth?.user === right.auth?.user &&
   left.auth?.pass === right.auth?.pass &&
   left.tls?.minVersion === right.tls?.minVersion &&
@@ -213,10 +249,116 @@ const validateMailData = (data) => {
     const error = new Error('A valid recipient email is required.');
     error.code = 'EMAIL_INPUT_INVALID';
     error.statusCode = 400;
+    error.deliveryOutcome = 'not-attempted';
+    error.deliveryOutcomeAmbiguous = false;
     throw error;
   }
 
   return normalizedRecipient;
+};
+
+const createDeliveryMessageId = (delivery) => {
+  if (delivery === undefined) return undefined;
+
+  const attemptId = delivery?.attemptId;
+  if (
+    typeof delivery !== 'object' ||
+    delivery === null ||
+    typeof attemptId !== 'string' ||
+    !DELIVERY_ATTEMPT_ID_PATTERN.test(attemptId)
+  ) {
+    const error = new Error(
+      'Email delivery attemptId must be a canonical UUID.'
+    );
+    error.code = 'EMAIL_DELIVERY_ID_INVALID';
+    throw error;
+  }
+
+  return `<${attemptId.toLowerCase()}@portfolio.local>`;
+};
+
+const createMailOptions = ({ config, data, mode, recipient }) => {
+  const { subject, body, text } = htmlCreator(mode, data);
+  const messageId = createDeliveryMessageId(data?.delivery);
+
+  return {
+    from: {
+      name: config.fromName,
+      address: config.fromAddress,
+    },
+    to: recipient,
+    subject:
+      typeof subject === 'string'
+        ? subject.replace(/[\r\n]+/g, ' ').trim().slice(0, 998)
+        : '',
+    html: body ? EmailCover(body, config.fromName) : undefined,
+    text: text || undefined,
+    ...(messageId ? { messageId } : {}),
+  };
+};
+
+const assertMailAccepted = (delivery) => {
+  if (
+    !Array.isArray(delivery?.accepted) ||
+    delivery.accepted.length === 0 ||
+    (Array.isArray(delivery.rejected) && delivery.rejected.length > 0)
+  ) {
+    throw Object.assign(new Error('SMTP recipient was not accepted.'), {
+      code: 'SMTP_RECIPIENT_REJECTED',
+    });
+  }
+};
+
+const sendMailWithAbort = async (transporter, message, signal) => {
+  const abortTransport = () => {
+    try {
+      discardMailTransporter(transporter);
+    } catch (_error) {
+      // The deadline error remains authoritative. A close failure must not
+      // turn a bounded caller response into an uncaught abort-listener error.
+    }
+  };
+
+  if (signal.aborted) {
+    abortTransport();
+    throw signal.reason;
+  }
+
+  signal.addEventListener('abort', abortTransport, { once: true });
+  try {
+    return await transporter.sendMail(message);
+  } finally {
+    signal.removeEventListener('abort', abortTransport);
+  }
+};
+
+const toEmailDeliveryError = (error) => {
+  if (error instanceof EmailDeliveryError) return error;
+
+  if (error instanceof ProviderCapacityError) {
+    return new EmailDeliveryError(undefined, {
+      code: 'EMAIL_CAPACITY_EXCEEDED',
+      deliveryOutcome: 'not-attempted',
+      statusCode: 503,
+    });
+  }
+
+  if (error instanceof ProviderDeadlineError) {
+    return new EmailDeliveryError(undefined, {
+      code: 'EMAIL_DELIVERY_TIMEOUT',
+      deliveryOutcome: 'unknown',
+      statusCode: 504,
+    });
+  }
+
+  if (error?.code === 'SMTP_RECIPIENT_REJECTED') {
+    return new EmailDeliveryError(undefined, {
+      code: 'EMAIL_RECIPIENT_REJECTED',
+      deliveryOutcome: 'rejected',
+    });
+  }
+
+  return new EmailDeliveryError();
 };
 
 const safeProviderCode = (error) => {
@@ -226,63 +368,73 @@ const safeProviderCode = (error) => {
 
 const mailer = async (data, mode) => {
   let config;
+  let message;
   let recipient;
 
   try {
     config = getMailConfig();
     recipient = validateMailData(data);
+    message = createMailOptions({ config, data, mode, recipient });
   } catch (error) {
     if (error.statusCode === 400) throw error;
 
-    console.error('Email delivery configuration is invalid.', {
+    console.error('Email delivery preparation is invalid.', {
       code: safeProviderCode(error),
     });
-    throw new EmailDeliveryError();
+    throw new EmailDeliveryError(undefined, {
+      code: 'EMAIL_PREPARATION_INVALID',
+      deliveryOutcome: 'not-attempted',
+    });
   }
 
-  const { subject, body, text } = htmlCreator(mode, data);
   let transporter;
 
   try {
     transporter = getMailTransporter(config.transport);
-    const delivery = await transporter.sendMail({
-      from: {
-        name: config.fromName,
-        address: config.fromAddress,
-      },
-      to: recipient,
-      subject:
-        typeof subject === 'string'
-          ? subject.replace(/[\r\n]+/g, ' ').trim().slice(0, 998)
-          : '',
-      html: body ? EmailCover(body, config.fromName) : undefined,
-      text: text || undefined,
-    });
+    const delivery = await mailExecutor.execute(
+      ({ signal }) => sendMailWithAbort(transporter, message, signal),
+      {
+        capacity: config.transport.maxConnections,
+        timeoutMs: config.deliveryTimeoutMs,
+      }
+    );
 
-    if (Array.isArray(delivery.rejected) && delivery.rejected.length > 0) {
-      throw Object.assign(new Error('SMTP recipient rejected.'), {
-        code: 'SMTP_RECIPIENT_REJECTED',
-      });
-    }
+    assertMailAccepted(delivery);
 
-    return { status: 'accepted' };
+    return {
+      messageId: delivery.messageId || message.messageId,
+      status: 'accepted',
+    };
   } catch (error) {
-    // A failed pooled connection is discarded so the next attempt starts from
-    // a clean socket instead of inheriting a potentially broken SMTP session.
-    discardMailTransporter(transporter);
+    if (!(error instanceof ProviderCapacityError)) {
+      // A failed pooled connection is discarded so the next attempt starts
+      // from a clean socket instead of inheriting a broken SMTP session.
+      try {
+        discardMailTransporter(transporter);
+      } catch (closeError) {
+        console.error('Unable to discard failed email transport.', {
+          code: safeProviderCode(closeError),
+        });
+      }
+    }
     // Log only a bounded provider code. SMTP responses can contain recipient
     // addresses and infrastructure details, so raw provider errors stay out of
     // both application logs and API responses.
     console.error('Email delivery failed.', {
       code: safeProviderCode(error),
     });
-    throw new EmailDeliveryError();
+    throw toEmailDeliveryError(error);
   }
 };
 
 module.exports = mailer;
 module.exports.EmailDeliveryError = EmailDeliveryError;
+module.exports.assertMailAccepted = assertMailAccepted;
 module.exports.closeMailTransporter = closeMailTransporter;
+module.exports.createDeliveryMessageId = createDeliveryMessageId;
+module.exports.createMailOptions = createMailOptions;
 module.exports.getMailConfig = getMailConfig;
 module.exports.getMailTransporter = getMailTransporter;
+module.exports.sendMailWithAbort = sendMailWithAbort;
+module.exports.toEmailDeliveryError = toEmailDeliveryError;
 module.exports.validateMailData = validateMailData;

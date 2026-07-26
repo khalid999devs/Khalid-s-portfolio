@@ -4,10 +4,18 @@ const test = require('node:test');
 const { BadRequestError } = require('../errors');
 const errorHandler = require('../middlewares/errorHandler');
 
-const runHandler = (error) => {
+const runHandler = (
+  error,
+  request = { method: 'GET', path: '/test' }
+) => {
   const response = {
     body: undefined,
+    headers: new Map(),
     statusCode: undefined,
+    set(name, value) {
+      this.headers.set(name.toLowerCase(), value);
+      return this;
+    },
     status(code) {
       this.statusCode = code;
       return this;
@@ -20,7 +28,7 @@ const runHandler = (error) => {
 
   errorHandler(
     error,
-    { method: 'GET', originalUrl: '/test' },
+    request,
     response,
     () => {}
   );
@@ -42,6 +50,30 @@ test('unexpected server errors never leak their message', () => {
       succeed: false,
       msg: 'Something went wrong. Please try again later.',
     });
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
+test('server-error logs omit query strings and their potentially sensitive values', () => {
+  const originalConsoleError = console.error;
+  const logCalls = [];
+  console.error = (...args) => logCalls.push(args);
+
+  try {
+    runHandler(new Error('database failed'), {
+      method: 'GET',
+      originalUrl: '/test?access_token=must-not-be-logged',
+      path: '/test',
+    });
+
+    assert.equal(logCalls.length, 1);
+    assert.equal(logCalls[0][0], 'GET /test');
+    assert.equal(
+      JSON.stringify(logCalls).includes('must-not-be-logged'),
+      false
+    );
   } finally {
     console.error = originalConsoleError;
   }
