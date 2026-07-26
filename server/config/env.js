@@ -90,6 +90,29 @@ const SESSION_MINUTES = (() => {
   return value;
 })();
 
+/**
+ * Number of reverse-proxy hops to trust for the client address.
+ *
+ * Must match the deployment exactly. Too low and every visitor shares the
+ * proxy's address, so rate limits bucket them together; too high (or `true`)
+ * and a client can forge X-Forwarded-For to appear as any address it likes.
+ */
+const trustProxyHops = (() => {
+  const value = Number(process.env.TRUST_PROXY_HOPS ?? 0);
+  if (!Number.isInteger(value) || value < 0 || value > 10) {
+    throw new Error('TRUST_PROXY_HOPS must be an integer between 0 and 10.');
+  }
+  return value;
+})();
+
+const bodyLimit = (name, fallback) => {
+  const value = process.env[name] || fallback;
+  if (!/^\d+(\.\d+)?(b|kb|mb)$/i.test(value)) {
+    throw new Error(`${name} must look like "100kb" or "2mb" (received "${value}").`);
+  }
+  return value;
+};
+
 module.exports = {
   isProduction,
   adminSecret,
@@ -98,6 +121,9 @@ module.exports = {
   cookieSecure: isProduction(),
   sessionMinutes: SESSION_MINUTES,
   sessionSeconds: SESSION_MINUTES * 60,
+  trustProxyHops,
+  jsonBodyLimit: bodyLimit('JSON_BODY_LIMIT', '256kb'),
+  urlEncodedBodyLimit: bodyLimit('URL_ENCODED_BODY_LIMIT', '256kb'),
   allowedOrigins: allowedOriginsRaw
     .split(',')
     .map((origin) => origin.trim())

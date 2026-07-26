@@ -2,7 +2,13 @@
   "GET /api/settings": {
     "status": 200,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy"
+    ],
     "body": {
       "msg": "Successfully fetched settings!",
       "succeed": true
@@ -13,6 +19,11 @@
     "status": 200,
     "contentType": "application/pdf",
     "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
       "cache-control"
     ],
     "body": "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n",
@@ -21,7 +32,13 @@
   "POST /api/projects {\"mode\":\"all\"}": {
     "status": 200,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy"
+    ],
     "body": {
       "msg": "Successfully fetched project data!",
       "result": [
@@ -97,7 +114,13 @@
   "POST /api/projects {\"mode\":\"cat\"}": {
     "status": 200,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy"
+    ],
     "body": {
       "msg": "Successfully fetched project data!",
       "result": [
@@ -111,7 +134,13 @@
   "POST /api/projects {\"mode\":\"single\",\"projectId\":1}": {
     "status": 200,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy"
+    ],
     "body": {
       "msg": "Successfully fetched project data!",
       "result": {
@@ -160,7 +189,14 @@
   "POST /api/projects {\"mode\":\"single\"}": {
     "status": 400,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
     "body": {
       "msg": "Project Id must be provided!"
     },
@@ -169,7 +205,13 @@
   "POST /api/projects {\"mode\":\"nonsense\"}": {
     "status": 200,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy"
+    ],
     "body": {
       "msg": "Successfully fetched project data!",
       "succeed": true
@@ -179,7 +221,13 @@
   "POST /api/projects": {
     "status": 200,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy"
+    ],
     "body": {
       "msg": "Successfully fetched project data!",
       "succeed": true
@@ -188,30 +236,62 @@
   },
   "GET /api/nope": {
     "status": 404,
-    "contentType": "text/html",
-    "securityHeaders": [],
-    "body": "Route does not exist",
+    "contentType": "application/json",
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
+    "body": {
+      "msg": "Route does not exist"
+    },
     "survived": true
   },
   "GET /nope": {
     "status": 404,
-    "contentType": "text/html",
-    "securityHeaders": [],
+    "contentType": "text/plain",
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
     "body": "Route does not exist",
     "survived": true
   },
   "GET /api/admin": {
     "status": 404,
-    "contentType": "text/html",
-    "securityHeaders": [],
-    "body": "Route does not exist",
+    "contentType": "application/json",
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
+    "body": {
+      "msg": "Route does not exist"
+    },
     "kind": "probe",
     "survived": true
   },
   "GET /api/admin/auth": {
     "status": 403,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
     "body": {
       "msg": "admin not logged in"
     },
@@ -220,7 +300,14 @@
   "GET /api/contact/messages": {
     "status": 403,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
     "body": {
       "msg": "admin not logged in"
     },
@@ -229,7 +316,14 @@
   "POST /api/projects/create {\"title\":\"x\"}": {
     "status": 403,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
     "body": {
       "msg": "admin not logged in"
     },
@@ -238,7 +332,14 @@
   "PATCH /api/projects/reorder {\"order\":[]}": {
     "status": 403,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
     "body": {
       "msg": "admin not logged in"
     },
@@ -247,7 +348,14 @@
   "PATCH /api/projects/edit-infos/1 {\"title\":\"x\"}": {
     "status": 403,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
     "body": {
       "msg": "admin not logged in"
     },
@@ -256,7 +364,14 @@
   "PATCH /api/projects/delete-contents/1 {\"mode\":\"videos\"}": {
     "status": 403,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
     "body": {
       "msg": "admin not logged in"
     },
@@ -265,7 +380,14 @@
   "DELETE /api/projects/delete/999999": {
     "status": 403,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
     "body": {
       "msg": "admin not logged in"
     },
@@ -274,7 +396,14 @@
   "POST /api/settings/add": {
     "status": 403,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
     "body": {
       "msg": "admin not logged in"
     },
@@ -283,7 +412,14 @@
   "PATCH /api/settings/edit/1": {
     "status": 403,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
     "body": {
       "msg": "admin not logged in"
     },
@@ -292,7 +428,14 @@
   "POST /api/contact/emailToClient/custom": {
     "status": 403,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
     "body": {
       "msg": "admin not logged in"
     },
@@ -301,7 +444,14 @@
   "POST /api/contact/smsToClient/custom": {
     "status": 403,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
     "body": {
       "msg": "admin not logged in"
     },
@@ -310,7 +460,14 @@
   "POST /api/admin/login": {
     "status": 400,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
     "body": {
       "msg": "Username or Password should not be empty"
     },
@@ -319,7 +476,14 @@
   "POST /api/admin/login {\"userName\":\"nope\",\"password\":\"nope\"}": {
     "status": 401,
     "contentType": "application/json",
-    "securityHeaders": [],
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
     "body": {
       "msg": "Wrong username and password combination"
     },
@@ -330,6 +494,11 @@
     "status": 200,
     "contentType": "application/json",
     "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
       "set-cookie"
     ],
     "body": {
@@ -340,17 +509,35 @@
   },
   "POST /api/admin/reg {\"userName\":\"contract-probe\",\"password\":\"x\"}": {
     "status": 404,
-    "contentType": "text/html",
-    "securityHeaders": [],
-    "body": "Route does not exist",
+    "contentType": "application/json",
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
+    "body": {
+      "msg": "Route does not exist"
+    },
     "kind": "probe",
     "survived": true
   },
   "POST /api/admin/reg": {
     "status": 404,
-    "contentType": "text/html",
-    "securityHeaders": [],
-    "body": "Route does not exist",
+    "contentType": "application/json",
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
+    "body": {
+      "msg": "Route does not exist"
+    },
     "kind": "probe",
     "survived": true
   }

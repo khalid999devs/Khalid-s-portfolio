@@ -1,119 +1,97 @@
-const multer = require('multer');
-const { existsSync, mkdirSync } = require('fs');
-const { resolve } = require('path');
-const { BadRequestError } = require('../errors');
+'use strict';
 
-const sanitizeFilename = (name) => {
-  return name.replace(/[\\/:*?"<>|]/g, '_');
+const multer = require('multer');
+const { mkdirSync } = require('fs');
+const { randomBytes } = require('crypto');
+const { resolve, join } = require('path');
+const { UPLOADS_ROOT } = require('../utils/uploadPaths');
+const { UPLOAD_FIELDS } = require('../utils/mediaTypes');
+
+/**
+ * Writes uploads to a location derived entirely from server-side values.
+ *
+ * The previous version built both the directory and the filename from
+ * `req.body.title`, a client-supplied string. `sanitizeFilename` stripped
+ * `/ \ : * ? " < > |` but not `..`, so a project titled `..` escaped a
+ * directory level. The extension was taken from `file.mimetype` for images and
+ * from `file.originalname` for videos -- both client-controlled -- so a request
+ * claiming `video/mp4` while naming its file `payload.html` wrote
+ * attacker-controlled HTML into a statically served directory.
+ *
+ * Now: the directory comes from the numeric project id in the route, and the
+ * filename is random. Neither can be influenced by the request body. The final
+ * extension is assigned after upload, from the file's actual signature -- see
+ * `middlewares/validateUploads.js`.
+ *
+ * Existing rows keep their old title-based paths. Nothing rewrites them; the
+ * resolver only requires that a stored path stays inside the uploads root.
+ */
+
+const MAXIMUM_FILE_BYTES = 50 * 1024 * 1024;
+const MAXIMUM_FILES_PER_REQUEST = 12;
+
+/**
+ * The project id comes from the route parameter, never the body. Anything that
+ * is not a positive integer is refused rather than coerced, so no request can
+ * steer the write path.
+ */
+const projectDirectoryFor = (req) => {
+  const id = Number(req.params?.id);
+  if (!Number.isSafeInteger(id) || id < 1) return null;
+  return join(UPLOADS_ROOT, 'projects', String(id));
 };
 
-//file upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const validFields = /bannerImg|videos|thumbnailContents|sliderContents/;
-    if (!file.fieldname) {
-      return cb(null, true);
+    if (!UPLOAD_FIELDS.includes(file.fieldname)) {
+      cb(new Error(`Unexpected upload field "${file.fieldname}".`));
+      return;
     }
 
-    const isFieldValid = validFields.test(file.fieldname);
-
-    if (!isFieldValid) {
-      cb(new Error(`Field name didn't match`));
+    const projectDirectory = projectDirectoryFor(req);
+    if (!projectDirectory) {
+      cb(new Error('A valid numeric project id is required to upload media.'));
+      return;
     }
 
-    let destName = resolve(__dirname, `../uploads/${file.fieldname}`);
-
-    const titleStr = req.body?.title
-      .split(' ')
-      .map((word) => word.toLowerCase())
-      .join('-');
-
-    if (
-      file.fieldname === 'videos' ||
-      file.fieldname === 'thumbnailContents' ||
-      file.fieldname === 'sliderContents' ||
-      file.fieldname === 'bannerImg'
-    ) {
-      destName = resolve(
-        __dirname,
-        `../uploads/projects/${sanitizeFilename(titleStr)}/${file.fieldname}`
-      );
+    const target = resolve(projectDirectory, file.fieldname);
+    try {
+      mkdirSync(target, { recursive: true });
+    } catch (error) {
+      cb(error);
+      return;
     }
 
-    if (!existsSync(destName)) {
-      try {
-        mkdirSync(destName, { recursive: true });
-      } catch (error) {
-        console.log(error);
-      }
-    }
-
-    let pathName = `uploads/${file.fieldname}`;
-
-    if (
-      file.fieldname === 'videos' ||
-      file.fieldname === 'thumbnailContents' ||
-      file.fieldname === 'sliderContents' ||
-      file.fieldname === 'bannerImg'
-    ) {
-      pathName = `uploads/projects/${sanitizeFilename(titleStr)}/${
-        file.fieldname
-      }`;
-    }
-    cb(null, pathName);
+    cb(null, target);
   },
 
   filename: (req, file, cb) => {
-    let type, fileExt;
-    if (
-      file.fieldname === 'thumbnailContents' ||
-      file.fieldname === 'sliderContents' ||
-      file.fieldname === 'bannerImg'
-    ) {
-      type = file.mimetype.split('/');
-      fileExt = type[type.length - 1];
-    } else {
-      type = file.originalname.split('.');
-      fileExt = type[type.length - 1];
-    }
-
-    const titleStr = req.body?.title
-      .split(' ')
-      .map((word) => word.toLowerCase())
-      .join('-');
-
-    let fileName = '';
-    if (
-      file.fieldname === 'videos' ||
-      file.fieldname === 'thumbnailContents' ||
-      file.fieldname === 'sliderContents' ||
-      file.fieldname === 'bannerImg'
-    ) {
-      fileName =
-        file.fieldname + '_' + sanitizeFilename(titleStr) + '@' + Date.now();
-    } else {
-      fileName = file.fieldname + `-${Date.now()}`;
-    }
-    cb(null, fileName + '.' + fileExt);
+    // No real extension yet. It is appended once the bytes have been inspected,
+    // so an unrecognised upload never lands with a renderable suffix.
+    cb(null, `${file.fieldname}_${randomBytes(16).toString('hex')}.upload`);
   },
 });
 
 const upload = multer({
-  storage: storage,
-  limits: { fileSize: 50 * 1024 * 1024 },
+  storage,
+  limits: {
+    fileSize: MAXIMUM_FILE_BYTES,
+    files: MAXIMUM_FILES_PER_REQUEST,
+    fields: 32,
+    parts: MAXIMUM_FILES_PER_REQUEST + 32,
+    headerPairs: 64,
+  },
   fileFilter: (req, file, cb) => {
-    const fileTypes = /jpeg|jpg|png|webp|mp4|wav|mkv|x-matroska/;
-
-    const mimeType = fileTypes.test(file.mimetype);
-
-    if (mimeType) {
-      return cb(null, true);
-    } else {
-      cb(new Error('only jpg,png,jpeg,webp,mp4,wav,mkv is allowed!'));
+    // A cheap first pass only. The authoritative check reads the written bytes;
+    // this exists so an obviously wrong upload is refused before it is stored.
+    if (!UPLOAD_FIELDS.includes(file.fieldname)) {
+      cb(new Error(`Unexpected upload field "${file.fieldname}".`));
+      return;
     }
-
-    cb(new Error('there was an unknown error'));
+    cb(null, true);
   },
 });
 
 module.exports = upload;
+module.exports.MAXIMUM_FILE_BYTES = MAXIMUM_FILE_BYTES;
+module.exports.MAXIMUM_FILES_PER_REQUEST = MAXIMUM_FILES_PER_REQUEST;

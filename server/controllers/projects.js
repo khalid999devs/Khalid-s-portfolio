@@ -7,6 +7,7 @@ const {
   JSON_ARRAY_FIELDS,
   pickProjectFields,
 } = require('../utils/projectFields');
+const { UPLOAD_FIELDS } = require('../utils/mediaTypes');
 
 /**
  * Restores the array fields to arrays for the response body.
@@ -15,6 +16,29 @@ const {
  * the admin panel expects arrays back. Kept as a helper so the response shape
  * stays byte-identical to what these routes returned before.
  */
+/**
+ * The media routes select a column with a `mode` field. Neither route checked
+ * it, so an absent or misspelled value skipped every branch and still reported
+ * success.
+ */
+const assertMediaMode = (mode) => {
+  if (!UPLOAD_FIELDS.includes(mode)) {
+    throw new BadRequestError(
+      `"mode" must be one of: ${UPLOAD_FIELDS.join(', ')}.`
+    );
+  }
+};
+
+/**
+ * Multipart form fields are always strings, so a boolean arrives as "true" or
+ * "false" -- and is often absent entirely.
+ */
+const parseBooleanish = (value) => {
+  if (typeof value === 'boolean') return value;
+  if (value === undefined || value === null || value === '') return false;
+  return value === 'true' || value === '1';
+};
+
 const decodeArrayFields = (data) => {
   const decoded = { ...data };
   for (const field of JSON_ARRAY_FIELDS) {
@@ -167,8 +191,22 @@ const editProjectInfos = async (req, res) => {
 
 const editProjectContents = async (req, res) => {
   const projectId = req.params.id;
-  let { mode, contentId, replaceItem } = req.body;
-  replaceItem = JSON.parse(replaceItem);
+  const { mode, contentId } = req.body;
+
+  // `mode` selects which media column to write. It was never validated, so a
+  // request that omitted it -- or misspelled it -- fell through every branch,
+  // saved nothing, and still answered 200 "Successfully updated project
+  // contents!". Any files multer had already written were left on disk with
+  // nothing in the database referencing them.
+  assertMediaMode(mode);
+  if (!req.files?.[mode]?.length) {
+    throw new BadRequestError(`No file was uploaded for "${mode}".`);
+  }
+
+  // `JSON.parse(replaceItem)` threw a SyntaxError -- surfacing as a 500 --
+  // whenever the field was absent or sent as a bare form value like `false`
+  // rather than JSON.
+  const replaceItem = parseBooleanish(req.body.replaceItem);
 
   let project = await projects.findOne({ where: { id: projectId } });
   if (!project)
@@ -178,7 +216,10 @@ const editProjectContents = async (req, res) => {
     const uploadedFiles = req.files;
 
     if (mode === 'bannerImg' && uploadedFiles.bannerImg?.length > 0) {
-      if (project.img) deleteFile(project.img);
+      // Was `project.img`, a column that does not exist, so this was always
+      // undefined and the replaced banner was never removed from disk. Every
+      // banner replacement since has left an orphan file.
+      if (project.bannerImg) deleteFile(project.bannerImg);
       project.bannerImg = uploadedFiles.bannerImg[0].path;
     } else if (mode === 'videos' && uploadedFiles.videos?.length > 0) {
       let dataVideos = JSON.parse(project.videos);
@@ -289,6 +330,10 @@ const deleteProjectContents = async (req, res) => {
 
   if (!project)
     throw new BadRequestError('Please Enter the correct project Id!');
+
+  // Same defect as the edit route: an unrecognised mode matched no branch and
+  // still answered "Successfully deleted!" having deleted nothing.
+  assertMediaMode(mode);
 
   if (mode === 'bannerImg') {
     if (project.bannerImg) deleteFile(project.bannerImg);
