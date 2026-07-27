@@ -48,7 +48,7 @@ const Projects = () => {
           <div className='flex flex-row flex-wrap gap-3 items-center justify-center md:justify-start'>
             {categories?.map((item, key) => (
               <OutlinedBigIcon
-                classes={`!border-[0.2px] border-opacity-50 !rounded-[3px] capitalize ${
+                classes={`!border-[0.2px] border-onPrimary-main/50 !rounded-[3px] capitalize ${
                   item === targetCat ? '!bg-white !text-black' : ''
                 }`}
                 text={item}
@@ -74,7 +74,7 @@ const Projects = () => {
             .map((item, key) => {
               return (
                 <div
-                  className='w-full grid border-b-[0.05px] border-opacity-30 border-secondary-light pb-3 gap-6 group cursor-pointer pointer-all'
+                  className='w-full grid border-b-[0.05px] border-secondary-light/30 pb-3 gap-6 group cursor-pointer pointer-all'
                   onClick={() => {
                     navigate(`/singleProject/${item.value + '@' + item.id}`);
                   }}

@@ -210,7 +210,7 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
                   {playingVideo === key ? <FaPause /> : <FaPlay />}
                 </div>
                 <div
-                  className='absolute right-[3%] top-[3%] bg-body-main bg-opacity-70 text-sm duration-500 group-hover:bg-opacity-100 w-[22px] h-[22px] rounded-full flex items-center justify-center cursor-pointer'
+                  className='absolute right-[3%] top-[3%] bg-body-main/70 text-sm duration-500 group-hover:bg-body-main w-[22px] h-[22px] rounded-full flex items-center justify-center cursor-pointer'
                   onClick={(e) => {
                     e.preventDefault();
                     item.id && handleRemoveVideo(item.id);

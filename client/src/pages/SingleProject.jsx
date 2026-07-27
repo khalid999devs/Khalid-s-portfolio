@@ -238,7 +238,16 @@ const SingleProject = () => {
             <div className='text-secondary-light text-sm'>Next Project</div>
             <h2 className='text-4xl '>{nextProject.title}</h2>
 
-            <div className='w-full overflow-hidden h-auto border-b-[0.5] border-secondary-main border-b border-opacity-40'>
+            {/*
+              `border-b-[0.5]` was removed, deliberately keeping the 1px border
+              that `border-b` gives. The value had no unit, so Tailwind 3 read
+              it as a colour and emitted `border-bottom-color: .5`, which the
+              browser discarded -- the rule never did anything. Tailwind 4 parses
+              it as a width, so keeping it would have quietly halved a border
+              that has always rendered at 1px. If 0.5px was the intent, say so
+              and it becomes border-b-[0.5px]; this preserves what ships today.
+            */}
+            <div className='w-full overflow-hidden h-auto border-b border-secondary-main/40'>
               <div
                 className='bg-primary-dark mt-4 rounded-t-md max-h-[90px] max-w-[200px] w-full p-3 pb-0 overflow-hidden m-auto translate-y-2 transition-transform duration-300 cursor-pointer pointer-all hover:translate-y-0'
                 onClick={() => {
