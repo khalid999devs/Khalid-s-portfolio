@@ -1,8 +1,55 @@
-Creative Commons Attribution-NoDerivatives 4.0 International (CC BY-ND 4.0)
+Copyright (c) 2026 Khalid Ahammed. All rights reserved.
 
-This work is licensed under a Creative Commons Attribution-NoDerivatives 4.0 International License.  
-You may share this work **only in its original form**, with proper credit to the author.  
-Modification, adaptation, or redistribution in altered form is **strictly prohibited**.
+VIEW-ONLY LICENSE
 
-For full license terms, visit:  
-https://creativecommons.org/licenses/by-nd/4.0/
+This repository is published so that it can be read. It is not open source, and
+no license to use the work is granted beyond what is written below.
+
+WHAT YOU MAY DO
+
+  1. View and read the source code, documentation and design in this
+     repository.
+  2. Learn from it, and apply the general techniques, patterns and ideas you
+     learn to your own independently written work.
+  3. Quote short excerpts for commentary, review, teaching or citation, with
+     attribution to Khalid Ahammed and a link to this repository.
+
+WHAT YOU MAY NOT DO
+
+Without prior written permission from the copyright holder, you may not:
+
+  1. Copy, reproduce or store this work, in whole or in substantial part,
+     except for the automatic, temporary copies your browser or Git client
+     makes in order to display it to you.
+  2. Modify, adapt, translate or create derivative works from it.
+  3. Redistribute, republish, sublicense, sell or otherwise share it, whether
+     modified or verbatim, and whether or not for payment.
+  4. Deploy, host or otherwise operate this work, or any substantial part of
+     it, as a running site or service.
+  5. Present this work, or anything substantially derived from it, as your own
+     portfolio, project or product.
+  6. Use it, or any part of it, to train or fine-tune a machine learning model.
+
+Forking within GitHub, and cloning locally, are permitted only for the purpose
+of reading the code. Any other use of a fork or clone falls under the
+restrictions above.
+
+THIRD-PARTY MATERIAL
+
+This repository depends on third-party packages and includes third-party
+assets, each of which carries its own license from its own author. This license
+covers only the original work in this repository and grants no rights over that
+material. Third-party components remain governed by their own terms.
+
+NO WARRANTY
+
+THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE LIABLE
+FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE WORK OR THE
+USE OR OTHER DEALINGS IN THE WORK.
+
+PERMISSIONS
+
+To request any use beyond reading, contact khalidahammeduzzal@gmail.com.

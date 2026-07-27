@@ -54,6 +54,47 @@ jobs:
           fi
         working-directory: .
 
+  docs:
+    name: Docs
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      # The README was once saved as UTF-16. GitHub decoded it into a single
+      # unreadable paragraph: every heading, list and diagram collapsed, and
+      # nothing in the repository complained. A NUL byte in a file Git calls
+      # text is the signature of that mistake, so it fails here instead.
+      - name: Markdown must be UTF-8
+        run: |
+          set -euo pipefail
+          rc=0
+          for file in $(git ls-files '*.md'); do
+            # Strip NUL bytes and compare with the original. A difference means
+            # the file had them, which is what UTF-16 looks like to anything
+            # expecting UTF-8. Portable, and unlike `grep -P` it cannot pass by
+            # failing to run.
+            if ! LC_ALL=C tr -d '\000' < "$file" | cmp -s - "$file"; then
+              echo "$file contains NUL bytes; it is UTF-16, not UTF-8."
+              echo "  fix: iconv -f UTF-16LE -t UTF-8 $file > tmp && mv tmp $file"
+              rc=1
+            fi
+          done
+          exit $rc
+
+      # An unclosed fence swallows the rest of the page into a code block.
+      - name: Code fences must be balanced
+        run: |
+          set -euo pipefail
+          rc=0
+          for file in $(git ls-files '*.md'); do
+            count=$(grep -c '^```' "$file" || true)
+            if [ $((count % 2)) -ne 0 ]; then
+              echo "$file has $count fence markers; one is unclosed."
+              rc=1
+            fi
+          done
+          exit $rc
+
   client:
     name: Client
     runs-on: ubuntu-24.04

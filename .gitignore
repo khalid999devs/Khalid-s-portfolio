@@ -14,6 +14,12 @@ build/
 # Private working notes (audit, plans, verification evidence)
 docs/
 
+# Deployment runbook. It describes how my host is wired: which variables the
+# server refuses to boot without, how to rotate them, migration order, and the
+# advisories I have accepted. None of that is a secret on its own, but together
+# it is a map of the production setup and there is no reason to hand it out.
+DEPLOYMENT.md
+
 # Visual-regression harness. Kept out of the repository by request: it is local
 # tooling, and it carries a fixture set (a copy of production media) that has no
 # business in a public repo. It still runs locally and is still the gate every
