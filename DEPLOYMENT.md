@@ -89,30 +89,35 @@ VITE_API_URL=https://api.khalidahammed.com npm run build
 Without it the build falls back to `http://localhost:8000`, which is correct for
 local development and wrong for production.
 
-## The one visual difference, stated plainly
+## Visual verification, and the harness noise floor
 
-The goal was zero visual change, and the site is pixel-identical to the previous
-build on 52 of 53 captured screenshots, with every computed style and every
-layout dimension unchanged everywhere.
+Every computed style, layout dimension, element count and colour is identical to
+the previous build across 8 routes × 3 viewports. Screenshots are identical too,
+apart from a measured noise floor.
 
-One pixel differs. On `/about-me` at 390×844, the pixel at (7, 212) renders
-`rgb(28,28,28)` before and `rgb(22,22,22)` after — a 6/255 change in the last
-antialiasing step of a diagonal glyph edge, against a `#161616` background.
+Two screenshots — `about__mobile__s0` and `home__tablet__s0`, the two dominated
+by GSAP-driven text animation — vary by 1–2 pixels **between two captures of the
+same unchanged build**. Those animations settle against real time, so their
+glyphs rasterise a subpixel apart depending on machine load. The comparator
+allows 2 pixels per image for that reason, and the figure came from measuring
+it, not from picking a number that passed.
 
-It is caused by code splitting: the module graph loads in a different order, so
-text rasterises at a marginally different moment. Established by bisection, not
-assumed — reverting the cursor-grid change leaves it, reverting the bundle work
-removes it. Both builds were captured twice and are byte-reproducible, so it is
-a genuine difference rather than harness noise.
+This took three attempts to get right, and the first two answers were wrong:
 
-It was accepted in exchange for a 55% reduction in render-blocking JavaScript
-(439 KiB → 199 KiB gzip). It is recorded as an explicit one-pixel waiver in
-`verification/compare.mjs`, so any further difference — including a second
-differing pixel in that same image — still fails the gate.
+1. A single-page harness blamed the cursor-grid change. It used a cold browser
+   on one route and did not reproduce real conditions.
+2. Bisection in the full harness blamed code splitting. That harness seeded
+   `Math.random`, which only reproduces if both builds draw from it in the same
+   order — and upgrading React Router changed the number of startup draws by
+   one, desynchronising every subsequent value. Since this site picks its
+   scrambled characters and per-word opacities from `Math.random`, that alone
+   moved glyph rendering.
+3. Stubbing `Math.random` to a constant made it phase-independent. What remained
+   was reproduced by capturing one build twice — i.e. it is the harness, not any
+   change.
 
-To reject the trade instead, revert the `manualChunks` block in
-`client/vite.config.js` and the `lazy(() => import('./bot/Scene'))` in
-`client/src/components/Home/Hero.jsx`, and remove the waiver.
+So no change in this work alters the site's rendering. Anything above the floor,
+and any difference at all in a computed style, still fails the gate.
 
 ## Behaviour changes worth knowing
 
@@ -156,3 +161,25 @@ These are not addressed by this work and remain real:
   portfolio advertising paid work deserve a decision.
 - The repository's CC BY-ND licence conflicts with `server/package.json` saying
   ISC. Pick one.
+
+## Accepted advisories
+
+Two advisories are knowingly not fixed. Both were checked rather than assumed.
+
+**`react-router` GHSA-qwww-vcr4-c8h2 (high)** — an RSC-mode CSRF bypass. This is
+a Vite SPA using `createBrowserRouter` and `RouterProvider`; it has no RSC mode
+and no server component runtime, so the vulnerable code path does not exist
+here. The fixed version is 8.3.0, **which is not published** — 7.18.1 is the
+latest release. npm proposes "downgrade to 7.11.0", which would reintroduce the
+open-redirect XSS in the router itself (advisory range 6.0.0-alpha.0 - 7.17.0),
+a bug that *does* apply to this app.
+Staying on 7.18.1 is strictly safer. Re-check when React Router 8.3.0 ships.
+
+**`sequelize` and `uuid` (moderate, server)** — reached through
+`sequelize@6.37.8`, the newest stable v6. The `sequelize` advisory range is
+`0.0.0-development || >=3.30.1`, i.e. every version ever published, and npm's
+proposed remedy for both is downgrading to Sequelize 3.30.0, a 2017 release.
+Clearing them properly means Sequelize 7, still alpha.
+
+Everything else is resolved: server 29 → 0 fixable, client 30 → 2 (both the
+React Router item above).

@@ -40,6 +40,36 @@ for (const [label, dist] of [['baseline', BASELINE_DIST], ['candidate', CANDIDAT
   }
 }
 
+/**
+ * Refuse to run if anything already holds a port we need.
+ *
+ * `spawn` with `stdio: 'ignore'` swallows EADDRINUSE, so a real server left
+ * running on 8000 silently answers in the mock's place. That happened: both
+ * captures hit the live API, exhausted its 300-request rate limit partway
+ * through, and produced pages missing their images and buttons -- which read
+ * as a serious regression until the cause was traced. Fail loudly instead.
+ */
+const assertPortsFree = async () => {
+  for (const port of [8000, 4180, 4181]) {
+    const inUse = await fetch(`http://127.0.0.1:${port}/`, {
+      signal: AbortSignal.timeout(1200),
+    })
+      .then(() => true)
+      .catch((error) => error.name === 'TimeoutError');
+
+    if (inUse) {
+      console.error(
+        `[verify] Port ${port} is already in use. Stop whatever holds it ` +
+          `(lsof -ti:${port} | xargs kill) — otherwise it answers in place of the ` +
+          `harness and the comparison is meaningless.`
+      );
+      process.exit(2);
+    }
+  }
+};
+
+await assertPortsFree();
+
 const mock = spawn(process.execPath, [join(HERE, 'mock-api.mjs')], { stdio: 'ignore' });
 const baselineServer = await serveDist(BASELINE_DIST, 4180);
 const candidateServer = await serveDist(CANDIDATE_DIST, 4181);

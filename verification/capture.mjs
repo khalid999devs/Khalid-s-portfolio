@@ -78,11 +78,26 @@ const PROBE_SELECTORS = [
  */
 const DETERMINISM_SCRIPT = `
   (() => {
-    let seed = 0x2f6e2b1;
-    Math.random = () => {
-      seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5;
-      return ((seed >>> 0) % 1e9) / 1e9;
-    };
+    // A constant, not a seeded sequence.
+    //
+    // A seeded PRNG only reproduces if both builds draw from it in exactly the
+    // same order, and they do not: upgrading React Router changed the number of
+    // Math.random() calls made during startup by one (1025 -> 1024), which put
+    // every subsequent draw out of phase. Since this site's entrance animations
+    // pick their scrambled characters, per-word opacities and per-letter
+    // durations from Math.random(), that shifted glyph rasterisation and showed
+    // up as single-pixel "regressions" that were nothing of the sort.
+    //
+    // Returning a fixed value makes rendering independent of how many times the
+    // function is called, so a dependency change cannot desynchronise the
+    // comparison. Verified safe for this codebase: every call site uses the
+    // result directly for a character index, an opacity or a duration, and none
+    // loops until a threshold is met.
+    Math.random = () => 0.42;
+
+    // The footer and page nav render a live clock on a one-second interval.
+    // Only the formatting is frozen -- Date.now() drives GSAP's ticker, and
+    // stopping time would stall the animations this harness exists to inspect.
     Date.prototype.toLocaleTimeString = function () { return '12:00:00 PM'; };
     Date.prototype.toLocaleDateString = function () { return '1/1/2026'; };
     Date.prototype.toLocaleString = function () { return '1/1/2026, 12:00:00 PM'; };
@@ -149,7 +164,13 @@ export async function capture(target, baseUrl, { settleMs = 9000 } = {}) {
         for (let step = 0; step < steps; step++) {
           const y = step * viewport.height;
           await page.evaluate((top) => {
-            window.lenis?.scrollTo(top, { immediate: true });
+            // `window.lenis` exists in some Lenis versions and not others, and
+            // when it does exist its shape varies -- optional chaining alone
+            // guards null but not "defined, without this method", which threw
+            // once the library was updated. Feature-detect properly.
+            if (typeof window.lenis?.scrollTo === 'function') {
+              window.lenis.scrollTo(top, { immediate: true });
+            }
             window.scrollTo({ top, behavior: 'instant' });
           }, y);
           // Scroll-triggered timelines need to run out before capture.

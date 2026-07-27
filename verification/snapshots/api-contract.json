@@ -11,6 +11,51 @@
     ],
     "body": {
       "msg": "Successfully fetched settings!",
+      "result": {
+        "createdAt": "<createdAt>",
+        "id": "<id>",
+        "technologies": {
+          "Backend": [
+            "NODE JS",
+            "EXPRESS JS",
+            "DJANGO",
+            "FLASK",
+            "SEQUELIZE",
+            "PRISMA",
+            "TURBO-REPO",
+            "DOCKER",
+            "MY SQL",
+            "MONGO DB",
+            "POSTGRE SQL",
+            "SANITY",
+            "GIT"
+          ],
+          "Frontend": [
+            "REACT JS",
+            "NEXT JS",
+            "GSAP",
+            "THREE JS",
+            "CHART JS",
+            "TAILWIND CSS",
+            "BOOTSTRAP",
+            "MUI",
+            "SHADCN",
+            "REACT NATIVE"
+          ],
+          "Languages": [
+            "TYPESCRIPT",
+            "JAVASCRIPT",
+            "PYTHON",
+            "JAVA",
+            "C",
+            "C++",
+            "SWIFT",
+            "HTML",
+            "CSS"
+          ]
+        },
+        "updatedAt": "<updatedAt>"
+      },
       "succeed": true
     },
     "survived": true
@@ -43,68 +88,117 @@
       "msg": "Successfully fetched project data!",
       "result": [
         {
-          "bannerImg": "uploads/projects/test-1/bannerImg/bannerImg_test-1@1763028150585.jpeg",
-          "category": "website",
-          "codeLink": null,
+          "bannerImg": "uploads/projects/chemgenie/bannerImg/bannerImg_chemgenie@1763668234964.png",
+          "category": "WebApp",
+          "codeLink": "https://github.com/khalid999devs/Chemgenie-lms?tab=License-1-ov-file",
           "createdAt": "<createdAt>",
           "date": "2024 July",
           "displayOrder": 0,
           "id": "<id>",
           "role": [
-            "Developer"
+            "System Designing",
+            "Full Stack Developer"
           ],
-          "siteLink": null,
-          "subtitle": "testy",
+          "siteLink": "https://chemgenie.app/",
+          "subtitle": "Learning Management System",
           "thumbnailContents": [
             {
               "id": "<id>",
               "serverThumb": {
-                "destination": "uploads/projects/test-1/thumbnailContents",
+                "destination": "uploads/projects/chemgenie/thumbnailContents",
                 "encoding": "7bit",
                 "fieldname": "thumbnailContents",
-                "filename": "thumbnailContents_test-1@1763028406960.jpeg",
-                "mimetype": "image/jpeg",
-                "originalname": "pexels-pixabay-45853.jpg",
-                "path": "uploads/projects/test-1/thumbnailContents/thumbnailContents_test-1@1763028406960.jpeg",
-                "size": 1368245
+                "filename": "thumbnailContents_chemgenie@1763668788806.png",
+                "mimetype": "image/png",
+                "originalname": "2.png",
+                "path": "uploads/projects/chemgenie/thumbnailContents/thumbnailContents_chemgenie@1763668788806.png",
+                "size": 362861
               },
-              "url": "uploads/projects/test-1/thumbnailContents/thumbnailContents_test-1@1763028406960.jpeg"
+              "url": "uploads/projects/chemgenie/thumbnailContents/thumbnailContents_chemgenie@1763668788806.png"
+            },
+            {
+              "id": "<id>",
+              "serverThumb": {
+                "destination": "uploads/projects/chemgenie/thumbnailContents",
+                "encoding": "7bit",
+                "fieldname": "thumbnailContents",
+                "filename": "thumbnailContents_chemgenie@1763668800733.png",
+                "mimetype": "image/png",
+                "originalname": "1.png",
+                "path": "uploads/projects/chemgenie/thumbnailContents/thumbnailContents_chemgenie@1763668800733.png",
+                "size": 199074
+              },
+              "url": "uploads/projects/chemgenie/thumbnailContents/thumbnailContents_chemgenie@1763668800733.png"
             }
           ],
-          "title": "Test 1",
-          "value": "test-1"
+          "title": "Chemgenie",
+          "value": "chemgenie"
         },
         {
-          "bannerImg": "uploads/projects/lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum/bannerImg/bannerImg_lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum@1763028296249.jpeg",
-          "category": "app",
-          "codeLink": null,
+          "bannerImg": "uploads/projects/golden-dot-properties-ltd./bannerImg/bannerImg_golden-dot-properties-ltd.@1763670824261.png",
+          "category": "Website",
+          "codeLink": "https://github.com/khalid999devs/golden-dot-property-LTD-real-estate",
           "createdAt": "<createdAt>",
-          "date": "2025 Feb",
+          "date": "2024 Oct",
           "displayOrder": 1,
           "id": "<id>",
           "role": [
-            "Developer"
+            "Full Stack Developer",
+            "UI/UX"
           ],
-          "siteLink": null,
-          "subtitle": "he,,o",
+          "siteLink": "https://goldendotbd.com/",
+          "subtitle": "Real Estate Website",
           "thumbnailContents": [
             {
               "id": "<id>",
               "serverThumb": {
-                "destination": "uploads/projects/lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum/thumbnailContents",
+                "destination": "uploads/projects/golden-dot-properties-ltd./thumbnailContents",
                 "encoding": "7bit",
                 "fieldname": "thumbnailContents",
-                "filename": "thumbnailContents_lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum@1763028432562.jpeg",
-                "mimetype": "image/jpeg",
-                "originalname": "pexels-pixabay-414860.jpg",
-                "path": "uploads/projects/lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum/thumbnailContents/thumbnailContents_lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum@1763028432562.jpeg",
-                "size": 724375
+                "filename": "thumbnailContents_golden-dot-properties-ltd.@1763670850099.png",
+                "mimetype": "image/png",
+                "originalname": "3.png",
+                "path": "uploads/projects/golden-dot-properties-ltd./thumbnailContents/thumbnailContents_golden-dot-properties-ltd.@1763670850099.png",
+                "size": 414993
               },
-              "url": "uploads/projects/lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum/thumbnailContents/thumbnailContents_lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum@1763028432562.jpeg"
+              "url": "uploads/projects/golden-dot-properties-ltd./thumbnailContents/thumbnailContents_golden-dot-properties-ltd.@1763670850099.png"
             }
           ],
-          "title": "Lorem ipsum donor sit amet ikru kemo loro iemm lorem ipsum",
-          "value": "lorem-ipsum-donor-sit-amet-ikru-kemo-loro-iemm-lorem-ipsum"
+          "title": "Golden Dot Properties LTD.",
+          "value": "golden-dot-properties-ltd."
+        },
+        {
+          "bannerImg": "uploads/projects/khalid's-portfolio/bannerImg/bannerImg_khalid's-portfolio@1763669472513.png",
+          "category": "Website",
+          "codeLink": "https://github.com/khalid999devs/Khalid-s-portfolio",
+          "createdAt": "<createdAt>",
+          "date": "2025 Feb",
+          "displayOrder": 2,
+          "id": "<id>",
+          "role": [
+            "UI / UX",
+            "Full Stack Developer"
+          ],
+          "siteLink": "https://khalidahammed.com/",
+          "subtitle": "Portfolio Website",
+          "thumbnailContents": [
+            {
+              "id": "<id>",
+              "serverThumb": {
+                "destination": "uploads/projects/khalid's-portfolio/thumbnailContents",
+                "encoding": "7bit",
+                "fieldname": "thumbnailContents",
+                "filename": "thumbnailContents_khalid's-portfolio@1763669476591.png",
+                "mimetype": "image/png",
+                "originalname": "5.png",
+                "path": "uploads/projects/khalid's-portfolio/thumbnailContents/thumbnailContents_khalid's-portfolio@1763669476591.png",
+                "size": 175091
+              },
+              "url": "uploads/projects/khalid's-portfolio/thumbnailContents/thumbnailContents_khalid's-portfolio@1763669476591.png"
+            }
+          ],
+          "title": "Khalid's Portfolio",
+          "value": "khalid's-portfolio"
         }
       ],
       "succeed": true
@@ -124,14 +218,14 @@
     "body": {
       "msg": "Successfully fetched project data!",
       "result": [
-        "website",
-        "app"
+        "WebApp",
+        "Website"
       ],
       "succeed": true
     },
     "survived": true
   },
-  "POST /api/projects {\"mode\":\"single\",\"projectId\":1}": {
+  "POST /api/projects {\"mode\":\"single\",\"projectId\":3}": {
     "status": 200,
     "contentType": "application/json",
     "securityHeaders": [
@@ -144,42 +238,164 @@
     "body": {
       "msg": "Successfully fetched project data!",
       "result": {
-        "bannerImg": "uploads/projects/test-1/bannerImg/bannerImg_test-1@1763028150585.jpeg",
-        "category": "website",
-        "codeLink": null,
+        "bannerImg": "uploads/projects/chemgenie/bannerImg/bannerImg_chemgenie@1763668234964.png",
+        "category": "WebApp",
+        "codeLink": "https://github.com/khalid999devs/Chemgenie-lms?tab=License-1-ov-file",
         "createdAt": "<createdAt>",
         "date": "2024 July",
-        "designLink": null,
+        "designLink": "",
         "displayOrder": 0,
         "id": "<id>",
-        "locationYear": "Bangladesh © 2025",
-        "overview": "new",
+        "locationYear": "Bangladesh © 2024",
+        "overview": "Chemgenie is an Advanced learning management system developed for maintaining the whole process of online education.",
         "role": [
-          "Developer"
+          "System Designing",
+          "Full Stack Developer"
         ],
-        "siteLink": null,
-        "sliderContents": [],
-        "subtitle": "testy",
-        "techStack": [],
+        "siteLink": "https://chemgenie.app/",
+        "sliderContents": [
+          {
+            "id": "<id>",
+            "serverContent": {
+              "destination": "uploads/projects/chemgenie/sliderContents",
+              "encoding": "7bit",
+              "fieldname": "sliderContents",
+              "filename": "sliderContents_chemgenie@1763668706832.png",
+              "mimetype": "image/png",
+              "originalname": "Golden dot properties LTD.png",
+              "path": "uploads/projects/chemgenie/sliderContents/sliderContents_chemgenie@1763668706832.png",
+              "size": 256831
+            },
+            "url": "uploads/projects/chemgenie/sliderContents/sliderContents_chemgenie@1763668706832.png"
+          },
+          {
+            "id": "<id>",
+            "serverContent": {
+              "destination": "uploads/projects/chemgenie/sliderContents",
+              "encoding": "7bit",
+              "fieldname": "sliderContents",
+              "filename": "sliderContents_chemgenie@1763668735017.png",
+              "mimetype": "image/png",
+              "originalname": "2.png",
+              "path": "uploads/projects/chemgenie/sliderContents/sliderContents_chemgenie@1763668735017.png",
+              "size": 199901
+            },
+            "url": "uploads/projects/chemgenie/sliderContents/sliderContents_chemgenie@1763668735017.png"
+          },
+          {
+            "id": "<id>",
+            "serverContent": {
+              "destination": "uploads/projects/chemgenie/sliderContents",
+              "encoding": "7bit",
+              "fieldname": "sliderContents",
+              "filename": "sliderContents_chemgenie@1763668735019.png",
+              "mimetype": "image/png",
+              "originalname": "3.png",
+              "path": "uploads/projects/chemgenie/sliderContents/sliderContents_chemgenie@1763668735019.png",
+              "size": 151625
+            },
+            "url": "uploads/projects/chemgenie/sliderContents/sliderContents_chemgenie@1763668735019.png"
+          },
+          {
+            "id": "<id>",
+            "serverContent": {
+              "destination": "uploads/projects/chemgenie/sliderContents",
+              "encoding": "7bit",
+              "fieldname": "sliderContents",
+              "filename": "sliderContents_chemgenie@1763668735021.png",
+              "mimetype": "image/png",
+              "originalname": "4.png",
+              "path": "uploads/projects/chemgenie/sliderContents/sliderContents_chemgenie@1763668735021.png",
+              "size": 129483
+            },
+            "url": "uploads/projects/chemgenie/sliderContents/sliderContents_chemgenie@1763668735021.png"
+          },
+          {
+            "id": "<id>",
+            "serverContent": {
+              "destination": "uploads/projects/chemgenie/sliderContents",
+              "encoding": "7bit",
+              "fieldname": "sliderContents",
+              "filename": "sliderContents_chemgenie@1763668735022.png",
+              "mimetype": "image/png",
+              "originalname": "6.png",
+              "path": "uploads/projects/chemgenie/sliderContents/sliderContents_chemgenie@1763668735022.png",
+              "size": 205486
+            },
+            "url": "uploads/projects/chemgenie/sliderContents/sliderContents_chemgenie@1763668735022.png"
+          },
+          {
+            "id": "<id>",
+            "serverContent": {
+              "destination": "uploads/projects/chemgenie/sliderContents",
+              "encoding": "7bit",
+              "fieldname": "sliderContents",
+              "filename": "sliderContents_chemgenie@1763668735024.png",
+              "mimetype": "image/png",
+              "originalname": "5.png",
+              "path": "uploads/projects/chemgenie/sliderContents/sliderContents_chemgenie@1763668735024.png",
+              "size": 174817
+            },
+            "url": "uploads/projects/chemgenie/sliderContents/sliderContents_chemgenie@1763668735024.png"
+          },
+          {
+            "id": "<id>",
+            "serverContent": {
+              "destination": "uploads/projects/chemgenie/sliderContents",
+              "encoding": "7bit",
+              "fieldname": "sliderContents",
+              "filename": "sliderContents_chemgenie@1763668735025.png",
+              "mimetype": "image/png",
+              "originalname": "7.png",
+              "path": "uploads/projects/chemgenie/sliderContents/sliderContents_chemgenie@1763668735025.png",
+              "size": 117887
+            },
+            "url": "uploads/projects/chemgenie/sliderContents/sliderContents_chemgenie@1763668735025.png"
+          }
+        ],
+        "subtitle": "Learning Management System",
+        "techStack": [
+          "REACT JS",
+          "Tailwind CSS",
+          "Chart.Js",
+          "Vite",
+          "Node Js",
+          "Express Js",
+          "MySQL"
+        ],
         "thumbnailContents": [
           {
             "id": "<id>",
             "serverThumb": {
-              "destination": "uploads/projects/test-1/thumbnailContents",
+              "destination": "uploads/projects/chemgenie/thumbnailContents",
               "encoding": "7bit",
               "fieldname": "thumbnailContents",
-              "filename": "thumbnailContents_test-1@1763028406960.jpeg",
-              "mimetype": "image/jpeg",
-              "originalname": "pexels-pixabay-45853.jpg",
-              "path": "uploads/projects/test-1/thumbnailContents/thumbnailContents_test-1@1763028406960.jpeg",
-              "size": 1368245
+              "filename": "thumbnailContents_chemgenie@1763668788806.png",
+              "mimetype": "image/png",
+              "originalname": "2.png",
+              "path": "uploads/projects/chemgenie/thumbnailContents/thumbnailContents_chemgenie@1763668788806.png",
+              "size": 362861
             },
-            "url": "uploads/projects/test-1/thumbnailContents/thumbnailContents_test-1@1763028406960.jpeg"
+            "url": "uploads/projects/chemgenie/thumbnailContents/thumbnailContents_chemgenie@1763668788806.png"
+          },
+          {
+            "id": "<id>",
+            "serverThumb": {
+              "destination": "uploads/projects/chemgenie/thumbnailContents",
+              "encoding": "7bit",
+              "fieldname": "thumbnailContents",
+              "filename": "thumbnailContents_chemgenie@1763668800733.png",
+              "mimetype": "image/png",
+              "originalname": "1.png",
+              "path": "uploads/projects/chemgenie/thumbnailContents/thumbnailContents_chemgenie@1763668800733.png",
+              "size": 199074
+            },
+            "url": "uploads/projects/chemgenie/thumbnailContents/thumbnailContents_chemgenie@1763668800733.png"
           }
         ],
-        "title": "Test 1",
+        "title": "Chemgenie",
         "updatedAt": "<updatedAt>",
-        "value": "test-1",
+        "value": "chemgenie",
         "videos": []
       },
       "succeed": true
@@ -199,6 +415,22 @@
     ],
     "body": {
       "msg": "Project Id must be provided!"
+    },
+    "survived": true
+  },
+  "POST /api/projects {\"mode\":\"single\",\"projectId\":999999}": {
+    "status": 404,
+    "contentType": "application/json",
+    "securityHeaders": [
+      "content-security-policy",
+      "strict-transport-security",
+      "x-content-type-options",
+      "x-frame-options",
+      "referrer-policy",
+      "cache-control"
+    ],
+    "body": {
+      "msg": "No project found with that id."
     },
     "survived": true
   },

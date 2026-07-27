@@ -1,5 +1,5 @@
 const { projects } = require('../models');
-const { BadRequestError } = require('../errors');
+const { BadRequestError, NotFoundError } = require('../errors');
 const deleteFile = require('../utils/deleteFile');
 const {
   EDITABLE_INFO_FIELDS,
@@ -444,6 +444,14 @@ const getProjects = async (req, res) => {
   } else if (mode === 'single') {
     if (!projectId) throw new BadRequestError('Project Id must be provided!');
     result = await projects.findOne({ where: { id: projectId } });
+
+    // `findOne` returns null when nothing matches, and the parsing below
+    // dereferenced it unguarded -- so asking for a project that does not exist
+    // answered 500 with a TypeError rather than 404. Any deleted project, or a
+    // stale link, hit this.
+    if (!result) {
+      throw new NotFoundError('No project found with that id.');
+    }
 
     result.dataValues.techStack = JSON.parse(result.dataValues.techStack);
     result.dataValues.role = JSON.parse(result.dataValues.role);

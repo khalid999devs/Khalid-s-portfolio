@@ -45,8 +45,13 @@ const REQUESTS = [
   ['GET', '/api/settings/download-resume'],
   ['POST', '/api/projects', { mode: 'all' }],
   ['POST', '/api/projects', { mode: 'cat' }],
-  ['POST', '/api/projects', { mode: 'single', projectId: 1 }],
+  // Project 3 exists in the seeded snapshot (`npm run seed:local`).
+  ['POST', '/api/projects', { mode: 'single', projectId: 3 }],
   ['POST', '/api/projects', { mode: 'single' }],
+  // A well-formed id for a project that does not exist. This answered 500 with
+  // a TypeError, because `findOne` returns null and the parsing that follows
+  // dereferenced it unguarded.
+  ['POST', '/api/projects', { mode: 'single', projectId: 999999 }],
   ['POST', '/api/projects', { mode: 'nonsense' }],
   ['POST', '/api/projects', {}],
   ['GET', '/api/nope'],
