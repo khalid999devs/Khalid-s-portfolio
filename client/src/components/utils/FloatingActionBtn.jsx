@@ -37,9 +37,13 @@ const FloatingActionBtn = ({ siteLink, designLink }) => {
     };
   }, [setScrollOpen]);
 
+  // `bg-opacity-40` was removed from the wrapper below. It set
+  // --tw-bg-opacity, which only affects a Tailwind bg-* colour utility, and
+  // there is none here -- `glass` is not defined in any stylesheet either. It
+  // rendered nothing under v3 and would render nothing under v4.
   return (
     <div
-      className={`fixed bottom-[1%] left-[50%] glass bg-opacity-40 z-40 w-max duration-500 transition-all transform translate-x-[-50%] pointer-all ${
+      className={`fixed bottom-[1%] left-[50%] glass z-40 w-max duration-500 transition-all transform translate-x-[-50%] pointer-all ${
         open ? 'translate-y-[0%]' : 'translate-y-[105%]'
       }`}
     >

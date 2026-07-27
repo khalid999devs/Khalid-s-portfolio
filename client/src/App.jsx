@@ -9,7 +9,6 @@ import { reqs } from './axios/requests';
 import MouseMoveEffect from './animations/MouseMoveEffect';
 import AnimatedOutlet from './animations/AnimatedOutlet';
 import { LenisGSAP } from './animations/LenisGSAP';
-import MetaCard from './components/utils/MetaCard';
 
 gsap.registerPlugin(CustomEase);
 const customEase = CustomEase.create('custom', '.87,0,.13,1');
@@ -148,7 +147,18 @@ const App = () => {
     <LenisGSAP>
       <AppContext.Provider value={{ loading, settings, setSettings, appData }}>
         <div className='bg-body-main min-h-screen w-full'>
-          <MetaCard />
+          {/*
+            MetaCard used to render here as a site-wide default, with pages
+            rendering a second one to override the title. Helmet 2 merged the
+            two instances and emitted a single set of tags, deepest value
+            winning, so the duplication was invisible.
+
+            React 19 hoists metadata itself and does not merge or de-duplicate,
+            and react-helmet-async 3 hands over to it -- so both instances
+            emitted, and /projects and /about-me went from 22 head tags to 32,
+            with two conflicting og:title values. Each route now renders exactly
+            one MetaCard instead.
+          */}
           <MouseMoveEffect />
           <Navbar />
           <div className='pointer-none'>

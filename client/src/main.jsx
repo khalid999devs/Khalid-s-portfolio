@@ -24,7 +24,6 @@ import About from './pages/About.jsx';
 import SingleProject from './pages/SingleProject.jsx';
 import CodingLab from './pages/CodingLab.jsx';
 
-import { HelmetProvider } from 'react-helmet-async';
 import Loader from './components/utils/Loader.jsx';
 
 const router = createBrowserRouter([
@@ -101,8 +100,8 @@ const router = createBrowserRouter([
   },
 ]);
 
+// No HelmetProvider: MetaCard renders <title>/<meta> directly and React 19
+// hoists them into <head>. See the note in MetaCard.jsx.
 createRoot(document.getElementById('root')).render(
-  <HelmetProvider>
-    <RouterProvider router={router} />
-  </HelmetProvider>
+  <RouterProvider router={router} />
 );

@@ -19,7 +19,7 @@ const IconedInput = ({
           : size === 'normal'
           ? 'py-2.5 border rounded-lg placeholder:font-extralight'
           : 'py-3 border rounded-lg placeholder:font-extralight'
-      } border-opacity-50 border-secondary-main ${classes}`}
+      } border-secondary-main/50 ${classes}`}
       onSubmit={(e) => {
         e.preventDefault();
         handleSubmit(e, name, value);

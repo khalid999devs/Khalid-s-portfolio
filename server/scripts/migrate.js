@@ -16,7 +16,7 @@
  * never edited -- a mistake is corrected by adding another migration.
  */
 
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 const { readdirSync } = require('fs');
 const { join } = require('path');

@@ -326,7 +326,7 @@ const ProjectsShows = () => {
           {projects?.slice(0, maxShowed).map((item, key) => {
             return (
               <div
-                className='w-full grid border-b-[0.05px] border-opacity-30 border-secondary-light pb-3 gap-4 md:gap-6 group cursor-pointer pointer-all'
+                className='w-full grid border-b-[0.05px] border-secondary-light/30 pb-3 gap-4 md:gap-6 group cursor-pointer pointer-all'
                 onClick={() => {
                   navigate(`/singleProject/${item.value + '@' + item.id}`);
                 }}

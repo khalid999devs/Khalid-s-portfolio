@@ -191,7 +191,7 @@ const ProjectTitles = ({
                           key={key}
                           className={`w-full py-3 px-3 ${
                             key + 1 != filteredCategories.length
-                              ? 'border-b border-b-1 border-b-primary-main border-opacity-30'
+                              ? 'border-b border-b-1 border-b-primary-main/30'
                               : ''
                           } capitalize cursor-pointer transition-all duration-300 hover:bg-neutral-700 text-sm`}
                           onClick={() =>

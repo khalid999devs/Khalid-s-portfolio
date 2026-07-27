@@ -1,6 +1,62 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+/*
+  Tailwind 4 reads its theme from CSS, but the JS config still works through
+  @config and is kept deliberately: porting the palette and breakpoints to
+  @theme would mean retyping every value, and a single typo there is a colour
+  change on a site whose whole constraint is that nothing may change colour.
+*/
+@config '../tailwind.config.js';
+
+/*
+  Restores the v3 default border and outline colours.
+
+  v4 changed the default from `gray-200` to `currentColor` for borders, and
+  divide/ring behave the same way. Eleven places in this codebase write a bare
+  `border` with no colour and inherited gray-200; under v4 those would take the
+  element's text colour instead, which on a dark theme means near-white borders
+  where there used to be faint grey ones.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    /*
+      The literal v3 value, NOT var(--color-gray-200).
+
+      v4 rebuilt the default palette in OKLCH, and its gray-200 is
+      oklch(92.8% .006 264.531) -- close to #e5e7eb but not equal to it. Writing
+      the variable here looked like it restored the v3 default and instead
+      repainted every default-coloured border on the site a fractionally
+      different grey, which showed up as sub-percent pixel differences on 35
+      screenshots with every computed style still reporting as identical.
+    */
+    border-color: #e5e7eb;
+  }
+}
+
+/*
+  The default-palette colours this codebase uses, pinned to their Tailwind 3
+  values for the same reason: every one of them moved when v4 re-authored the
+  palette in OKLCH. These are referenced from admin and form components, which
+  the visual harness does not cover -- it captures 8 public routes -- so nothing
+  would have caught these drifting.
+*/
+@theme {
+  --color-gray-200: #e5e7eb;
+  --color-neutral-700: #404040;
+  --color-blue-600: #2563eb;
+  --color-green-600: #16a34a;
+  --color-green-800: #166534;
+  --color-orange-300: #fdba74;
+  --color-orange-500: #f97316;
+  --color-red-400: #f87171;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+  --color-red-800: #991b1b;
+}
 
 @font-face {
   font-family: 'PP Neue Montreal Mono';
@@ -59,26 +115,48 @@
   font-family: 'Roxborough CF';
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-html {
-  scroll-behavior: smooth;
-}
+/*
+  These four rules MUST stay inside @layer base.
 
-body {
-  color: white;
-  width: 100%;
-  /* overflow-x: hidden; */
-  height: 100%;
-  background: #161616;
-  font-family: 'PP Neue Montreal', sans-serif;
-}
+  Cascade layers do not care about specificity: any unlayered rule beats every
+  layered one. Tailwind 3 emitted its utilities unlayered, so `* { padding: 0 }`
+  at specificity (0,0,0) lost to `.pt-\[160px\]` at (0,1,0) and everything
+  worked. Tailwind 4 emits utilities into @layer utilities, so the same reset,
+  left unlayered, outranks every padding, margin and box-sizing utility on the
+  site.
 
-canvas {
-  touch-action: none;
+  Unlayered, this cost the home page 1,124px of height -- `pt-[160px]` measured
+  0px, section padding collapsed, and text blocks stretched from 370px to the
+  full 390px viewport. It renders as a plausible-looking page, not a broken one,
+  which is what makes it dangerous.
+
+  Element selectors below (`html`, `body`, `canvas`) have the same problem for
+  the same reason: at (0,0,1) they used to lose to any utility class and would
+  now win.
+*/
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    color: white;
+    width: 100%;
+    /* overflow-x: hidden; */
+    height: 100%;
+    background: #161616;
+    font-family: 'PP Neue Montreal', sans-serif;
+  }
+
+  canvas {
+    touch-action: none;
+  }
 }
 
 .screen-max-width {
@@ -135,37 +213,20 @@ canvas {
   .sec-project-x-padding {
     @apply px-2 sm:px-6 md:px-14 lg:px-20;
   }
-  .flex-center {
-    @apply flex items-center justify-center;
-  }
+  /*
+    Eight utilities were removed here: .flex-center, .nav-height, .btn,
+    .color-container, .size-btn-container, .size-btn, .common-padding and
+    .section-heading.
 
-  .nav-height {
-    @apply h-[calc(100vh-60px)];
-  }
-
-  .btn {
-    @apply px-5 py-2 rounded-3xl bg-blue my-5 hover:bg-transparent border border-transparent hover:border hover:text-blue hover:border-blue;
-  }
-
-  .color-container {
-    @apply flex items-center justify-center px-4 py-4 rounded-full bg-gray-300 backdrop-blur;
-  }
-
-  .size-btn-container {
-    @apply flex items-center justify-center p-1 rounded-full bg-gray-300 backdrop-blur ml-3 gap-1;
-  }
-
-  .size-btn {
-    @apply w-10 h-10 text-sm flex justify-center items-center bg-white text-black rounded-full transition-all;
-  }
-
-  .common-padding {
-    @apply sm:py-32 py-20 sm:px-10 px-5;
-  }
-
-  .section-heading {
-    @apply text-gray lg:text-6xl md:text-5xl text-3xl lg:mb-0 mb-5 font-medium opacity-0 translate-y-20;
-  }
+    None of them were referenced by any component, so Tailwind 3 dropped them
+    while scanning content and they contributed zero bytes to the built
+    stylesheet -- verified against dist before deleting, not assumed. Because
+    v3 never compiled them, nobody found out that .btn applies `bg-blue`,
+    `text-blue` and `border-blue`, and .section-heading applies `text-gray`,
+    none of which exist in this theme; only numbered shades do. Tailwind 4
+    compiles utilities declared in CSS whether or not they are used, so these
+    stopped being harmless dead code and started failing the build.
+  */
 
   .pointer-none {
     @apply pointer-events-none;

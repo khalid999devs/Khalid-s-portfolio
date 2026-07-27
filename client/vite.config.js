@@ -33,7 +33,14 @@ export default defineConfig({
             return 'framer-motion';
           }
           if (id.includes('/react-icons/')) return 'icons';
-          if (id.includes('/@dnd-kit/')) return 'dnd';
+
+          // @dnd-kit is not named, for the same reason three.js is not: it is
+          // reached only from the lazily-imported admin panel, and naming a
+          // chunk makes it a static dependency with a modulepreload link. Under
+          // Rollup that cost 16 KiB of critical path; under rolldown, which
+          // hoists a named chunk's shared dependencies into it too, the same
+          // line cost 58 KiB. Unnamed, it lands in the async admin chunk where
+          // a public visitor never downloads it.
 
           if (
             id.includes('/react/') ||

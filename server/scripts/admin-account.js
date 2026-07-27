@@ -17,7 +17,7 @@
  * shell history.
  */
 
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 const { compare, hash } = require('bcryptjs');
 const db = require('../models');

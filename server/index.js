@@ -1,5 +1,9 @@
-require('dotenv').config();
-require('express-async-errors');
+require('dotenv').config({ quiet: true });
+// `express-async-errors` used to be required here. Express 5 forwards a
+// rejected promise from a route handler to the error middleware itself, so the
+// package is redundant -- and worse than redundant: it works by monkey-patching
+// express/lib/router/layer, which Express 5 restructured, so requiring it now
+// throws MODULE_NOT_FOUND at startup.
 const express = require('express');
 const app = express();
 // Validates configuration before anything binds a port, so a missing or weak

@@ -116,7 +116,7 @@ const ImgFileUploader = ({
           className='w-full h-full rounded-lg object-cover'
         />
         <div
-          className='absolute right-[3%] top-[3%] bg-body-main bg-opacity-60 text-lg duration-500 group-hover:bg-opacity-80 w-[25px] h-[25px] rounded-full flex items-center justify-center cursor-pointer'
+          className='absolute right-[3%] top-[3%] bg-body-main/60 text-lg duration-500 group-hover:bg-body-main/80 w-[25px] h-[25px] rounded-full flex items-center justify-center cursor-pointer'
           onClick={clearFileImg}
         >
           <IoClose className='text-primary-main' />
@@ -203,7 +203,7 @@ const ImgFileUploader = ({
         </div>
         {loading && (
           <div
-            className={`absolute top-[50%] left-[50%] text-onPrimary-main bg-primary-main bg-opacity-95 rounded-lg w-[97%] h-[95%] text-lg font-medium flex flex-col justify-center items-center text-md text-center p-3`}
+            className={`absolute top-[50%] left-[50%] text-onPrimary-main bg-primary-main/95 rounded-lg w-[97%] h-[95%] text-lg font-medium flex flex-col justify-center items-center text-md text-center p-3`}
             style={{ transform: 'translate(-50%,-50%)' }}
           >
             <img

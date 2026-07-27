@@ -232,6 +232,33 @@ export async function capture(target, baseUrl, { settleMs = 9000 } = {}) {
               // is to detect visual change.
               bodyNodeCount: document.body.querySelectorAll('*').length,
             };
+
+            // Metadata is not rendered, so nothing above can see it -- but it
+            // is what the browser tab and every shared link preview show, and
+            // it is produced by react-helmet-async, a library this work
+            // replaces. Record the tags themselves, not the whole of <head>:
+            // the build legitimately rewrites <script> and <link> there on
+            // every chunk-hash change, which is exactly the noise that made
+            // counting all of <head> useless.
+            out['#meta'] = [...document.querySelectorAll('head meta')]
+              .map((tag) => {
+                const key = tag.getAttribute('name') || tag.getAttribute('property');
+                if (!key) return null;
+                // og:url is window.location.href, and the two builds are served
+                // on different ports so that they can be captured in one run.
+                // Left raw, this probe would report a difference on every route
+                // forever. Normalise the origin; the path still has to match.
+                const content = (tag.getAttribute('content') ?? '').replace(
+                  window.location.origin,
+                  '<origin>'
+                );
+                return `${key}=${content}`;
+              })
+              .filter(Boolean)
+              // Sorted, but NOT de-duplicated: emitting the same tag twice is
+              // exactly the regression this exists to catch.
+              .sort();
+
             return out;
           },
           { selectors: PROBE_SELECTORS, props: PROBE_PROPS }
