@@ -1,8 +1,8 @@
 {
   "totals": {
-    "criticalJs": 225234,
+    "criticalJs": 225235,
     "criticalCss": 8303,
-    "lazyJs": 310710,
+    "lazyJs": 322758,
     "sceneGlb": 1502192
   },
   "perFile": {
@@ -19,14 +19,14 @@
     "PrimaryButton-gIuLoT-P.js": 567,
     "ProjectDetails-jkfvz_qE.js": 42370,
     "Projects-C3nS_voD.js": 17195,
-    "Scene-Dgfm40pn.js": 242885,
+    "Scene-DmC7nWld.js": 254933,
     "Settings-D44dkJub.js": 1310,
     "animation-CFaXTe8c.js": 55136,
     "assets-DDlA1f6k.js": 17200,
     "framer-motion-Dtuzcox2.js": 40165,
     "handleValueChange-4QtbcV33.js": 895,
     "icons-DcPTG15x.js": 6718,
-    "index-CyyTUJcg.js": 15614,
+    "index-BEDVSYzm.js": 15615,
     "index-Dx66h1KH.css": 8303,
     "loading-C93czmmQ.js": 63,
     "project-placeholder-D8AmcINO.js": 75,
