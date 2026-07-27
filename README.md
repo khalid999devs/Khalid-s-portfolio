@@ -1,57 +1,53 @@
 # Khalid Ahammed, portfolio
 
-A portfolio site I built and run end to end: the public site, the API behind it,
-and the admin panel I use to keep it current. Live at
+My portfolio site: the public site, the API behind it, and the admin panel I use
+to keep it up to date. Live at
 **[khalidahammed.com](https://khalidahammed.com)**.
 
 ![Website demo](demo.gif)
 
-The visual design came first, in Figma:
-[Portfolio website](http://figma.com/design/6vj7AuSx5mTlBdbnVBwX7V/Protfolio-website?node-id=0-1&t=4qtQNdvFahT0lXpZ-1).
-Everything below is about how it was built to hold up afterwards.
+Designed in Figma first. The file is public, no account needed:
+[Portfolio website](https://www.figma.com/design/6vj7AuSx5mTlBdbnVBwX7V/Protfolio-website?node-id=0-1).
 
 ---
 
 ## Contents
 
-- [Why this repository is worth a look](#why-this-repository-is-worth-a-look)
+- [Overview](#overview)
 - [Feature list](#feature-list)
 - [Architecture](#architecture)
 - [How a change reaches the site](#how-a-change-reaches-the-site)
 - [What happens on an admin write](#what-happens-on-an-admin-write)
 - [What happens on a visit](#what-happens-on-a-visit)
-- [Delivery, and why every attempt is recorded](#delivery-and-why-every-attempt-is-recorded)
+- [Delivery](#delivery)
 - [Data model](#data-model)
-- [The stack, and why](#the-stack-and-why)
+- [The stack](#the-stack)
 - [Security](#security)
 - [Performance](#performance)
-- [How changes are verified](#how-changes-are-verified)
+- [Testing and verification](#testing-and-verification)
 - [Running it locally](#running-it-locally)
 - [Deploying](#deploying)
 - [Repository layout](#repository-layout)
-- [Still on my list](#still-on-my-list)
+- [Known gaps](#known-gaps)
 - [License](#license)
 
 ---
 
-## Why this repository is worth a look
+## Overview
 
-Most portfolio sites are one page with hardcoded content. This one is a small
-production system, and I have treated it like one:
+A React single page app, an Express API, and MySQL. Content is managed through
+an admin panel rather than hardcoded, so updating a project or a job title does
+not require a redeploy.
 
-- Every piece of content is editable from an admin panel I wrote, not from a
-  JSON file I have to redeploy.
-- The schema changes through versioned migrations, not a sync call that guesses
-  at boot.
-- Uploads are identified by reading their bytes, not by trusting what the
-  browser claims a file is.
-- The whole front end is gated by a visual regression harness. Nothing ships
-  until 53 screenshots and every computed style match the previous build.
-- The API has a recorded contract, so a refactor that changes a status code or a
-  response shape shows up as a diff before it reaches production.
+The parts that took the most thought:
 
-If you read one section, read [How changes are verified](#how-changes-are-verified).
-That is the part I would want to be judged on.
+- Schema changes go through versioned migrations, applied under a database lock.
+- Uploads are typed by reading the file's leading bytes, so the extension comes
+  from what the file actually is.
+- Every stored path passes through one function that keeps it inside the uploads
+  directory.
+- Visit tracking runs off the request path entirely, so it cannot slow a page
+  down.
 
 ---
 
@@ -61,70 +57,64 @@ That is the part I would want to be judged on.
 
 | Route | What it is |
 | --- | --- |
-| `/` | Landing page. An interactive 3D bot that follows the cursor, scroll driven timelines, and a technology marquee |
-| `/projects` | Every project, filtered by category, ordered exactly as I arranged them in the panel |
-| `/singleProject/:value` | One project: banner, image slider, embedded video, live and source links, and the stack it used |
+| `/` | Landing page: an interactive 3D bot that follows the cursor, scroll driven animation, and a technology marquee |
+| `/projects` | All projects, filterable by category, in the order set in the panel |
+| `/singleProject/:value` | One project: banner, image slider, video, live and source links, and the stack used |
 | `/about-me` | Technology groups, employment history, education, achievements, and the resume download |
 | `/coding-lab` | Competitive programming and experiment write ups |
-| `/error` | A real error page rather than a blank screen when a route or a record does not exist |
+| `/error` | Error page for a missing route or record |
 
 Across all of them:
 
-- **Nothing is hardcoded.** Every heading, project, technology, job and award
-  comes from the database through the API.
-- **The resume is a live file.** Upload a PDF in the panel and the download link
-  serves the new one immediately, with the original filename preserved. If no
-  resume is published the button hides itself rather than 404ing.
-- **Motion that respects the reader.** GSAP timelines and smooth scroll, with the
-  3D scene lazy loaded so it never blocks first paint.
-- **Metadata per route**, so a shared project link previews as that project.
+- Content comes from the database through the API. Headings, projects,
+  technologies, jobs and awards are all editable.
+- The resume is a live file. Upload a PDF in the panel and the download link
+  serves it immediately, keeping the original filename. If no resume is
+  published, the button is hidden.
+- GSAP timelines and smooth scroll for motion. The 3D scene is lazy loaded so it
+  does not block first paint.
+- Per route metadata, so a shared project link previews as that project.
 
 ### The admin panel
 
-Everything that changes is editable without a redeploy. The panel lives behind a
-login at `/admin-login` and every route under `/admin` is gated.
+Behind a login at `/admin-login`. Every route under `/admin` is gated.
 
 | Section | What it does |
 | --- | --- |
 | **Dashboard** | Live counts, plus two charts: email and SMS delivery over 30 days, and visitor frequency over the same window |
-| **Projects** | Create, edit, delete, reorder by dragging, and search. Banner images, thumbnail sets, slider images and video all upload from here |
-| **Settings, Technologies** | The technology groups shown on the About page |
-| **Settings, Personal info** | Employment, education and achievements. Collapsible rows, drag to reorder, new entries land at the top |
-| **Settings, Resume** | Drop a PDF and it replaces the published one. The old file is deleted only after the database row updates, so a failure halfway through never leaves the site pointing at nothing |
-| **Settings, Accounts** | Change your own password, add another administrator, remove one |
-| **Mail and SMS** | Compose and send either one, with the full delivery history underneath: search, filter by channel or status, select and delete, batch delete, pagination |
-| **Notifications** | A bell that reports real problems, not decoration |
+| **Projects** | Create, edit, delete, reorder by dragging, and search. Banner images, thumbnails, slider images and video upload from here |
+| **Settings, Technologies** | The technology groups on the About page |
+| **Settings, Personal info** | Employment, education and achievements. Collapsible rows, drag to reorder, new entries appear at the top |
+| **Settings, Resume** | Upload a PDF to replace the published one. The old file is deleted only after the database row updates |
+| **Settings, Accounts** | Change your own password, add an administrator, remove one |
+| **Mail and SMS** | Compose and send either, with delivery history below: search, filter by channel or status, select and delete, batch delete, pagination |
+| **Notifications** | A bell reporting configuration and content problems |
 
 ### Behind the scenes
 
-- **Visitor analytics that cannot slow the site down.** The browser sends a
-  beacon, the server queues it in memory and flushes every five seconds. The
-  queue is bounded, so a traffic spike drops samples rather than growing without
-  limit. Addresses are hashed with a salt that rotates daily and is never
-  persisted, so the table cannot be turned back into a list of who visited.
-- **Retention you control.** Set a window in settings and older visit rows are
-  purged automatically, hourly and at boot.
-- **Every send is recorded.** Email and SMS attempts write to the delivery log
-  with their status and the provider's error, rather than to a file on a server
-  I would have to SSH into.
-- **Notifications derived from real state.** Pending migrations, a resume row
-  pointing at a file that is not on disk, uploads configured to be destroyed by
-  the next deploy, delivery failures this week, a single administrator account,
-  an SMS gateway on plain HTTP. Nothing is raised unless it is true right now, so
-  an empty list genuinely means there is nothing to do. Clicking an item clears
-  it, and an item whose cause returns counts as unread again.
-- **Dependencies audited on a schedule.** `npm audit` runs in the background
-  every three days and the result is cached, so the panel reads a stored figure
-  instead of shelling out on every request.
-- **Migrations under an advisory lock**, so two instances starting at once cannot
-  both try to alter the same table.
+- **Visit tracking.** The browser sends a beacon, the server queues it in memory
+  and flushes every five seconds. The queue has a fixed size, so a traffic spike
+  drops samples instead of growing. Addresses are hashed with a salt that
+  rotates daily and is never stored.
+- **Retention.** Set a window in settings and older visit rows are removed
+  automatically, hourly and at startup.
+- **Delivery logging.** Email and SMS attempts are written to the database with
+  their status and any provider error.
+- **Notifications from live state.** Pending migrations, a resume row pointing at
+  a missing file, uploads configured somewhere a deploy will erase, delivery
+  failures in the last week, a single administrator account, an SMS gateway on
+  plain HTTP. Each is checked when the panel asks, so an empty list means there
+  is nothing outstanding. Clicking an item clears it; if the cause returns, so
+  does the item.
+- **Scheduled dependency audit.** `npm audit` runs in the background every three
+  days and the result is cached, so the panel reads a stored value.
 
 ---
 
 ## Architecture
 
 Two deployables and one database. The client is a static bundle, the API is a
-Node process, and media sits on a mounted volume so a deploy cannot destroy it.
+Node process, and media sits on a mounted volume so a deploy does not remove it.
 
 ```mermaid
 flowchart LR
@@ -162,7 +152,7 @@ flowchart LR
     C --> UP --> VOL
     C -->|"send, then log"| EXT
     SPA -->|"media and resume"| VOL
-    SPA -.->|"beacon, fire and forget"| VT
+    SPA -.->|"beacon"| VT
     VT --> DB
     AUD --> DB
 ```
@@ -171,26 +161,26 @@ flowchart LR
 
 ## How a change reaches the site
 
-The point of the panel is that this loop never involves me touching a terminal.
+Editing content never involves a terminal or a rebuild.
 
 ```mermaid
 flowchart TD
-    A["I open the admin panel"] --> B{"Logged in?"}
-    B -->|"No"| C["Login, rate limited<br/>identical failure for bad user or bad password"]
+    A["Open the admin panel"] --> B{"Logged in?"}
+    B -->|"No"| C["Login, rate limited"]
     C --> B
     B -->|"Yes"| D["Edit a project, a section,<br/>the resume or an account"]
 
     D --> E{"Does it include a file?"}
-    E -->|"No"| F["Field allowlist applied<br/>unknown keys dropped"]
-    E -->|"Yes"| G["Upload verified by file signature"]
-    G --> H{"Signature allowed<br/>for this field?"}
-    H -->|"No"| I["File deleted, 400 returned<br/>nothing stored"]
+    E -->|"No"| F["Field allowlist applied"]
+    E -->|"Yes"| G["Upload typed by file signature"]
+    G --> H{"Type allowed<br/>for this field?"}
+    H -->|"No"| I["File deleted, 400 returned"]
     I --> D
     H -->|"Yes"| F
 
     F --> J["Write to MySQL"]
     J --> K["Public API serves the new value"]
-    K --> L["Visitor sees it on next load<br/>no redeploy, no build"]
+    K --> L["Visible on next page load"]
 
     J -.->|"if it was a send"| M["Delivery log records the outcome"]
     J -.->|"if it broke something"| N["Notification bell reports it"]
@@ -198,9 +188,8 @@ flowchart TD
 
 ### What happens on an admin write
 
-Every write goes through the same funnel. The part worth noticing is that
-authentication happens before a single byte of an upload is accepted, and the
-file is verified after it lands but before the database hears about it.
+Authentication happens before any upload bytes are accepted, and the file is
+checked after it lands but before the database row is written.
 
 ```mermaid
 sequenceDiagram
@@ -213,12 +202,11 @@ sequenceDiagram
 
     A->>API: PATCH with cookie and multipart body
     API->>API: verify JWT, check origin, apply rate limit
-    Note over API: rejected here costs nothing
     API->>M: accept stream
     M->>FS: write as random .upload name
     M->>V: hand over the file
     V->>FS: read the leading bytes
-    alt signature not allowed for this field
+    alt type not allowed for this field
         V->>FS: delete the file
         V-->>A: 400, nothing stored
     else recognised
@@ -230,8 +218,7 @@ sequenceDiagram
 
 ### What happens on a visit
 
-Analytics that can slow a page down are analytics I would rather not have. The
-response is never waiting on the recording.
+The response never waits on the recording.
 
 ```mermaid
 sequenceDiagram
@@ -241,16 +228,14 @@ sequenceDiagram
     participant DB as MySQL
 
     B->>API: GET page data
-    API-->>B: 200, rendered immediately
+    API-->>B: 200
 
     B--)API: sendBeacon with the route
-    Note over B: fires during unload,<br/>blocks nothing
     API->>Q: enqueue, hash address with the daily salt
-    API--)B: 204 straight away
+    API--)B: 204
 
     alt queue is full
         Q->>Q: drop the sample
-        Note over Q: bounded on purpose,<br/>a spike must not grow memory
     end
 
     loop every 5 seconds
@@ -258,15 +243,14 @@ sequenceDiagram
     end
 
     loop hourly
-        API->>DB: delete rows older than the retention window
+        API->>DB: delete rows past the retention window
     end
 ```
 
-### Delivery, and why every attempt is recorded
+### Delivery
 
-A message that silently failed is worse than one that visibly failed. Both
-outcomes are written to the same table, so the history in the panel is the truth
-rather than a summary of it.
+Successes and failures are written to the same table, so the history in the
+panel matches what actually happened.
 
 ```mermaid
 stateDiagram-v2
@@ -283,86 +267,78 @@ stateDiagram-v2
     Logged --> [*]
 
     note right of Failed
-        Surfaced on the dashboard chart
-        and, within 7 days, in the
-        notification bell
+        Shown on the dashboard chart,
+        and in the notification bell
+        for 7 days
     end note
 ```
 
 ### Data model
 
-Small on purpose. Every table below earns its place.
-
 | Table | Holds | Notes |
 | --- | --- | --- |
-| `projects` | title, slug, description, ordering, media JSON | `value` is the public slug and is not editable through the API, so an edit cannot repoint a URL |
+| `projects` | title, slug, description, ordering, media JSON | `value` is the public slug and cannot be set through the API, so an edit cannot repoint a URL |
 | `settings` | technology groups, resume path and original filename | One row |
-| `Admin` | username, bcrypt hash | No plaintext anywhere, and the list endpoint never selects the hash |
-| `AboutEntry` | employment, education and achievements | One shape for all three, distinguished by `section`, ordered by `displayOrder` |
-| `DeliveryLog` | every email and SMS attempt | Channel, recipient, status, and the provider error when there was one |
-| `Visit` | page views | Route, timestamp, and a salted hash of the address. Purged on a retention window |
+| `Admin` | username, bcrypt hash | The list endpoint never selects the hash |
+| `AboutEntry` | employment, education and achievements | One shape for all three, split by `section`, ordered by `displayOrder` |
+| `DeliveryLog` | every email and SMS attempt | Channel, recipient, status, and the provider error if there was one |
+| `Visit` | page views | Route, timestamp, and a salted hash of the address. Removed on a retention window |
 | `AppSetting` | small key and value pairs | Retention window, cached dependency audit |
 | `schema_migrations` | which migrations have run | Written by the runner under a MySQL advisory lock |
 
 ---
 
-## The stack, and why
+## The stack
 
 | Layer | Choice | Reason |
 | --- | --- | --- |
-| UI | React 19 | Native document metadata, which removed a dependency I had to keep in sync |
-| Build | Vite 8 on Rolldown | Sub second production builds and manual chunking I can reason about |
-| Styling | Tailwind 4 | Utility CSS with the theme pinned to explicit values so nothing drifts |
+| UI | React 19 | Native document metadata, which removed a dependency |
+| Build | Vite 8 on Rolldown | Fast production builds and manual chunking |
+| Styling | Tailwind 4 | Utility CSS with the theme pinned to explicit values |
 | Motion | GSAP, Lenis, Framer Motion | GSAP for timelines, Lenis for scroll, Framer for route transitions |
-| 3D | three.js, React Three Fiber, drei | The bot on the landing page, lazy loaded so it never blocks first paint |
-| Drag and drop | dnd-kit | Reordering projects and about entries, with a keyboard path that actually works |
-| Charts | Hand written SVG | The smallest credible library was about 40 KiB for two shapes |
-| API | Express 5 | Native async error forwarding, which let me drop a patch package |
-| ORM | Sequelize 6 | Familiar, and migrations stay explicit rather than magic |
-| Database | MySQL | What the host provides, and this data is genuinely relational |
-| Auth | JWT in an httpOnly cookie, bcrypt | No token reachable from JavaScript, SameSite as the CSRF defence |
+| 3D | three.js, React Three Fiber, drei | The bot on the landing page, lazy loaded |
+| Drag and drop | dnd-kit | Reordering projects and about entries, with keyboard support |
+| Charts | Hand written SVG | Two shapes did not justify a charting library |
+| API | Express 5 | Native async error forwarding |
+| ORM | Sequelize 6 | Migrations stay explicit |
+| Database | MySQL | What the host provides, and the data is relational |
+| Auth | JWT in an httpOnly cookie, bcrypt | No token reachable from JavaScript |
 
 ---
 
 ## Security
 
-This started as a hobby project and had the bugs a hobby project has. I went
-through it properly. Everything below was a real hole, not a hypothetical one:
+Issues found and fixed while going through the codebase:
 
 | Issue | What it allowed | Fix |
 | --- | --- | --- |
-| Open registration | Anyone could `POST /api/admin/reg` and receive a full admin session | Route removed. Accounts come from a shell, or from an authenticated admin who re-enters their own password |
-| Hardcoded cookie secret | The signing key was the string `secret`, committed. Anyone reading the repo could forge a session | Required from the environment, length checked, and must differ from the JWT secret |
-| Uploads trusted the client | A file declaring `video/mp4` and named `payload.html` was written into a statically served directory | Type comes from the file signature, and the extension is assigned from the detected type rather than the filename |
-| Mass assignment | An edit could set any column, including media paths, which fed a delete that then took an arbitrary path | Explicit allowlists per route, and every stored path goes through one confinement helper |
-| Path traversal | Stored paths were joined by hand and passed to `unlink` | One resolver that rejects absolute paths, backslashes, NUL bytes, and anything landing outside the uploads root |
-| Username enumeration | An unknown username returned 404 naming it, a wrong password returned 401 | Both fail identically, and the comparison still runs when the account is absent so the timing matches |
-| Unauthenticated crash | One GET for a missing file threw inside an async callback and killed the process | Errors are handed to Express, and a failure mid stream aborts the socket instead |
-| Path disclosure | Multer's absolute `destination` was stored and returned by the public API | Stripped before anything is serialized |
+| Open registration | Anyone could `POST /api/admin/reg` and get an admin session | Route removed. Accounts are created from a shell, or by an authenticated admin re-entering their own password |
+| Hardcoded cookie secret | The signing key was the string `secret`, committed to the repository, so a session could be forged | Required from the environment, length checked, and must differ from the JWT secret |
+| Uploads trusted the client | A file declaring `video/mp4` and named `payload.html` was written into a statically served directory | Type comes from the file signature, and the extension is assigned from that |
+| Mass assignment | An edit could set any column, including media paths, which fed a delete | Explicit allowlists per route, and every stored path goes through one confinement helper |
+| Path traversal | Stored paths were joined by hand and passed to `unlink` | One resolver rejecting absolute paths, backslashes, NUL bytes, and anything outside the uploads root |
+| Username enumeration | An unknown username returned 404 naming it, a wrong password returned 401 | Both fail identically, and the hash comparison still runs when the account is absent so timing matches |
+| Unauthenticated crash | A GET for a missing file threw inside an async callback and killed the process | Errors are passed to Express, and a failure mid stream aborts the socket |
+| Path disclosure | Multer's absolute `destination` was stored and returned by the public API | Stripped before serialization |
 
-Account changes are deliberately awkward: changing a password, adding an
-administrator or removing one all require the actor's own password in addition
-to a valid session, so an unlocked laptop is not enough to take the account
-over. Visitor addresses are hashed with a salt that rotates daily and is never
-written down, so the analytics table cannot be reversed into a list of people.
+Changing a password, adding an administrator or removing one each require the
+actor's own password as well as a valid session.
 
 Also in place: `helmet` with a restrictive CSP, an exact origin allowlist for
 CORS with writes refused when `Origin` is missing, body size caps, per route
-rate limits on separate buckets so throttling one cannot lock you out of
-another, mandatory TLS to the database in production, and a config module that
-refuses to boot on a weak or missing secret instead of falling back to a
-default.
+rate limits on separate buckets, TLS to the database in production, and a config
+module that refuses to start on a missing or weak secret.
 
 Dependency advisories went from 29 on the server (4 critical, 17 high) to 2
-moderate, and from 30 on the client to 2. The four that remain have no fix that
-is not itself a regression, and each is written up in my deployment runbook
-rather than quietly ignored.
+moderate, and from 30 on the client to 2. The remaining four have no fix that
+does not introduce a regression, and each is written up in my deployment
+runbook.
 
 ---
 
 ## Performance
 
-The whole application used to arrive as a single JavaScript file.
+The application used to ship as a single JavaScript file.
 
 | | Before | Now |
 | --- | --- | --- |
@@ -370,68 +346,45 @@ The whole application used to arrive as a single JavaScript file.
 | Chunks | 1 | Vendors split by library, admin panel and 3D on demand |
 | Production build | about 12s | under 1s |
 
-The 3D stack is roughly 60 percent of the site's JavaScript. It now downloads
-during a delay that already existed, because the bot waits 1.2 seconds before
-mounting regardless. It appears at exactly the moment it always did.
+The 3D stack is around 60 percent of the site's JavaScript. It downloads during
+the 1.2 second delay before the bot mounts, so it appears at the same moment it
+did before.
 
-Media is cached hard where that is safe. Generated filenames carry 32 random hex
-characters and are never reused, so they get a one year immutable cache, while
-older title based filenames revalidate with an ETag instead.
+Generated filenames carry 32 random hex characters and are never reused, so they
+get a one year immutable cache. Older title based filenames revalidate with an
+ETag.
 
 ---
 
-## How changes are verified
+## Testing and verification
 
-This is the part I am most pleased with, and it is why the dependency upgrades
-in this repository were safe to make.
+**Server tests.** 46 tests on the Node test runner, covering upload type
+detection, path confinement, field allowlists, auth behaviour, and that every
+model has a migration creating its table.
 
-The site had one hard constraint: it could not change visually at all, while
-every major version underneath it moved. Load metrics do not prove that, so I
-built something that does. It runs locally before anything is pushed.
+**CI.** Lint, build and the server suite on every push, on Linux. This is worth
+having on a codebase developed on macOS: a `./Project/projectVideos` import of a
+file named `ProjectVideos.jsx` resolves fine on a case insensitive filesystem
+and fails on the runner.
 
-**Visual gate.** Serves the last known good build and the new one side by side
-against identical fixture data, drives both with Playwright across 9 routes and
-3 viewports, and compares 53 screenshots. Alongside each one it records computed
-styles, bounding boxes, element counts, document title and meta tags, and
-compares those with no tolerance at all. Screenshots get a two pixel floor,
-which I measured by capturing one unchanged build twice rather than picking a
-number that made a run pass.
+**Visual regression.** The site had to look identical while React, Vite,
+Tailwind and Express all went through major versions. A local harness serves the
+previous build and the new one against the same fixture data, drives both with
+Playwright across 9 routes and 3 viewports, and compares screenshots plus
+computed styles, bounding boxes, element counts and metadata.
 
-**API contract.** 28 requests recorded as status, content type, security header
-presence and normalised body. Unintended changes fail. Intentional ones are
-marked, so the diff becomes the evidence that the change did what it claimed.
+The Tailwind 3 to 4 upgrade was the case that needed it. Six changes altered
+rendering without producing an error: utilities moved into a cascade layer so an
+unlayered reset started overriding them, custom px breakpoints sorted before the
+framework's rem defaults, font size utilities switched from fixed line heights
+to ratios, the default palette moved to OKLCH, the `*-opacity-*` utilities were
+removed, and commas in arbitrary values stopped being rewritten as spaces.
 
-**Bundle budget.** Reads the critical set out of `index.html` rather than
-guessing from filenames, and fails when the render blocking path grows.
-
-It earned its keep immediately. Upgrading Tailwind 3 to 4 produced six separate
-silent breakages, none of which threw an error or looked broken on screen:
-
-1. An unlayered `*` reset started outranking every Tailwind utility, because v4
-   moved utilities into a cascade layer and unlayered CSS wins regardless of
-   specificity. The home page lost 1124 pixels of height and still looked
-   plausible.
-2. Custom breakpoints written in px were emitted before the framework defaults
-   in rem, so `lg:` beat `2xl:` everywhere and four breakpoints were dead.
-3. Font size utilities moved from absolute line heights to ratios, so line boxes
-   rescaled wherever a different utility set the font size.
-4. The default palette was rewritten in OKLCH, which is not the same colour as
-   the hex it replaced.
-5. The `*-opacity-*` utilities were removed, leaving 21 usages inert.
-6. Commas inside arbitrary grid values stopped being converted to spaces, which
-   produced invalid CSS the browser dropped, collapsing a two column layout into
-   one.
-
-Three of those turned out to be pre-existing bugs that no version had ever
-compiled, including a border width written without a unit that had been parsed
-as a colour and silently discarded for as long as it existed.
-
-CI runs lint, build and the server test suite on every push. It is the reason a
-lowercase import that resolved happily on macOS and failed on Linux was caught
-before it reached production rather than after.
+**API contract.** 28 requests recorded as status, content type, security headers
+and normalised body, so a change in response shape shows up as a diff.
 
 The visual harness is not in this repository. It carries a copy of production
-media as fixtures, and that has no business in a public repo.
+media as fixtures.
 
 ---
 
@@ -455,7 +408,7 @@ npm ci
 npm run dev
 ```
 
-`npm run seed:local` loads a snapshot of real content and media into the local
+`npm run seed:local` loads a snapshot of content and media into the local
 database. It backs up existing rows first and refuses to run when `NODE_ENV` is
 production.
 
@@ -463,21 +416,19 @@ production.
 
 ## Deploying
 
-The full sequence lives in a runbook I keep outside this repository, because it
-describes how my particular host is wired. The parts that catch people out are
-general enough to be worth stating here:
+The full sequence is in a runbook kept outside this repository, since it
+describes a specific host. The general points:
 
 - The server will not start without `COOKIE_SECRET`, `REMOTE_CLIENT_APP` and a
-  strong `ADMIN_SECRET`. That is deliberate. It used to fall back to defaults.
-- `sequelize.sync()` no longer runs at boot. Run `npm run migrate`.
-- Point `UPLOADS_DIR` at a mounted volume, or the next deploy deletes every
+  strong `ADMIN_SECRET`.
+- `sequelize.sync()` does not run at boot. Run `npm run migrate`.
+- Point `UPLOADS_DIR` at a mounted volume, or the next deploy removes every
   uploaded file.
 - `TRUST_PROXY_HOPS` has to match the number of proxies in front of the app.
 
-The environment file is deliberately short. It used to hold 37 keys, nineteen of
-which no code read. Everything that never actually varied between machines is a
-reviewed constant in the code now, so what remains is secrets and the handful of
-values that genuinely differ.
+The environment file is short by design. It previously held 37 keys, 19 of which
+no code read. Values that did not vary between machines are now constants in the
+code, leaving secrets and the few things that genuinely differ.
 
 ---
 
@@ -498,29 +449,24 @@ server/          Express API
   models/        Sequelize models
   migrations/    Versioned schema, applied under an advisory lock
   scripts/       Admin bootstrap, migration runner, local seeding
-  test/          Node test runner, no external framework
+  test/          Node test runner
   utils/         Path confinement, media signatures, delivery log,
                  visit queue, scheduled audit
 ```
 
 ---
 
-## Still on my list
+## Known gaps
 
-Being honest about it, because a repository that claims to be finished usually
-is not:
-
-- No staging environment. Nothing runs against production data before
-  production does.
+- No staging environment.
 - Backup and restore is written but has not been rehearsed end to end.
-- Email and SMS are logged properly now, but still not exercised against
-  provider sandboxes.
+- Email and SMS are logged, but not tested against provider sandboxes.
 - Rate limits are in process, so they reset on restart and are not shared
-  between instances. Real protection belongs at the proxy.
-- The React Compiler lint plugin reports 37 advisory warnings about effects that
-  set state. They are real observations and worth working through, but each one
-  is a behaviour change and the visual contract came first.
-- The 3D model is 1.4 MB and CC BY-NC licensed, which is a decision to revisit.
+  between instances. This belongs at the proxy.
+- The React Compiler lint plugin reports 37 warnings about effects that set
+  state. Each is a behaviour change, so they are on hold while the rendering has
+  to stay identical.
+- The 3D model is 1.4 MB and CC BY-NC licensed.
 
 ---
 
@@ -528,15 +474,12 @@ is not:
 
 **All rights reserved. View only.** See [LICENSE](LICENSE).
 
-This repository is public so that it can be read, not reused. You are welcome to
-read the code, learn from it, and apply the ideas in work you write yourself.
-You may not copy it, redistribute it, deploy it, or present it as your own
-portfolio.
+This repository is public so it can be read, not reused. You are welcome to read
+the code and learn from it. You may not copy it, redistribute it, deploy it, or
+present it as your own portfolio.
 
-It is deliberately not open source. An earlier version of this file used
-CC BY-ND, which was the wrong choice: that license permits anyone to
-redistribute the work verbatim, including commercially, provided they credit
-me. Republishing this site under someone else's name is exactly the outcome the
-license is meant to prevent.
+It is not open source. An earlier version of this file used CC BY-ND, which
+permits verbatim redistribution as long as the author is credited. That allowed
+the thing the license was meant to prevent.
 
-For any use beyond reading, ask me: khalidahammeduzzal@gmail.com
+For any other use, ask: khalidahammeduzzal@gmail.com
