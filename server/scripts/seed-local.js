@@ -16,7 +16,7 @@
  * discarded silently. Refuses to run against a production database.
  */
 
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 const { copyFileSync, mkdirSync, existsSync, readdirSync, statSync, writeFileSync } = require('fs');
 const { join, dirname, relative } = require('path');

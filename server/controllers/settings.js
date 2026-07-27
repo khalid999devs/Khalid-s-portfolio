@@ -59,8 +59,8 @@ const downloadResume = async (req, res, next) => {
   res.download(filePath, 'Resume_Khalid_Ahammed.pdf', (err) => {
     if (!err) return;
 
-    // This callback runs asynchronously, outside the request chain that
-    // `express-async-errors` patches. Throwing here does not produce a 400 —
+    // This callback runs asynchronously, outside the request chain whose
+    // rejections Express forwards. Throwing here does not produce a 400 —
     // it escapes Express entirely and terminates the process, so a single
     // unauthenticated GET took the whole API down whenever this file was
     // missing. Hand the error to Express instead.

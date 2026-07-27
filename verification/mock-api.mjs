@@ -47,6 +47,10 @@ const send = (res, status, body, headers = {}) => {
     // No caching anywhere: a cached response between the baseline run and the
     // candidate run would silently invalidate the comparison.
     'Cache-Control': 'no-store',
+    // Identifies this process as the fixture server. run.mjs checks for it
+    // after every capture, because "port 8000 was free when we started" is not
+    // the same claim as "our mock answered every request in this run".
+    'X-Verify-Mock': '1',
     ...headers,
   });
   res.end(body);
