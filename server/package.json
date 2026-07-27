@@ -14,7 +14,8 @@
     "admin:rotate": "node scripts/admin-account.js rotate",
     "test": "node --test \"test/**/*.test.js\"",
     "migrate": "node scripts/migrate.js up",
-    "migrate:status": "node scripts/migrate.js status"
+    "migrate:status": "node scripts/migrate.js status",
+    "seed:local": "node scripts/seed-local.js"
   },
   "author": "",
   "license": "ISC",

@@ -44,3 +44,6 @@ server/uploads/
 *.njsproj
 *.sln
 *.sw?
+
+# Local development database backups written by scripts/seed-local.js
+server/local-db-backup-*.json
