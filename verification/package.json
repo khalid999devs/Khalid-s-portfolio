@@ -1,0 +1,23 @@
+{
+  "name": "portfolio-verification",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Visual and contract regression harness. Deliberately kept out of client/ and server/ so it cannot perturb the dependency trees it is meant to hold constant.",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11 <12"
+  },
+  "scripts": {
+    "mock": "node mock-api.mjs",
+    "baseline": "SNAPSHOT_TARGET=baseline playwright test",
+    "candidate": "SNAPSHOT_TARGET=candidate playwright test",
+    "compare": "node compare.mjs",
+    "record": "node record-fixtures.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "pixelmatch": "^7.1.0",
+    "pngjs": "^7.0.0"
+  }
+}

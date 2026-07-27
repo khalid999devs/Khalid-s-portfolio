@@ -50,15 +50,28 @@ const getSettings = async (req, res) => {
   });
 };
 
-const downloadResume = async (req, res) => {
+const downloadResume = async (req, res, next) => {
   const filePath = path.join(
     __dirname,
     '../uploads/assets/Resume_Khalid_Ahammed.pdf'
   );
+
   res.download(filePath, 'Resume_Khalid_Ahammed.pdf', (err) => {
-    if (err) {
-      throw new BadRequestError('Failed to download resume');
+    if (!err) return;
+
+    // This callback runs asynchronously, outside the request chain that
+    // `express-async-errors` patches. Throwing here does not produce a 400 —
+    // it escapes Express entirely and terminates the process, so a single
+    // unauthenticated GET took the whole API down whenever this file was
+    // missing. Hand the error to Express instead.
+    if (res.headersSent) {
+      // The response already started streaming, so no status can be sent.
+      // Abort the connection rather than leaving the client hanging.
+      res.destroy(err);
+      return;
     }
+
+    next(new BadRequestError('Failed to download resume'));
   });
 };
 

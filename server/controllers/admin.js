@@ -1,35 +1,17 @@
-const { hashSync, compare } = require('bcryptjs');
+const { compare } = require('bcryptjs');
 const { Admin } = require('../models');
 const { sign } = require('jsonwebtoken');
+const { BadRequestError, UnauthenticatedError } = require('../errors');
 const {
-  NotFoundError,
-  BadRequestError,
-  UnauthenticatedError,
-} = require('../errors');
-const { attachTokenToResponse } = require('../utils/createToken');
-const saltRounds = process.env.SALT;
-const { StatusCodes } = require('http-status-codes');
+  attachTokenToResponse,
+  clearTokenCookie,
+} = require('../utils/createToken');
+const env = require('../config/env');
 
-const getAllAdmins = async (req, res) => {
-  const result = await Admin.findAll({ attributes: ['id', 'userName'] });
-  res.json({ succeed: true, result: result });
-};
-
-const adminReg = async (req, res) => {
-  const { userName, password } = req.body;
-  if (!userName || !password) {
-    throw new BadRequestError('Username or Password should not be empty');
-  }
-  const isAlreadyExist = await Admin.findOne({ where: { userName: userName } });
-  if (isAlreadyExist) {
-    return res.json({ succeed: false, msg: 'account already exist' });
-  }
-  const hassedPass = hashSync(password, Number(saltRounds));
-  await Admin.create({ userName: userName, password: hassedPass });
-  res
-    .status(StatusCodes.CREATED)
-    .json({ succeed: true, msg: 'Admin User Created' });
-};
+// A bcrypt hash of a value no password can produce. Compared against when the
+// username is unknown so the failure path costs the same as a real one.
+const ABSENT_ACCOUNT_HASH =
+  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
 
 const adminLogin = async (req, res) => {
   const { userName, password } = req.body;
@@ -37,27 +19,33 @@ const adminLogin = async (req, res) => {
     throw new BadRequestError('Username or Password should not be empty');
   }
   const admin = await Admin.findOne({ where: { userName: userName } });
-  if (!admin) {
-    throw new NotFoundError(`${userName} does not exist`);
-  }
-  const match = await compare(password, admin.password);
-  if (!match) {
+
+  // An unknown username used to return 404 "<name> does not exist" while a
+  // wrong password returned 401, which told an attacker which usernames are
+  // real. Both now fail identically, and the comparison still runs when the
+  // account is absent so the two paths take comparable time.
+  const match = await compare(password, admin ? admin.password : ABSENT_ACCOUNT_HASH);
+  if (!admin || !match) {
     throw new UnauthenticatedError('Wrong username and password combination');
   }
+
   const user = {
     id: admin.id,
     userName: admin.userName,
     role: 'admin',
   };
-  const token = sign(user, process.env.ADMIN_SECRET, {
-    expiresIn: '1h',
+  const token = sign(user, env.adminSecret, {
+    algorithm: 'HS256',
+    expiresIn: env.sessionSeconds,
   });
-  attachTokenToResponse('token', { res, token, expiresInDay: 1 });
+  attachTokenToResponse('token', { res, token });
   res.json({ succeed: true, msg: 'successfully logged in' });
 };
 
 const adminLogout = (req, res) => {
-  res.clearCookie('token');
+  // `res.clearCookie('token')` did not match the attributes the cookie was set
+  // with, so the browser could keep it. Clear it with the same attributes.
+  clearTokenCookie(res, 'token');
   res.json({ succeed: true, msg: 'logout succes' });
 };
 
@@ -66,8 +54,6 @@ const isAdminValidated = (req, res) => {
 };
 
 module.exports = {
-  getAllAdmins,
-  adminReg,
   adminLogin,
   isAdminValidated,
   adminLogout,

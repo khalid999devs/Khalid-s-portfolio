@@ -3,30 +3,38 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11 <12"
+  },
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "admin:bootstrap": "node scripts/admin-account.js bootstrap",
+    "admin:rotate": "node scripts/admin-account.js rotate",
+    "test": "node --test \"test/**/*.test.js\"",
+    "migrate": "node scripts/migrate.js up",
+    "migrate:status": "node scripts/migrate.js status",
+    "seed:local": "node scripts/seed-local.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@sequelize/core": "^7.0.0-alpha.10",
-    "bcryptjs": "^2.4.3",
-    "cookie-parser": "^1.4.6",
-    "cors": "^2.8.5",
-    "dotenv": "^16.0.0",
-    "express": "^4.17.2",
+    "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.2",
     "express-async-errors": "^3.1.1",
-    "follow-redirects": "^1.15.0",
-    "http-status-code": "^2.1.0",
-    "http-status-codes": "^2.2.0",
-    "jsonwebtoken": "^8.5.1",
-    "multer": "^1.4.4",
-    "mysql2": "^2.3.3",
-    "nodemailer": "^6.7.2",
-    "sequelize": "^6.16.1",
-    "sequelize-cli": "^6.4.1",
-    "server": "file:"
+    "express-rate-limit": "^8.6.1",
+    "follow-redirects": "^1.16.0",
+    "helmet": "^8.3.0",
+    "http-status-codes": "^2.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.2.0",
+    "mysql2": "^3.23.1",
+    "nodemailer": "^9.0.3",
+    "sequelize": "^6.37.8"
   }
 }

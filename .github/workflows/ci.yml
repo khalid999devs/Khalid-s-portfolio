@@ -1,0 +1,78 @@
+name: CI
+
+# Runs the checks that can be automated. The visual regression gate is
+# deliberately not here: it compares against a frozen baseline worktree and a
+# recorded fixture set, which is a local workflow rather than a CI one.
+# See verification/README.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: Server
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      # `npm ci` rather than `npm install`: it fails when the lockfile and
+      # manifest disagree instead of quietly resolving something different.
+      - run: npm ci
+      - run: npm test
+
+      # Production dependencies only. Tooling advisories are worth knowing about
+      # but must not block a release for code that never ships.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Reject a committed .env
+        run: |
+          if git ls-files --error-unmatch server/.env >/dev/null 2>&1; then
+            echo "server/.env is tracked; secrets must not be committed."
+            exit 1
+          fi
+        working-directory: .
+
+  client:
+    name: Client
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+      # The bundle budget is the one performance guarantee that can be checked
+      # without a browser: it fails if the critical path grows.
+      - name: Bundle budget
+        working-directory: verification
+        run: |
+          npm ci
+          node bundle-budget.mjs check
