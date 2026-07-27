@@ -31,16 +31,28 @@ if (!existsSync(ASSETS)) {
 }
 
 /**
- * Chunks the admin panel owns. They are lazy-loaded behind an authenticated
- * route, so they do not count against what a visitor downloads — but they are
- * still tracked, because an accidental static import would move them into the
- * critical path and that must not pass silently.
+ * The critical set is read from index.html rather than guessed from filenames.
+ *
+ * A filename heuristic was wrong the moment code splitting was introduced: it
+ * classified the new vendor chunks as "lazy" purely because they were no longer
+ * called `index-*`, which would have reported a large critical-path reduction
+ * that had not happened. What a first-time visitor must download before render
+ * is exactly the entry script plus everything `<link rel="modulepreload">`
+ * points at, so that is what gets measured.
  */
-const ADMIN = /^(ProjectDetails|Projects-|Settings|Admin|AdminBar|Login|Dashboard|CreateProject|EditProject|FormIconLists|NavLogo|Avatar|ProjectCard)/;
+const criticalAssetsFromHtml = async () => {
+  const html = await readFile(join(DIST, 'index.html'), 'utf8');
+  const names = new Set();
+  for (const match of html.matchAll(/(?:src|href)="\/assets\/([^"]+)"/g)) {
+    names.add(match[1]);
+  }
+  return names;
+};
 
 const measure = async () => {
   const files = await readdir(ASSETS);
-  const totals = { criticalJs: 0, criticalCss: 0, adminJs: 0, lazyJs: 0 };
+  const critical = await criticalAssetsFromHtml();
+  const totals = { criticalJs: 0, criticalCss: 0, lazyJs: 0 };
   const perFile = {};
 
   for (const file of files) {
@@ -51,8 +63,7 @@ const measure = async () => {
     perFile[file] = gzip;
 
     if (ext === '.css') totals.criticalCss += gzip;
-    else if (ADMIN.test(file)) totals.adminJs += gzip;
-    else if (/^index-|^App-/.test(file)) totals.criticalJs += gzip;
+    else if (critical.has(file)) totals.criticalJs += gzip;
     else totals.lazyJs += gzip;
   }
 
@@ -68,10 +79,9 @@ const { totals, perFile } = await measure();
 
 const report = () => {
   const kib = (n) => `${(n / 1024).toFixed(1)} KiB`;
-  console.log('  critical JS (gzip):', kib(totals.criticalJs));
+  console.log('  critical JS (gzip):', kib(totals.criticalJs), '  <- blocks first render');
   console.log('  critical CSS(gzip):', kib(totals.criticalCss));
-  console.log('  other lazy  (gzip):', kib(totals.lazyJs));
-  console.log('  admin-only  (gzip):', kib(totals.adminJs));
+  console.log('  lazy JS     (gzip):', kib(totals.lazyJs));
   console.log('  scene.glb   (raw) :', kib(totals.sceneGlb));
 };
 

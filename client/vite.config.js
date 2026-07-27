@@ -1,7 +1,61 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-})
+  build: {
+    rollupOptions: {
+      output: {
+        /**
+         * Without this the whole application is one chunk. A clean build
+         * produced a single 1,510 KB / 439 KiB gzip file containing React,
+         * Router, GSAP, Lenis, Framer Motion, the entire three.js stack, every
+         * icon set and every public page -- all of it blocking first render,
+         * and all of it re-downloaded whenever one line of app code changed.
+         *
+         * Splitting vendors by library stops a content change invalidating the
+         * parts that did not change, and lets the 3D stack leave the critical
+         * path entirely now that `Scene` is lazily imported.
+         */
+        manualChunks: (id) => {
+          if (!id.includes('node_modules')) return undefined;
+
+          // three.js, fiber and drei are deliberately NOT named here. Naming a
+          // chunk makes it a static dependency of whatever references it, and
+          // Vite then emits a modulepreload link for it in index.html -- which
+          // put all 213 KiB of the 3D stack back on the critical path despite
+          // `Scene` being lazily imported. Left unnamed, Rollup places them in
+          // the async Scene chunk, which is the whole point.
+
+          if (id.includes('/gsap/') || id.includes('/lenis/')) return 'animation';
+          if (id.includes('/framer-motion/') || id.includes('/motion-')) {
+            return 'framer-motion';
+          }
+          if (id.includes('/react-icons/')) return 'icons';
+          if (id.includes('/@dnd-kit/')) return 'dnd';
+
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/react-router') ||
+            id.includes('/scheduler/')
+          ) {
+            return 'react';
+          }
+
+          // No catch-all. A `return 'vendor'` here swept three.js into the same
+          // chunk as dependencies the entry needs, and a chunk is critical if
+          // *any* of its modules are -- so the entire 3D stack came back onto
+          // the critical path. Returning undefined lets Rollup place each
+          // remaining module by how it is actually reached, which puts the
+          // lazily-imported ones in the async chunk where they belong.
+          return undefined;
+        },
+      },
+    },
+    // The single-chunk build tripped this on every run. With splitting in place
+    // the warning means something again rather than being constant noise.
+    chunkSizeWarningLimit: 700,
+  },
+});

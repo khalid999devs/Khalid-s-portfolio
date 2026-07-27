@@ -1,8 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { socialLinks, upworkedSocialLinks } from '../../Constants';
 import { textBlinkAnimation } from '../../animations/textBlinkAnimation';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
-import Scene from './bot/Scene';
+
+/**
+ * Three.js, @react-three/fiber and drei are ~60% of the site's JavaScript and
+ * were pulled into the critical bundle by an eager import here -- every visitor
+ * downloaded the entire 3D stack before anything could render.
+ *
+ * `Scene` already waits 1200ms before mounting its canvas, so the module now
+ * loads during a delay that existed anyway. The bot appears at the same moment,
+ * with the same appearance; only the download moves off the critical path.
+ *
+ * The fallback is null, matching what `Scene` itself renders before its timer
+ * fires, so nothing new is drawn and no layout shifts.
+ */
+const Scene = lazy(() => import('./bot/Scene'));
 import { isUpwork } from '../../config';
 import { textBlinkAnimateByWord } from '../../animations/textBlinkAnimateByWord';
 import { useMichibotInteraction } from '../../hooks/useMichibotInteraction';
@@ -76,7 +89,9 @@ const Hero = () => {
                   ✨
                 </div>
               )}
-              <Scene onLoad={() => setIsLoaded(true)} isActive={isActive} />
+              <Suspense fallback={null}>
+                <Scene onLoad={() => setIsLoaded(true)} isActive={isActive} />
+              </Suspense>
             </div>
           </div>
         </div>

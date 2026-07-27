@@ -99,6 +99,17 @@ app.use(
 // forge a validly signed cookie.
 app.use(cookieParser(env.cookieSecret));
 
+/**
+ * Filenames generated since the upload rewrite are `<field>_<32 hex>.<ext>`:
+ * random, and never reused, because a replacement gets a fresh name. Those can
+ * be cached indefinitely.
+ *
+ * Legacy filenames are `<field>_<title-slug>@<timestamp>.<ext>` and are not
+ * safe to treat that way -- a re-upload under the same title could in principle
+ * collide -- so they revalidate with an ETag instead.
+ */
+const IMMUTABLE_MEDIA_NAME = /^(bannerImg|videos|thumbnailContents|sliderContents)_[0-9a-f]{32}\.[a-z0-9]+$/;
+
 app.use(
   '/uploads',
   express.static(UPLOADS_ROOT, {
@@ -108,9 +119,19 @@ app.use(
     // Without this a request for a directory redirects, revealing which
     // directories exist.
     redirect: false,
-    setHeaders: (res) => {
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, filePath) => {
       res.setHeader('X-Content-Type-Options', 'nosniff');
       res.setHeader('Content-Disposition', 'inline');
+
+      const name = filePath.split(/[\\/]/).pop();
+      res.setHeader(
+        'Cache-Control',
+        IMMUTABLE_MEDIA_NAME.test(name)
+          ? 'public, max-age=31536000, immutable'
+          : 'public, max-age=0, must-revalidate'
+      );
     },
   })
 );

@@ -1,26 +1,31 @@
 {
   "totals": {
-    "criticalJs": 449702,
+    "criticalJs": 203695,
     "criticalCss": 8472,
-    "adminJs": 58811,
-    "lazyJs": 2214,
+    "lazyJs": 304626,
     "sceneGlb": 1502192
   },
   "perFile": {
-    "Admin-Del3XK84.js": 871,
-    "AdminBar-dFhPvTOm.js": 800,
-    "CreateProject-DyLFA-q6.js": 287,
-    "Dashboard-DFg62N5F.js": 275,
-    "EditProject-DflBbtsd.js": 298,
-    "FormIconLists-DbZgtw-x.js": 930,
-    "Login-8cHKffi9.js": 786,
-    "Popup-D5WqaGwO.js": 930,
-    "ProjectDetails-CrjYHLM7.js": 35309,
-    "Projects-BVqe_Eat.js": 18023,
-    "Settings-V8StAuXJ.js": 1232,
-    "handleValueChange-3Gm_uSna.js": 827,
-    "index-B0pl-lcd.js": 449702,
+    "Admin-rrju81eE.js": 934,
+    "AdminBar-CUxjnYhB.js": 841,
+    "CreateProject-zdudrP8R.js": 344,
+    "Dashboard-C7OqeRIX.js": 274,
+    "EditProject-Y3CRJ0sq.js": 358,
+    "FormIconLists-CiwMXTzZ.js": 964,
+    "Login-DLuBD2gB.js": 855,
+    "Popup-B1UnjrFU.js": 966,
+    "ProjectDetails-CV9cRzOW.js": 35223,
+    "Projects-1oO9nXEZ.js": 2004,
+    "Scene-BuUxnRgH.js": 242863,
+    "Settings-ClLmozGB.js": 1298,
+    "animation-DpfT1JP7.js": 52280,
+    "dnd-s_E_c5Rd.js": 16378,
+    "framer-motion-BMUHdtHE.js": 38100,
+    "handleValueChange-BMCI0w9z.js": 864,
+    "icons-DRMJuH0V.js": 6739,
     "index-CJpICY19.css": 8472,
-    "projects-Bqfxr6Zs.js": 457
+    "index-DDSeH7A1.js": 37711,
+    "projects-BJUMRe0L.js": 460,
+    "react-DGi24Bei.js": 68865
   }
 }

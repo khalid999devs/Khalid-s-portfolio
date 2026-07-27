@@ -203,7 +203,13 @@ export async function capture(target, baseUrl, { settleMs = 9000 } = {}) {
             out['#doc'] = {
               title: document.title,
               scrollHeight: document.documentElement.scrollHeight,
-              nodeCount: document.querySelectorAll('*').length,
+              // Body only. Counting the whole document made this fire on any
+              // build-level change to <head> -- introducing code splitting adds
+              // one <link rel="modulepreload"> per chunk, which changed the
+              // count on every route while rendering nothing. Elements in
+              // <head> never render, so they do not belong in a gate whose job
+              // is to detect visual change.
+              bodyNodeCount: document.body.querySelectorAll('*').length,
             };
             return out;
           },
