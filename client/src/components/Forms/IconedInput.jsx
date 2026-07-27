@@ -13,7 +13,7 @@ const IconedInput = ({
   const [value, setValue] = useState('');
   return (
     <form
-      className={`grid grid-cols-[1fr,auto] gap-5 px-2.5 ${
+      className={`grid grid-cols-[1fr_auto] gap-5 px-2.5 ${
         size === 'small'
           ? 'py-2 border rounded-md'
           : size === 'normal'

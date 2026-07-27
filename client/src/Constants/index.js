@@ -6,6 +6,7 @@ import { MdSpaceDashboard } from 'react-icons/md';
 import { MdOutlineLaptopMac } from 'react-icons/md';
 import { MdOutlineAddToQueue } from 'react-icons/md';
 import { MdSettings } from 'react-icons/md';
+import { MdOutlineArticle } from 'react-icons/md';
 
 export const pageNavLinks = [
   {
@@ -41,6 +42,11 @@ export const adminNavLinks = [
     title: 'Add Project',
     path: 'add-project',
     icon: MdOutlineAddToQueue,
+  },
+  {
+    title: 'Mail & SMS',
+    path: 'messaging',
+    icon: MdOutlineArticle,
   },
   {
     title: 'Settings',
@@ -86,19 +92,25 @@ export const experience = [
   {
     company: 'Liftoff',
     designation: 'Remote Full Stack Software Engineer',
-    date: '2025 — Present',
+    date: 'Jul 2025 — Jun 2026',
     link: 'https://www.linkedin.com/company/liftoffapp/posts/?feedView=all',
+  },
+  {
+    company: 'Scraft Studio',
+    designation: 'Remote Full Stack Developer',
+    date: 'Apr 2025  —  Jul 2025',
+    link: 'https://in.linkedin.com/company/scraftstudio',
   },
   {
     company: 'DevGenit',
     designation: 'Chief Operating Officer (Self-employed)',
-    date: '2023 — Present',
+    date: 'Oct 2023  —  Jan 2026',
     link: 'https://www.devgenit.com',
   },
   {
     company: 'Notre Dame Information Technology Club',
     designation: 'President, Department of Web & App Development',
-    date: '2021 — 2022',
+    date: 'Sep 2022  —  April 2023',
     link: 'https://nditc.net',
   },
 ];

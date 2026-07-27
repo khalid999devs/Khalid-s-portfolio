@@ -29,11 +29,36 @@ export const reqs = {
   ADMIN_LOGOUT: '/api/admin/logout', //get
   IS_ADMIN_VALID: '/api/admin/auth', //get
 
+  //admin accounts (all require an admin session AND the actor's own password)
+  ADMIN_ACCOUNTS: '/api/admin/accounts', //get list, post create
+  ADMIN_PASSWORD: '/api/admin/password', //patch, change own password
+
+  //about page content (experience, education, achievements)
+  GET_ABOUT: '/api/about', //get, public
+  ABOUT_ENTRIES: '/api/about', //post create, patch /:id, delete /:id
+  REORDER_ABOUT: '/api/about/reorder', //patch
+
+  //delivery logs (email and sms), admin only
+  GET_LOGS: '/api/logs', //get
+
+  //deployment alerts, admin only
+  GET_NOTIFICATIONS: '/api/notifications', //get
+
+  //dashboard statistics, admin only
+  GET_STATS: '/api/stats', //get
+
+  //anonymous visit tracking
+  TRACK_VISIT: '/api/visits', //post, public, fire and forget
+  GET_VISIT_STATS: '/api/visits/stats', //get, admin
+  VISIT_RETENTION: '/api/visits/retention', //patch, admin
+
   //settings
   GET_SETTINGS: '/api/settings', //get
   ADD_SETTINGS: '/api/settings/add', //post
   EDIT_SETTINGS: '/api/settings/edit', //patch
   DOWNLOAD_RESUME: '/api/settings/download-resume', //get
+  UPLOAD_RESUME: '/api/settings/resume', //patch, admin, multipart
+  DELETE_RESUME: '/api/settings/resume', //delete, admin
 
   //projects
   GET_PROJECT: '/api/projects', //post
@@ -45,9 +70,7 @@ export const reqs = {
   DELETE_PROJECT: '/api/projects/delete', //delete
   REORDER_PROJECTS: '/api/projects/reorder', //patch
 
-  //contacts
-  SEND_MESSAGE_FROM_CLIENT: '/api/contact/sendMessage', //post
-  GET_ALL_MESSAGES: '/api/contact/messages', //get
-  SEND_EMAIL_TO_CLIENT: '/api/contact/emailToClient', //post
-  SEND_SMS_TO_CLIENT: '/api/contact/smsToClient/custom', //post
+  //outbound only. The inbound contact form and its message store are gone:
+  //no component ever posted to them, and the delivery log is the history that
+  //was actually wanted.
 };

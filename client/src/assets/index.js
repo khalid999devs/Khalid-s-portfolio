@@ -20,5 +20,18 @@ export { default as ScrollMouseAnime } from '/Images/Project/scroll.gif';
 
 //michi bot
 export const michiBot = '/models/michibot/michi_bot.glb';
-export const myResume =
-  serverOrigin + '/uploads/assets/Resume_Khalid_Ahammed.pdf';
+
+/**
+ * Builds the public URL for the resume from the path stored in settings.
+ *
+ * This replaces a hardcoded `/uploads/assets/Resume_Khalid_Ahammed.pdf`. That
+ * constant had to match, exactly, a filename on the server that nothing in the
+ * application could change -- so replacing the resume meant shell access, and a
+ * rename broke the link silently. Returns null when nothing is uploaded, which
+ * is the caller's cue to hide the button rather than link to a 404.
+ */
+export const resumeUrl = (settings) => {
+  const stored = settings?.resume;
+  if (typeof stored !== 'string' || stored.trim() === '') return null;
+  return `${serverOrigin}/${stored.replace(/^\/+/, '')}`;
+};

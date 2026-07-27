@@ -14,7 +14,7 @@ const FormIconLists = ({
     <div
       className={
         `grid gap-[1.1rem] w-full ${
-          type === 'horizontal' && 'md:grid-cols-[max(180px),1fr] gap-4'
+          type === 'horizontal' && 'md:grid-cols-[max(180px)_1fr] gap-4'
         } ` + containerClasses
       }
     >

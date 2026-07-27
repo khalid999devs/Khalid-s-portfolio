@@ -99,7 +99,7 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
       {/* PageNav menu with sliding animation */}
       {isPageMenu && (
         <motion.div
-          className={`transition-all duration-700 grid grid-rows-[auto,1fr] min-h-screen w-full sec-x-padding fixed top-0 left-0 bg-body-main screen-max-width z-50 ${classes}`}
+          className={`transition-all duration-700 grid grid-rows-[auto_1fr] min-h-screen w-full sec-x-padding fixed top-0 left-0 bg-body-main screen-max-width z-50 ${classes}`}
           initial={{ opacity: 1 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, transform: 'translateY(100%)' }}
@@ -132,7 +132,7 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
           </div>
 
           {/* menus */}
-          <div className='w-full h-full grid grid-cols-1 md:grid-cols-[1fr,1.25fr]'>
+          <div className='w-full h-full grid grid-cols-1 md:grid-cols-[1fr_1.25fr]'>
             <div className='pt-10 w-full flex flex-col gap-1 md:gap-8 text-montreal-mono'>
               {pageNavLinks.map((item, key) => (
                 <NavLink

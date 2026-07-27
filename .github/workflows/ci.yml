@@ -1,9 +1,12 @@
 name: CI
 
-# Runs the checks that can be automated. The visual regression gate is
-# deliberately not here: it compares against a frozen baseline worktree and a
-# recorded fixture set, which is a local workflow rather than a CI one.
-# See verification/README.md.
+# Runs the checks that survive a clean checkout.
+#
+# The verification harness (visual regression, API contract, bundle budget) is
+# not in this repository: it needs a frozen baseline worktree and a fixture set
+# copied from production media, neither of which belongs in a public repo. It
+# runs locally before anything is pushed, and it is the gate every change here
+# has been through. README.md describes what it checks.
 
 on:
   push:
@@ -69,10 +72,29 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
-      # The bundle budget is the one performance guarantee that can be checked
-      # without a browser: it fails if the critical path grows.
-      - name: Bundle budget
-        working-directory: verification
+      # A floor under the performance work, without needing the harness. The
+      # exact budget lives with the harness locally; this only catches the case
+      # where the critical path grows by an order of magnitude, which is what a
+      # bad chunking change looks like.
+      - name: Critical bundle sanity
         run: |
-          npm ci
-          node bundle-budget.mjs check
+          node -e "
+            const { readFileSync, readdirSync } = require('fs');
+            const { gzipSync } = require('zlib');
+            const html = readFileSync('dist/index.html', 'utf8');
+            const critical = new Set(
+              [...html.matchAll(/(?:src|href)=\"\/assets\/([^\"]+)\"/g)].map((m) => m[1])
+            );
+            let bytes = 0;
+            for (const file of readdirSync('dist/assets')) {
+              if (file.endsWith('.js') && critical.has(file)) {
+                bytes += gzipSync(readFileSync('dist/assets/' + file)).length;
+              }
+            }
+            const kib = bytes / 1024;
+            console.log('critical JS (gzip): ' + kib.toFixed(1) + ' KiB');
+            if (kib > 300) {
+              console.error('Critical path exceeded 300 KiB. Something is no longer code split.');
+              process.exit(1);
+            }
+          "

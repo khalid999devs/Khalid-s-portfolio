@@ -3,6 +3,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { sign } = require('jsonwebtoken');
+const { readFileSync } = require('fs');
+const { join } = require('path');
 
 process.env.ADMIN_SECRET ||= 'test-admin-secret-that-is-long-enough-for-the-check';
 process.env.COOKIE_SECRET ||= 'test-cookie-secret-that-is-long-enough-and-differs';
@@ -103,4 +105,22 @@ test('cookie lifetime matches the token lifetime', () => {
   // server had already stopped accepting.
   assert.equal(env.sessionSeconds, env.sessionMinutes * 60);
   assert.ok(env.sessionMinutes >= 5 && env.sessionMinutes <= 1440);
+});
+
+test('the absent-account placeholder hash costs the same as a real one', () => {
+  // Cost is exponential, so a cheaper placeholder answers measurably faster for
+  // a username that does not exist. That was real: cost 10 here against cost 12
+  // for real accounts produced 55ms versus 206ms, which is a username oracle
+  // regardless of the responses being byte identical.
+  const source = readFileSync(join(__dirname, '..', 'controllers', 'admin.js'), 'utf8');
+  const match = /ABSENT_ACCOUNT_HASH =\s*'(\$2[aby]\$(\d{2})\$[^']+)'/.exec(source);
+
+  assert.ok(match, 'ABSENT_ACCOUNT_HASH should be a bcrypt hash literal');
+
+  const { bcryptCost } = require('../utils/adminCredentials');
+  assert.equal(
+    Number(match[2]),
+    bcryptCost(),
+    `placeholder hash cost ${match[2]} must equal the cost real passwords use (${bcryptCost()})`
+  );
 });

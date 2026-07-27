@@ -13,7 +13,7 @@ import {
   OutlinedBigIcon,
   OutlinedSmallButton,
 } from '../components/Buttons/OutlinedButton';
-import ProjectVideos from './Project/projectVideos';
+import ProjectVideos from './Project/ProjectVideos';
 import { useAppContext } from '../App';
 import HRLine from '../components/utils/HRLine';
 import useTextRevealAnimation from '../animations/useTextRevealAnimation';

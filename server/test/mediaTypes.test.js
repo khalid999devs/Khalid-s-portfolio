@@ -99,3 +99,59 @@ test('each field accepts only the kinds it is meant to hold', () => {
   assert.ok(!isTypeAllowedForField('notAField', png));
   assert.ok(!isTypeAllowedForField('bannerImg', null));
 });
+
+const PDF = Buffer.concat([
+  Buffer.from('%PDF-1.7\n', 'ascii'),
+  Buffer.alloc(32),
+]);
+
+test('a real PDF is identified as a document', () => {
+  const detected = detectFileType(fileWith('resume.pdf', PDF));
+  assert.equal(detected?.type, 'application/pdf');
+  assert.equal(detected?.extension, 'pdf');
+  assert.equal(detected?.kind, 'document');
+});
+
+test('the resume field accepts documents and nothing else', () => {
+  const pdf = detectFileType(fileWith('r1', PDF));
+  const png = detectFileType(fileWith('r2', PNG));
+  const mp4 = detectFileType(fileWith('r3', MP4));
+
+  assert.ok(isTypeAllowedForField('resume', pdf));
+
+  // The point of the signature check: an HTML file renamed .pdf and declared
+  // application/pdf is stored under /uploads and served from the API origin.
+  assert.ok(!isTypeAllowedForField('resume', png));
+  assert.ok(!isTypeAllowedForField('resume', mp4));
+  assert.ok(!isTypeAllowedForField('resume', null));
+});
+
+test('a file claiming to be a PDF but containing HTML is refused', () => {
+  const html = Buffer.from('<!doctype html><script>alert(1)</script>', 'ascii');
+  const detected = detectFileType(fileWith('payload.pdf', html));
+
+  assert.equal(detected, null);
+  assert.ok(!isTypeAllowedForField('resume', detected));
+});
+
+test('project media fields never accept a PDF', () => {
+  const pdf = detectFileType(fileWith('r4', PDF));
+
+  for (const field of ['bannerImg', 'thumbnailContents', 'sliderContents', 'videos']) {
+    assert.ok(!isTypeAllowedForField(field, pdf), `${field} must reject a PDF`);
+  }
+});
+
+test('the resume field is not routed through project media upload', () => {
+  // uploadFile.js writes to projects/<id>/ and requires a numeric route param;
+  // the resume has no project. Keeping it out of UPLOAD_FIELDS is what stops
+  // the two storage paths from being reachable from the wrong endpoint.
+  const { UPLOAD_FIELDS, RESUME_FIELD } = require('../utils/mediaTypes');
+  assert.ok(!UPLOAD_FIELDS.includes(RESUME_FIELD));
+  assert.deepEqual([...UPLOAD_FIELDS].sort(), [
+    'bannerImg',
+    'sliderContents',
+    'thumbnailContents',
+    'videos',
+  ]);
+});

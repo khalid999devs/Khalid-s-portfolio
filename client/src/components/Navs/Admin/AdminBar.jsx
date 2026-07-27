@@ -1,10 +1,10 @@
 import NavLogo from './NavLogo';
-import IconButton from '../../Buttons/IconButton';
+import NotificationBell from './NotificationBell';
 import Avatar from './Avatar';
 import Searchinput from '../../Forms/Searchinput';
 import PropTypes from 'prop-types';
 
-const AdminBar = ({ title, loginState = false }) => {
+const AdminBar = ({ title, loginState = false, searchTerm = '', onSearch }) => {
   return (
     <div className='screen-max-width sec-x-padding py-4'>
       <div className='flex items-center justify-between'>
@@ -15,10 +15,10 @@ const AdminBar = ({ title, loginState = false }) => {
         {!loginState && (
           <div className='flex items-center gap-32'>
             <div className='hidden md:block'>
-              <Searchinput />
+              <Searchinput value={searchTerm} onChange={onSearch} />
             </div>
             <div className='flex items-center gap-3'>
-              <IconButton />
+              <NotificationBell />
               <Avatar />
             </div>
           </div>
@@ -32,6 +32,8 @@ const AdminBar = ({ title, loginState = false }) => {
 AdminBar.propTypes = {
   title: PropTypes.string,
   loginState: PropTypes.bool,
+  searchTerm: PropTypes.string,
+  onSearch: PropTypes.func,
 };
 
 export default AdminBar;

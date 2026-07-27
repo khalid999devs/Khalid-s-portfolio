@@ -17,6 +17,7 @@ const CreateProject = lazy(() =>
   import('./pages/Admin/Panel/CreateProject.jsx')
 );
 const Settings = lazy(() => import('./pages/Admin/Panel/Settings.jsx'));
+const Messaging = lazy(() => import('./pages/Admin/Panel/Messaging.jsx'));
 
 //client
 import Projects from './pages/Projects.jsx';
@@ -87,6 +88,10 @@ const router = createBrowserRouter([
       {
         path: 'add-project',
         element: <CreateProject />,
+      },
+      {
+        path: 'messaging',
+        element: <Messaging />,
       },
       {
         path: 'settings',

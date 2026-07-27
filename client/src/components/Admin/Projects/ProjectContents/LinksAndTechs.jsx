@@ -69,7 +69,7 @@ const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
             }}
           />
         </div>
-        <div className='grid sm:grid-cols-[max(70px),1fr] gap-4 h-min'>
+        <div className='grid sm:grid-cols-[max(70px)_1fr] gap-4 h-min'>
           <div>
             <h2 className='text-secondary-light text-sm mt-2'>Tech Stack</h2>
           </div>

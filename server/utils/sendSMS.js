@@ -1,10 +1,31 @@
-// const request = require('request')
-var http = require('follow-redirects').http
-var { writeFileSync } = require('fs')
+'use strict';
 
-//sms info
-const userName = process.env.SMS_USERNAME
-const password = process.env.SMS_PASS
+const https = require('follow-redirects').https;
+const http = require('follow-redirects').http;
+const { recordDelivery } = require('./deliveryLog');
+
+/**
+ * SMS gateway client.
+ *
+ * Two things worth knowing about this provider, because neither is ideal and
+ * both are properties of their API rather than choices made here:
+ *
+ * 1. Credentials go in the query string. Query strings are logged by proxies
+ *    and reverse proxies as a matter of course, so the gateway password ends up
+ *    in access logs outside our control. The provider offers no header or body
+ *    authentication.
+ * 2. The documented endpoint is plain HTTP to a bare IP address, which means
+ *    those credentials and the message body cross the network in the clear.
+ *
+ * `SMS_API_BASE` lets the host be pointed at an HTTPS endpoint the moment the
+ * provider supports one, and the scheme is chosen from it. The default keeps
+ * the existing behaviour so nothing breaks, but the insecure path is now a
+ * visible default rather than a hardcoded assumption.
+ */
+
+const userName = process.env.SMS_USERNAME;
+const password = process.env.SMS_PASS;
+const API_BASE = process.env.SMS_API_BASE || 'http://66.45.237.70';
 
 const resType = {
   1000: 'Invalid user or Password',
@@ -16,80 +37,74 @@ const resType = {
   1009: 'Inactive Account',
   1010: 'Max number limit exceeded',
   1101: 'Success',
-}
+};
+
+const SUCCESS_CODE = '1101';
 
 const sendSMS = async (numbers, message) => {
-  let returnMsg = ''
-  const newPath = encodeURI(
-    `/api.php?username=${userName}&password=${password}&number=${numbers}&message=${message}`
-  )
+  const base = new URL(API_BASE);
+  const client = base.protocol === 'https:' ? https : http;
 
-  var options = {
+  const path = `/api.php?${new URLSearchParams({
+    username: userName ?? '',
+    password: password ?? '',
+    number: String(numbers ?? ''),
+    message: String(message ?? ''),
+  })}`;
+
+  const options = {
     method: 'POST',
-    hostname: '66.45.237.70',
-    path: newPath,
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
+    hostname: base.hostname,
+    port: base.port || undefined,
+    path,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     maxRedirects: 20,
-  }
+  };
 
-  return new Promise((resolve, reject) => {
-    var req = http.request(options, function (res) {
-      var chunks = []
+  const startedAt = Date.now();
 
-      const date = new Date()
-      const fullTime = `${date.getDate()}-${
-        date.getMonth() + 1
-      }-${date.getFullYear()} ,time-${date.getHours()}:${date.getMinutes()}`
+  const outcome = await new Promise((resolve) => {
+    const req = client.request(options, (res) => {
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
 
-      res.on('data', function (chunk) {
-        chunks.push(chunk)
-      })
+      res.on('end', () => {
+        const code = Buffer.concat(chunks).toString().split('|')[0]?.trim();
+        resolve({
+          type: code,
+          msg: resType[code] || 'Unknown gateway response',
+          ok: code === SUCCESS_CODE,
+        });
+      });
 
-      res.on('end', function (chunk) {
-        var body = Buffer.concat(chunks)
-        const type = body.toString().split('|')[0]
-        returnMsg = `${resType[type]}`
+      res.on('error', (error) => {
+        resolve({ type: 'error', msg: 'Error sending sms', ok: false, detail: error.message });
+      });
+    });
 
-        const isSucceed = type == '1101' ? 'succeed' : 'failed'
+    // Without this a network level failure never settles the promise and the
+    // request hangs until the client gives up.
+    req.on('error', (error) => {
+      resolve({ type: 'error', msg: 'Error sending sms', ok: false, detail: error.message });
+    });
 
-        writeFileSync(
-          `./logs/${isSucceed}/sentSMS.txt`,
-          `{type:"${returnMsg}",numbers:"${numbers}",message:"${message.replace(
-            /\n/g,
-            ' '
-          )}",fullTime:"${fullTime}"},\n`,
-          {
-            encoding: 'utf8',
-            flag: 'a+',
-            mode: 0o666,
-          }
-        )
-        resolve({ type: type, msg: returnMsg })
-      })
+    req.end();
+  });
 
-      res.on('error', function (error) {
-        returnMsg = 'Error sending sms'
+  await recordDelivery({
+    channel: 'sms',
+    mode: 'gateway',
+    recipient: String(numbers ?? ''),
+    // The message body is not stored. The subject line records its size so a
+    // truncation problem is still diagnosable without keeping the content.
+    subject: `${String(message ?? '').length} characters`,
+    status: outcome.ok ? 'succeeded' : 'failed',
+    providerCode: outcome.type,
+    detail: outcome.detail ? `${outcome.msg}: ${outcome.detail}` : outcome.msg,
+    durationMs: Date.now() - startedAt,
+  });
 
-        writeFileSync(
-          './logs/failed/sentSMS.txt',
-          `{type: "error",numbers:"${numbers}",message:"${message.replace(
-            /\n/g,
-            ' '
-          )}",fullTime:"${fullTime}"},\n`,
-          {
-            encoding: 'utf8',
-            flag: 'a+',
-            mode: 0o666,
-          }
-        )
-        resolve(returnMsg)
-      })
-    })
+  return { type: outcome.type, msg: outcome.msg };
+};
 
-    req.end()
-  })
-}
-
-module.exports = sendSMS
+module.exports = sendSMS;

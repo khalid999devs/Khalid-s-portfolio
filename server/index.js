@@ -85,6 +85,12 @@ app.use(
       origin: allowed ? origin || true : false,
       optionsSuccessStatus: 200,
       credentials: true,
+      // The resume download names its file from Content-Disposition. A browser
+      // hides every response header from cross-origin JavaScript unless it is
+      // listed here, and the client and API are on different origins in
+      // production -- so without this the filename silently degrades to a
+      // generic fallback there while working perfectly in local development.
+      exposedHeaders: ['Content-Disposition'],
       // Cached responses must not be shared between origins.
       preflightContinue: false,
     });
@@ -112,7 +118,7 @@ app.use(cookieParser(env.cookieSecret));
  * safe to treat that way -- a re-upload under the same title could in principle
  * collide -- so they revalidate with an ETag instead.
  */
-const IMMUTABLE_MEDIA_NAME = /^(bannerImg|videos|thumbnailContents|sliderContents)_[0-9a-f]{32}\.[a-z0-9]+$/;
+const IMMUTABLE_MEDIA_NAME = /^(bannerImg|videos|thumbnailContents|sliderContents|resume)_[0-9a-f]{32}\.[a-z0-9]+$/;
 
 app.use(
   '/uploads',
@@ -147,12 +153,22 @@ const adminRouter = require('./routers/admin');
 const contactRouter = require('./routers/contact');
 const projectRouter = require('./routers/projects');
 const settingRouter = require('./routers/settings');
+const aboutRouter = require('./routers/about');
+const logsRouter = require('./routers/logs');
+const statsRouter = require('./routers/stats');
+const visitsRouter = require('./routers/visits');
+const notificationsRouter = require('./routers/notifications');
 
 app.use('/api/admin/login', adminLoginLimiter);
 app.use('/api/admin', adminRouter);
 app.use('/api/contact', contactRouter);
 app.use('/api/projects', projectRouter);
 app.use('/api/settings', settingRouter);
+app.use('/api/about', aboutRouter);
+app.use('/api/logs', logsRouter);
+app.use('/api/stats', statsRouter);
+app.use('/api/visits', visitsRouter);
+app.use('/api/notifications', notificationsRouter);
 
 //notfound and errors
 const errorHandlerMiddleWare = require('./middlewares/errorHandler');
@@ -171,6 +187,13 @@ db.sequelize
   .authenticate()
   .then(() => {
     console.log(`database connected`);
+    // Starts the visit flush and the retention sweep. After the connection is
+    // proven, so a database that is unreachable fails as a startup error rather
+    // than as a stream of purge failures.
+    require('./utils/visitTracker').start();
+    // Background dependency audit, so a newly disclosed advisory shows up in
+    // the panel without anybody remembering to check.
+    require('./utils/scheduledAudit').start();
     app.listen(PORT, () => {
       console.log(`server is running on port ${PORT}...`);
     });

@@ -7,6 +7,7 @@ import Navbar from './components/Navs/Navbar';
 import Footer from './components/Footer/Footer';
 import { reqs } from './axios/requests';
 import MouseMoveEffect from './animations/MouseMoveEffect';
+import { useVisitTracking } from './hooks/useVisitTracking';
 import AnimatedOutlet from './animations/AnimatedOutlet';
 import { LenisGSAP } from './animations/LenisGSAP';
 
@@ -61,6 +62,8 @@ PageLoader.propTypes = {
 };
 
 const App = () => {
+  // Anonymous page view counting. Fire and forget, and skipped for /admin.
+  useVisitTracking();
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [settings, setSettings] = useState({});

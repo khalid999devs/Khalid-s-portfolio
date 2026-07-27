@@ -24,10 +24,15 @@ const shared = {
   },
 };
 
+// Constants rather than environment variables. These had four env keys between
+// them and none had ever been set to anything but the default, which meant four
+// more chances for a deployment to differ from what was tested.
+const WINDOW_MS = minutes(15);
+
 const apiLimiter = rateLimit({
   ...shared,
-  windowMs: Number(process.env.API_RATE_LIMIT_WINDOW_MS) || minutes(15),
-  limit: Number(process.env.API_RATE_LIMIT_MAX_REQUESTS) || 600,
+  windowMs: WINDOW_MS,
+  limit: 600,
 });
 
 /**
@@ -37,9 +42,30 @@ const apiLimiter = rateLimit({
  */
 const adminLoginLimiter = rateLimit({
   ...shared,
-  windowMs: Number(process.env.ADMIN_LOGIN_RATE_LIMIT_WINDOW_MS) || minutes(15),
-  limit: Number(process.env.ADMIN_LOGIN_RATE_LIMIT_MAX_REQUESTS) || 10,
+  windowMs: WINDOW_MS,
+  limit: 10,
   skipSuccessfulRequests: true,
 });
 
-module.exports = { apiLimiter, adminLoginLimiter };
+/**
+ * Account management: change password, add or remove an administrator.
+ *
+ * A separate bucket from login, on purpose. These routes verify a password too,
+ * so they need throttling, but sharing the login counter means anyone who can
+ * reach the login endpoint can exhaust it and lock the real administrator out
+ * of changing their own password. That turns a brute-force attempt into a small
+ * denial of service against the person best placed to respond to it.
+ *
+ * More generous than login because the caller is already authenticated, and
+ * `skipSuccessfulRequests` means only failures count: ordinary use never
+ * approaches the limit, while repeated wrong-password attempts still stop
+ * quickly.
+ */
+const adminAccountLimiter = rateLimit({
+  ...shared,
+  windowMs: WINDOW_MS,
+  limit: 20,
+  skipSuccessfulRequests: true,
+});
+
+module.exports = { apiLimiter, adminLoginLimiter, adminAccountLimiter };

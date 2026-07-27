@@ -7,6 +7,15 @@
  * index.js, and a missing REMOTE_CLIENT_APP crashed with a TypeError deep in the
  * CORS setup. Configuration problems should be a single clear message on boot,
  * not a weak default that runs happily in production.
+ *
+ * The environment is deliberately small. It used to carry 37 keys, 19 of which
+ * no code read at all, and most of the rest were tuning knobs that had never
+ * been turned. Anything with one sensible value is a constant in this file now,
+ * where it can be seen and changed with a commit, rather than a variable that
+ * has to be right on every machine and is silently wrong when it is not.
+ *
+ * The rule applied: it belongs in the environment only if it is a secret, or it
+ * genuinely differs between a laptop and production.
  */
 
 const isProduction = () => process.env.NODE_ENV === 'production';
@@ -63,39 +72,35 @@ if (cookieSecret === adminSecret) {
 
 /**
  * Cross-subdomain requests (khalidahammed.com -> api.khalidahammed.com) are
- * same-site, because SameSite is evaluated on the registrable domain rather than
- * the host, so 'lax' is correct for the current deployment and for localhost.
- * It is configurable because hosting the client on an unrelated domain would
- * make the request genuinely cross-site and require 'none' with secure cookies.
+ * same-site, because SameSite is evaluated on the registrable domain rather
+ * than the host. 'lax' is therefore correct both for the real deployment and
+ * for localhost, and it is the CSRF defence for every cookie-authenticated
+ * write on this API.
+ *
+ * Hardcoded because there is one right answer for this deployment. Hosting the
+ * client on an unrelated domain would make requests genuinely cross-site and
+ * require 'none' plus secure cookies, which is a deliberate change to make
+ * here, not a variable to get wrong in an environment file.
  */
-const cookieSameSite = (() => {
-  const value = (process.env.COOKIE_SAME_SITE || 'lax').toLowerCase();
-  if (!['lax', 'strict', 'none'].includes(value)) {
-    throw new Error(`COOKIE_SAME_SITE must be lax, strict or none (received "${value}").`);
-  }
-  if (value === 'none' && !isProduction()) {
-    process.emitWarning('COOKIE_SAME_SITE=none requires secure cookies, which need HTTPS.');
-  }
-  return value;
-})();
+const COOKIE_SAME_SITE = 'lax';
 
-// Cookie lifetime tracks the token lifetime. They used to disagree -- a 1 hour
-// token inside a 24 hour cookie -- so for 23 hours the browser kept sending a
-// credential the server had already rejected.
-const SESSION_MINUTES = (() => {
-  const value = Number(process.env.ADMIN_SESSION_MINUTES || 60);
-  if (!Number.isInteger(value) || value < 5 || value > 1440) {
-    throw new Error('ADMIN_SESSION_MINUTES must be an integer between 5 and 1440.');
-  }
-  return value;
-})();
+/**
+ * Cookie lifetime tracks the token lifetime. They used to disagree, a one hour
+ * token inside a twenty four hour cookie, so for twenty three hours the browser
+ * kept sending a credential the server had already rejected.
+ */
+const SESSION_MINUTES = 60;
+
+/** Enough for a project description with base64 nothing; uploads go multipart. */
+const BODY_LIMIT = '256kb';
 
 /**
  * Number of reverse-proxy hops to trust for the client address.
  *
- * Must match the deployment exactly. Too low and every visitor shares the
- * proxy's address, so rate limits bucket them together; too high (or `true`)
- * and a client can forge X-Forwarded-For to appear as any address it likes.
+ * The one piece of infrastructure tuning that genuinely differs per deployment,
+ * so it stays in the environment. Too low and every visitor shares the proxy's
+ * address, so rate limits bucket them together; too high and a client can forge
+ * X-Forwarded-For to appear as any address it likes.
  */
 const trustProxyHops = (() => {
   const value = Number(process.env.TRUST_PROXY_HOPS ?? 0);
@@ -105,25 +110,17 @@ const trustProxyHops = (() => {
   return value;
 })();
 
-const bodyLimit = (name, fallback) => {
-  const value = process.env[name] || fallback;
-  if (!/^\d+(\.\d+)?(b|kb|mb)$/i.test(value)) {
-    throw new Error(`${name} must look like "100kb" or "2mb" (received "${value}").`);
-  }
-  return value;
-};
-
 module.exports = {
   isProduction,
   adminSecret,
   cookieSecret,
-  cookieSameSite,
+  cookieSameSite: COOKIE_SAME_SITE,
   cookieSecure: isProduction(),
   sessionMinutes: SESSION_MINUTES,
   sessionSeconds: SESSION_MINUTES * 60,
   trustProxyHops,
-  jsonBodyLimit: bodyLimit('JSON_BODY_LIMIT', '256kb'),
-  urlEncodedBodyLimit: bodyLimit('URL_ENCODED_BODY_LIMIT', '256kb'),
+  jsonBodyLimit: BODY_LIMIT,
+  urlEncodedBodyLimit: BODY_LIMIT,
   allowedOrigins: allowedOriginsRaw
     .split(',')
     .map((origin) => origin.trim())

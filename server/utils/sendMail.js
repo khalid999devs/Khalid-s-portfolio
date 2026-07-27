@@ -1,67 +1,85 @@
 const nodemailer = require('nodemailer');
-const { writeFileSync } = require('fs');
 const { htmlCreator } = require('./htmlTemplates');
 const { EmailCover, EmailTextCover } = require('./TemplateCover');
+const { recordDelivery } = require('./deliveryLog');
 
-let transporter = nodemailer.createTransport({
+/**
+ * SMTP transport.
+ *
+ * `tls.rejectUnauthorized` used to be false here, which turns off certificate
+ * verification on the connection carrying the mailbox password. Anything able
+ * to intercept that connection could present its own certificate, be trusted,
+ * and read the credentials. It is on now.
+ *
+ * There is no way to turn it off. A provider with a broken certificate chain
+ * is a problem to fix with the provider.
+ */
+const transporter = nodemailer.createTransport({
   pool: true,
   host: process.env.MAIL_HOST,
-  port: 465,
-  secure: true, // use TLS
+  port: Number(process.env.MAIL_PORT) || 465,
+  secure: true, // implicit TLS
   auth: {
     user: process.env.SERVER_EMAIL,
     pass: process.env.MAIL_PASS,
   },
   tls: {
-    // do not fail on invalid certs
-    rejectUnauthorized: false,
+    // Never optional. This connection carries the mailbox password, and the
+    // escape hatch that used to exist here is the kind that gets switched on
+    // during an incident and never switched back off.
+    rejectUnauthorized: true,
+    minVersion: 'TLSv1.2',
   },
 });
 
 const mailer = async (data, mode) => {
   const { subject, body, text } = htmlCreator(mode, data);
+  const recipient = data?.client?.email;
 
-  let mailContent = {
+  const mailContent = {
     from: `GOLDEN DOT PROPERTIES LTD. <${process.env.SERVER_EMAIL}>`,
-    to: `${data.client.email}`,
-    subject: subject,
+    to: `${recipient}`,
+    subject,
     html: body ? EmailCover(body) : null,
     text: text ? EmailTextCover(text) : null,
   };
-  return new Promise((resolve, reject) => {
-    transporter.sendMail(mailContent, function (error, mailData) {
-      const date = new Date();
-      const fullTime = `${date.getDate()}-${
-        date.getMonth() + 1
-      }-${date.getFullYear()} ,time-${date.getHours()}:${date.getMinutes()}`;
 
-      if (error) {
-        writeFileSync(
-          './logs/failed/sentEmails.txt',
-          `{succeed:false,fullTime:"${fullTime}",mode:"${mode}",email:"${data.client.email}"},\n`,
-          {
-            encoding: 'utf8',
-            flag: 'a+',
-            mode: 0o666,
-          }
-        );
-        console.log(error);
+  const startedAt = Date.now();
 
-        reject('email sending failed. something went wrong');
-      } else {
-        writeFileSync(
-          './logs/succeed/sentEmails.txt',
-          `{succeed:true,fullTime:"${fullTime}",mode:"${mode}",email:"${data.client.email}"},\n`,
-          {
-            encoding: 'utf8',
-            flag: 'a+',
-            mode: 0o666,
-          }
-        );
-        resolve('success');
-      }
+  try {
+    const info = await transporter.sendMail(mailContent);
+
+    // Awaited rather than fired and forgotten: a log written after the response
+    // has gone out cannot be reported if it fails, and the write is a single
+    // indexed insert.
+    await recordDelivery({
+      channel: 'email',
+      mode,
+      recipient,
+      subject,
+      status: 'succeeded',
+      providerCode: info?.response ? String(info.response).slice(0, 32) : null,
+      detail: Array.isArray(info?.accepted) ? `accepted: ${info.accepted.join(', ')}` : null,
+      durationMs: Date.now() - startedAt,
     });
-  });
+
+    return 'success';
+  } catch (error) {
+    await recordDelivery({
+      channel: 'email',
+      mode,
+      recipient,
+      subject,
+      status: 'failed',
+      providerCode: error?.code ? String(error.code) : null,
+      detail: error?.message,
+      durationMs: Date.now() - startedAt,
+    });
+
+    // The caller only ever sees a generic failure; the reason is in the log
+    // table, which is behind admin authentication.
+    throw new Error('email sending failed. something went wrong');
+  }
 };
 
 module.exports = mailer;

@@ -35,7 +35,7 @@ const Technologies = ({
   };
 
   return (
-    <div className='col-span-7 box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8'>
+    <div className='col-span-9 box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8'>
       <div className='grid gap-8'>
         <h1 className='text-md'>Please enter following information</h1>
         <div className='grid gap-10'>
@@ -43,7 +43,7 @@ const Technologies = ({
             return (
               <div
                 key={key}
-                className='grid sm:grid-cols-[max(70px),1fr] gap-4 h-min'
+                className='grid sm:grid-cols-[max(70px)_1fr] gap-4 h-min'
               >
                 <div>
                   <h2 className='text-secondary-light text-sm mt-2'>{label}</h2>

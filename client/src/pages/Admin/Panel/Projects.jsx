@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, Link } from 'react-router-dom';
+import { MdAddCircleOutline } from 'react-icons/md';
 import axios from 'axios';
-import ProjectCard from '../../../components/Admin/Projects/ProjectCard.jsx';
+import ProjectCard from '../../../components/Admin/Projects/ProjectCard';
 import { deleteProject, reorderProjects } from '../../../axios/projects.js';
 import Popup from '../../../components/utils/Popup.jsx';
 import { reqFileWrapper, reqs } from '../../../axios/requests.js';
@@ -22,7 +23,7 @@ import {
 } from '@dnd-kit/sortable';
 
 const Projects = () => {
-  const { setPageTitle } = useOutletContext();
+  const { setPageTitle, searchTerm } = useOutletContext();
   const [projects, setProjects] = useState([]);
   const [activeId, setActiveId] = useState(null);
 
@@ -33,10 +34,32 @@ const Projects = () => {
   });
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Filtered client side, because the whole catalogue is already loaded and is
+   * three rows. A server side search would be a round trip per keystroke for a
+   * list that fits on one screen.
+   *
+   * Dragging is disabled while a search is active: reordering a filtered list
+   * would write positions computed from a subset, silently reshuffling the
+   * projects that were hidden at the time.
+   */
+  const isSearching = Boolean(searchTerm && searchTerm.trim());
+  const visibleProjects = isSearching
+    ? projects.filter((project) => {
+        const needle = searchTerm.trim().toLowerCase();
+        return [project.title, project.subtitle, project.value]
+          .filter(Boolean)
+          .some((field) => String(field).toLowerCase().includes(needle));
+      })
+    : projects;
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        // Effectively disables dragging while filtering: an unreachable
+        // threshold is simpler and less fragile than conditionally swapping
+        // the sensor set, which react-dnd does not expect to change.
+        distance: isSearching ? Number.MAX_SAFE_INTEGER : 5,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -132,6 +155,14 @@ const Projects = () => {
 
   return (
     <div className='flex flex-col gap-5'>
+      {isSearching && (
+        <p className='text-secondary-light text-sm mb-4'>
+          {visibleProjects.length === 0
+            ? `Nothing matches "${searchTerm}".`
+            : `${visibleProjects.length} of ${projects.length} projects match "${searchTerm}".`}
+        </p>
+      )}
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -139,11 +170,29 @@ const Projects = () => {
         onDragEnd={handleDragEnd}
       >
         <SortableContext
-          items={projects.map((p) => p.id)}
+          items={visibleProjects.map((p) => p.id)}
           strategy={rectSortingStrategy}
         >
           <div className='flex flex-row flex-wrap gap-5'>
-            {projects.map((item) => (
+            {/*
+              An empty state, not a permanent control. The sidebar already has
+              an Add Project link, so a tile that sits there forever is a second
+              copy of it taking up a card slot. It earns its place only when
+              there is nothing else to show.
+            */}
+            {!isSearching && projects.length === 0 && (
+              <Link
+                to='/admin/add-project'
+                className='w-[280px] min-h-[300px] rounded-xl border border-dashed border-secondary-main/50 grid place-items-center gap-2 text-secondary-light transition-all duration-300 hover:border-onPrimary-main hover:text-primary-main'
+              >
+                <div className='grid place-items-center gap-2'>
+                  <MdAddCircleOutline className='text-3xl' />
+                  <span className='text-sm'>Add a project</span>
+                </div>
+              </Link>
+            )}
+
+            {visibleProjects.map((item) => (
               <ProjectCard
                 key={item.id}
                 id={item.id}

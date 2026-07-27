@@ -1,9 +1,18 @@
 import { MdNotificationsNone } from 'react-icons/md';
 import PropTypes from 'prop-types';
 
-const IconButton = ({ classes, onClick, Icon = MdNotificationsNone }) => {
+const IconButton = ({ classes, onClick, Icon = MdNotificationsNone, label }) => {
   return (
     <div
+      role='button'
+      tabIndex={0}
+      aria-label={label}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.(e);
+        }
+      }}
       className={
         'w-[33px] h-[31px] flex items-center justify-center cursor-pointer text-secondary-light text-xl border-secondary-light border-1 border rounded-[10px] hover:bg-secondary-light transition-all duration-300 hover:text-body-main group ' +
         classes
@@ -22,6 +31,7 @@ IconButton.propTypes = {
   classes: PropTypes.string,
   onClick: PropTypes.func,
   Icon: PropTypes.elementType,
+  label: PropTypes.string,
 };
 
 export default IconButton;

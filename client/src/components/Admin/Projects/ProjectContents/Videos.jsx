@@ -139,7 +139,7 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
   return (
     <div className='box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8 col-span-10 lg:col-span-5'>
       <div className='grid gap-9'>
-        <div className='grid grid-cols-[1fr,auto] gap-7'>
+        <div className='grid grid-cols-[1fr_auto] gap-7'>
           <div className='flex w-full gap-3 h-full justify-start items-start'>
             <h3 className='text-primary-main font-medium opacity-90 text-sm h-min'>
               Videos

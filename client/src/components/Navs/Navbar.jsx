@@ -6,11 +6,16 @@ import PageNav from './PageNav';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 import { isUpwork } from '../../config';
 import { upworkedSocialLinks } from '../../Constants';
-import { myResume } from '../../assets';
+import { resumeUrl } from '../../assets';
+import { useAppContext } from '../../App';
 
 const Navbar = () => {
   const [isPageMenu, setIsPageMenu] = useState(false);
   const navBarRef = useRef(null);
+  const { settings } = useAppContext();
+  // Null when no resume has been uploaded, in which case the button is not
+  // rendered at all -- better than linking to a 404.
+  const resumeHref = resumeUrl(settings);
 
   useEffect(() => {
     if (isPageMenu) {
@@ -47,14 +52,16 @@ const Navbar = () => {
           <div>
             <NavLogo />
           </div>
-          <div className='hidden sm:inline-block'>
-            <OutlinedSmallButton
-              text={'My Resume'}
-              onClick={() => {
-                window.open(myResume, '_blank');
-              }}
-            />
-          </div>
+          {resumeHref && (
+            <div className='hidden sm:inline-block'>
+              <OutlinedSmallButton
+                text={'My Resume'}
+                onClick={() => {
+                  window.open(resumeHref, '_blank', 'noopener,noreferrer');
+                }}
+              />
+            </div>
+          )}
           <div className='flex items-center justify-between gap-6 text-sm'>
             <Link
               to={'/projects'}

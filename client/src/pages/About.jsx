@@ -8,12 +8,8 @@ import {
 } from '../components/Buttons/OutlinedButton';
 import { GravityField, myPic } from '../assets';
 import { useAppContext } from '../App';
-import {
-  achievements,
-  education,
-  experience,
-  workingFields,
-} from '../Constants';
+import { workingFields } from '../Constants';
+import { useAboutEntries } from '../hooks/useAboutEntries';
 import { textBlinkAnimation } from '../animations/textBlinkAnimation';
 import useIsGreaterOrEqualMd from '../hooks/useIsGreaterOrEqualMd';
 import { wordBlinkAnimation } from '../animations/wordBlinkAnimation';
@@ -25,6 +21,9 @@ import MetaCard from '../components/utils/MetaCard';
 
 const About = () => {
   const [technologies, setTechnologies] = useState([]);
+  // Employment, education and achievements come from the API now. Same shape
+  // the markup below already expects, so nothing here changes.
+  const { experience, achievements, education } = useAboutEntries();
   const { settings } = useAppContext();
   const aboutHeaderRef = useRef(null);
 

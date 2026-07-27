@@ -66,17 +66,42 @@ const SIGNATURES = [
       b.toString('ascii', 0, 4) === 'RIFF' &&
       b.toString('ascii', 8, 12) === 'WAVE',
   },
+  {
+    type: 'application/pdf',
+    extension: 'pdf',
+    kind: 'document',
+    // Every PDF begins with "%PDF-" followed by its version. Checked as bytes
+    // for the same reason as everything else here: a file claiming
+    // application/pdf while containing HTML would otherwise be stored under
+    // /uploads and served from the API origin.
+    test: (b) => b.length >= 5 && b.toString('ascii', 0, 5) === '%PDF-',
+  },
 ];
 
-/** Which detected kinds each upload field is allowed to receive. */
-const FIELD_RULES = Object.freeze({
+/**
+ * Which detected kinds each upload field is allowed to receive.
+ *
+ * `resume` is deliberately not in UPLOAD_FIELDS: project media is written into
+ * projects/<id>/ and requires a numeric route parameter, while the resume is a
+ * single site-wide document under assets/. They use separate multer instances,
+ * so keeping the field lists separate stops a resume upload from being routed
+ * through the project storage path (and vice versa).
+ */
+const PROJECT_FIELD_RULES = Object.freeze({
   bannerImg: Object.freeze(['image']),
   thumbnailContents: Object.freeze(['image']),
   sliderContents: Object.freeze(['image']),
   videos: Object.freeze(['video', 'audio']),
 });
 
-const UPLOAD_FIELDS = Object.freeze(Object.keys(FIELD_RULES));
+const FIELD_RULES = Object.freeze({
+  ...PROJECT_FIELD_RULES,
+  resume: Object.freeze(['document']),
+});
+
+const UPLOAD_FIELDS = Object.freeze(Object.keys(PROJECT_FIELD_RULES));
+
+const RESUME_FIELD = 'resume';
 
 const HEADER_BYTES = 32;
 
@@ -106,7 +131,9 @@ const isTypeAllowedForField = (fieldname, detected) => {
 module.exports = {
   SIGNATURES,
   FIELD_RULES,
+  PROJECT_FIELD_RULES,
   UPLOAD_FIELDS,
+  RESUME_FIELD,
   detectFileType,
   isTypeAllowedForField,
 };

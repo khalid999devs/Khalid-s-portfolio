@@ -14,10 +14,12 @@ build/
 # Private working notes (audit, plans, verification evidence)
 docs/
 
-# Visual-regression harness artifacts
-verification/output/
-verification/**/*-actual.png
-verification/**/*-diff.png
+# Visual-regression harness. Kept out of the repository by request: it is local
+# tooling, and it carries a fixture set (a copy of production media) that has no
+# business in a public repo. It still runs locally and is still the gate every
+# change goes through; see the "How changes are verified" section of README.md.
+verification/
+
 test-results/
 playwright-report/
 blob-report/
