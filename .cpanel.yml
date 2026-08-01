@@ -24,7 +24,12 @@ deployment:
     # Fail loudly on a missing target rather than half-deploying. A wrong path
     # here is the difference between a broken site and an unchanged one, and
     # the unchanged one is much harder to notice.
-    - for d in "$WEB" "$UPWORK" "$API"; do test -d "$d" || { echo "target missing: $d"; exit 1; }; done
+    #
+    # Quoted because the message once contained a colon and a space. YAML reads
+    # that as "key: value", so cPanel's Perl parser turned the whole task into a
+    # hash and wrote HASH(0x29a43c0) into the script. scripts/check-cpanel-yml.mjs
+    # now fails the build on any task that does not parse as a plain string.
+    - 'for d in "$WEB" "$UPWORK" "$API"; do test -d "$d" || { echo "missing target $d"; exit 1; }; done'
 
     - $SYNC deploy/web/ "$WEB/"
     - $SYNC deploy/upwork/ "$UPWORK/"

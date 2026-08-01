@@ -11,6 +11,14 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
+// Before the build, not after: a malformed task is cheap to catch and the
+// deploy only reports it as a bash syntax error on the server.
+const check = spawnSync('node', [resolve(ROOT, 'scripts/check-cpanel-yml.mjs')], {
+  cwd: ROOT,
+  stdio: 'inherit',
+});
+if (check.status !== 0) process.exit(check.status ?? 1);
+
 const build = spawnSync('bash', [resolve(ROOT, 'scripts/build-deploy.sh')], {
   cwd: ROOT,
   stdio: 'inherit',
