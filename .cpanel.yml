@@ -7,23 +7,40 @@
 deployment:
   tasks:
     - command -v rsync >/dev/null || { echo "rsync not on PATH"; exit 1; }
-    - export HOME_DIR=/home/yqvubgrbjv
-    - export SYNC="rsync -rlt --chmod=D755,F644"
 
-    - $SYNC deploy/web/ "$HOME_DIR/khalidahammed.com/"
-    - $SYNC deploy/upwork/ "$HOME_DIR/upwork.khalidahammed.com/"
+    # $HOME, not a literal path. The first attempt hardcoded the wrong account
+    # name, rsync failed on a directory that does not exist, and the deploy
+    # reported nothing at all -- the site simply stayed as it was.
+    - export HOME_DIR="${HOME:-/home/yqvubgrbiy}"
+    # No -p and no --chmod. Without -p rsync applies the receiving umask to the
+    # source mode, so a git checkout lands at 644/755, which is what Apache
+    # wants. --chmod would say the same thing while failing outright on the
+    # openrsync that ships with current macOS.
+    - export SYNC="rsync -rlt"
+    - export WEB="$HOME_DIR/khalidahammed.com"
+    - export UPWORK="$HOME_DIR/upwork.khalidahammed.com"
+    - export API="$HOME_DIR/api.khalidahammed.com"
+
+    # Fail loudly on a missing target rather than half-deploying. A wrong path
+    # here is the difference between a broken site and an unchanged one, and
+    # the unchanged one is much harder to notice.
+    - for d in "$WEB" "$UPWORK" "$API"; do test -d "$d" || { echo "target missing: $d"; exit 1; }; done
+
+    - $SYNC deploy/web/ "$WEB/"
+    - $SYNC deploy/upwork/ "$UPWORK/"
 
     # No --delete anywhere. On the client it would remove a hashed chunk that
     # an already-loaded page is about to request; on the server this directory
     # is not only ours -- node_modules is installed by cPanel, .env is managed
     # outside the repo, uploads/ and logs/ are live data, and Passenger writes
     # its own .htaccess here.
-    - $SYNC --exclude 'node_modules/' --exclude '.env' --exclude 'uploads/' --exclude 'logs/' --exclude '.htaccess' --exclude 'tmp/' server/ "$HOME_DIR/api.khalidahammed.com/"
+    - $SYNC --exclude 'node_modules/' --exclude '.env' --exclude 'uploads/' --exclude 'logs/' --exclude '.htaccess' --exclude 'tmp/' server/ "$API/"
 
     # Passenger reloads when this mtime changes. Without it the old code keeps
     # serving until somebody presses Restart in cPanel.
-    - mkdir -p "$HOME_DIR/api.khalidahammed.com/tmp" && touch "$HOME_DIR/api.khalidahammed.com/tmp/restart.txt"
+    - mkdir -p "$API/tmp" && touch "$API/tmp/restart.txt"
 
     # Outside the repository on purpose: a file written into the checkout
     # leaves the tree dirty and the next Update from Remote refuses to run.
     - git rev-parse HEAD > "$HOME_DIR/last-deploy.txt"
+    - echo "deployed $(git rev-parse --short HEAD) to $WEB, $UPWORK, $API"
