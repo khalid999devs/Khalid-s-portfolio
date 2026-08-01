@@ -42,11 +42,15 @@ export default defineConfig({
           // line cost 58 KiB. Unnamed, it lands in the async admin chunk where
           // a public visitor never downloads it.
 
+          // Anchored to node_modules/ on purpose. `/react/` alone also matches
+          // `@tiptap/react`, which dragged TipTap and the whole ProseMirror
+          // stack into this eager chunk: 88 KiB gzip became 171 and the
+          // critical path went over budget, for an editor only the admin loads.
           if (
-            id.includes('/react/') ||
-            id.includes('/react-dom/') ||
-            id.includes('/react-router') ||
-            id.includes('/scheduler/')
+            id.includes('/node_modules/react/') ||
+            id.includes('/node_modules/react-dom/') ||
+            id.includes('/node_modules/react-router') ||
+            id.includes('/node_modules/scheduler/')
           ) {
             return 'react';
           }

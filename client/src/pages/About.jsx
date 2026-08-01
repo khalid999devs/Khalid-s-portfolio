@@ -121,10 +121,10 @@ const About = () => {
                   wordSpacing: '0.15rem',
                 }}
               >
-                Passionate programmer with 3+ years of experience in full-stack
-                web and mobile app development. I like solving real-world
-                problems through code and enjoy collaborating with diverse teams
-                to create impactful solutions.
+                I build software end to end, from database schemas and
+                infrastructure through to the interfaces people actually touch.
+                What interests me most is architecture, and the details nobody
+                is ever meant to notice.
               </p>
               <div className='w-full justify-start flex md:justify-end items-end pr-1'>
                 <OutlinedBigIcon
@@ -165,10 +165,10 @@ const About = () => {
                   wordSpacing: '0.15rem',
                 }}
               >
-                Passionate programmer with 3+ years of experience in full-stack
-                web and mobile app development. I like solving real-world
-                problems through code and enjoy collaborating with diverse teams
-                to create impactful solutions.
+                I build software end to end, from database schemas and
+                infrastructure through to the interfaces people actually touch.
+                What interests me most is architecture, and the details nobody
+                is ever meant to notice.
               </p>
               <div className='w-full justify-start flex md:justify-end items-end pr-1'>
                 <OutlinedBigIcon text={'DOWNLOAD CV'} />

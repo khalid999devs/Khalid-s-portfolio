@@ -1,6 +1,5 @@
 const nodemailer = require('nodemailer');
 const { htmlCreator } = require('./htmlTemplates');
-const { EmailCover, EmailTextCover } = require('./TemplateCover');
 const { recordDelivery } = require('./deliveryLog');
 
 const transporter = nodemailer.createTransport({
@@ -33,8 +32,11 @@ const deliver = async (data, mode) => {
     from: `${FROM_NAME} <${process.env.SERVER_EMAIL}>`,
     to: `${recipient}`,
     subject,
-    html: body ? EmailCover(body) : null,
-    text: text ? EmailTextCover(text) : null,
+    html: body,
+    // The real plain-text alternative. Sending HTML here, as this used to, both
+    // shows markup in text-only clients and reads as spam.
+    text,
+    replyTo: process.env.MAIL_REPLY_TO || undefined,
   };
 
   const startedAt = Date.now();
@@ -88,7 +90,7 @@ const mailer = async (data, mode) => {
  * address bounced. Bounded concurrency so sixty addresses neither outlive the
  * request nor open sixty SMTP connections.
  */
-const mailerBulk = async (recipients, { subject, text, mode = 'bulk' }) => {
+const mailerBulk = async (recipients, { subject, text, html, template, cta, mode = 'bulk' }) => {
   const startedAt = Date.now();
   const outcomes = [];
   const queue = [...recipients];
@@ -98,7 +100,7 @@ const mailerBulk = async (recipients, { subject, text, mode = 'bulk' }) => {
       outcomes.push(
         await deliver(
           {
-            info: { subject, body: text },
+            info: { subject, body: text, html, template, cta },
             client: { fullName: next.name || next.email, email: next.email },
           },
           'custom'

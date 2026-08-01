@@ -14,10 +14,12 @@ function getRandomCharacter() {
 function useTextRevealAnimation(className, duration = 0.1) {
   const loc = useLocation();
   useEffect(() => {
-    let scrollTriggers = [];
+    const scrollTriggers = [];
+    // Every element gets a paused timeline holding one span per character. The
+    // ScrollTriggers were killed on cleanup but these were not, so each route
+    // change stranded a timeline still referencing its detached spans.
+    const timelines = [];
 
-    scrollTriggers.forEach((trigger) => trigger.kill());
-    scrollTriggers = [];
     ScrollTrigger.refresh();
 
     const updateAnimations = () => {
@@ -41,6 +43,7 @@ function useTextRevealAnimation(className, duration = 0.1) {
         });
 
         const tl = gsap.timeline({ paused: true });
+        timelines.push(tl);
         spans.forEach((span, index) => {
           if (span.textContent === '\u00A0') return;
 
@@ -90,6 +93,9 @@ function useTextRevealAnimation(className, duration = 0.1) {
       ScrollTrigger.refresh();
       observer.disconnect();
       scrollTriggers.forEach((trigger) => trigger.kill());
+      // Kill, not revert: the spans keep the styles they already have, so
+      // nothing on screen changes. Only the references are released.
+      timelines.forEach((timeline) => timeline.kill());
     };
   }, [className, duration, loc.pathname]);
 }

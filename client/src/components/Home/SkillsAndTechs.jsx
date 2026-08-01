@@ -20,8 +20,9 @@ const SkillsAndTechs = () => {
   }, [settings]);
 
   useEffect(() => {
+    let trigger;
     if (skillParentRef.current && skillsRef.current) {
-      wordBlinkAnimation(
+      trigger = wordBlinkAnimation(
         skillsRef.current,
         null,
         skillParentRef.current,
@@ -29,6 +30,7 @@ const SkillsAndTechs = () => {
         false
       );
     }
+    return () => trigger?.kill();
   }, []);
 
   return (

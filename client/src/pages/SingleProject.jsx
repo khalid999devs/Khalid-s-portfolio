@@ -87,8 +87,9 @@ const SingleProject = () => {
   }, [value]);
 
   useEffect(() => {
+    let trigger;
     if (projectDescParent.current && projectDesc.current) {
-      wordBlinkAnimation(
+      trigger = wordBlinkAnimation(
         projectDesc.current,
         null,
         projectDescParent.current,
@@ -97,6 +98,9 @@ const SingleProject = () => {
         6
       );
     }
+    // Also re-runs per project, so without this every project viewed in one
+    // session leaves a trigger behind.
+    return () => trigger?.kill();
   }, [project]);
 
   if (projLoading) {
@@ -260,6 +264,7 @@ const SingleProject = () => {
               >
                 <div className='rounded-t-lg '>
                   <img
+                    loading='lazy'
                     src={reqFileWrapper(
                       nextProject?.thumbnailContents[0]?.url ||
                         nextProject?.bannerImg

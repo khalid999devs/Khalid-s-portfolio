@@ -5,16 +5,18 @@ import { OutlinedBigIcon } from '../Buttons/OutlinedButton';
 import SkillsAndTechs from './SkillsAndTechs';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 import useIsGreaterOrEqualMd from '../../hooks/useIsGreaterOrEqualMd';
-import { downloadResume } from '../../axios';
+import { useNavigate } from 'react-router-dom';
 
 const About = () => {
+  const navigate = useNavigate();
   const aboutTextRef = useRef(null);
   const aboutParentRef = useRef(null);
   const isGreaterOrEqualMd = useIsGreaterOrEqualMd();
 
   useEffect(() => {
+    let trigger;
     if (aboutParentRef.current && aboutTextRef.current) {
-      wordBlinkAnimation(
+      trigger = wordBlinkAnimation(
         aboutTextRef.current,
         isGreaterOrEqualMd,
         aboutParentRef.current,
@@ -22,6 +24,7 @@ const About = () => {
         true
       );
     }
+    return () => trigger?.kill();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -62,15 +65,15 @@ const About = () => {
                 wordSpacing: '0.15rem',
               }}
             >
-              Passionate programmer with 3+ years of experience in full-stack
-              web and mobile app development. I like solving real-world problems
-              through code and enjoy collaborating with diverse teams to create
-              impactful solutions.
+              I build software end to end, from database schemas and
+              infrastructure through to the interfaces people actually touch.
+              What interests me most is architecture, and the details nobody is
+              ever meant to notice.
             </p>
             <div className='inline-block m-auto md:m-0'>
               <OutlinedBigIcon
-                text={'DOWNLOAD CV'}
-                onClick={() => downloadResume()}
+                text={'MORE ABOUT MYSELF'}
+                onClick={() => navigate('/about-me')}
               />
             </div>
           </div>

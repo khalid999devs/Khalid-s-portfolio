@@ -30,7 +30,7 @@ function MetaCard({ title, description, image }) {
         name='description'
         content={
           description ||
-          'Khalid Ahammed is a dynamic Full Stack Developer with over 4 years of experience in Web and Application Development. Proficient in tech stacks like PERN, MERN, Next.js, and more, he specializes in crafting scalable, high-performance digital solutions. Driven by a passion for leveraging innovative technologies to build impactful websites, web applications, and mobile apps, Khalid thrives in collaborative environments that foster creativity and innovation.'
+          'Khalid Ahammed is a software engineer working remotely with a team in Montreal. He builds web and mobile products in TypeScript, Swift, React and Node.'
         }
       />
 
@@ -43,7 +43,7 @@ function MetaCard({ title, description, image }) {
         property='og:description'
         content={
           description ||
-          'Khalid Ahammed is a dynamic Full Stack Developer with over 4 years of experience in Web and Application Development. Proficient in tech stacks like PERN, MERN, Next.js, and more, he specializes in crafting scalable, high-performance digital solutions. Driven by a passion for leveraging innovative technologies to build impactful websites, web applications, and mobile apps, Khalid thrives in collaborative environments that foster creativity and innovation.'
+          'Khalid Ahammed is a software engineer working remotely with a team in Montreal. He builds web and mobile products in TypeScript, Swift, React and Node.'
         }
       />
       <meta
@@ -63,7 +63,7 @@ function MetaCard({ title, description, image }) {
         name='twitter:description'
         content={
           description ||
-          'Khalid Ahammed is a dynamic Full Stack Developer with over 4 years of experience in Web and Application Development. Proficient in tech stacks like PERN, MERN, Next.js, and more, he specializes in crafting scalable, high-performance digital solutions. Driven by a passion for leveraging innovative technologies to build impactful websites, web applications, and mobile apps, Khalid thrives in collaborative environments that foster creativity and innovation.'
+          'Khalid Ahammed is a software engineer working remotely with a team in Montreal. He builds web and mobile products in TypeScript, Swift, React and Node.'
         }
       />
       <meta

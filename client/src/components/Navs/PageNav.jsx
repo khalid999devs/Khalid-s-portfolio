@@ -167,15 +167,20 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
 
               <div className='flex flex-col gap-9 md:gap-14 pb-8 mb-9 md:mb-0'>
                 <div className='flex flex-col gap-4 md:gap-8'>
-                  <div className='flex items-center md:justify-start gap-1 -translate-x-1 group'>
-                    <MdOutlineArrowRightAlt className='text-white text-4xl transition-transform duration-1000 group-hover:translate-x-1' />
-                    <a
-                      href='mailto:khalidahammeduzzal@gmail.com'
-                      className='text-lg md:text-2xl text-pp-eiko uppercase text-flicker thick-underline'
-                    >
-                      SEND ME AN EMAIL
-                    </a>
-                  </div>
+                  {/* Guarded like the footer and navbar. Without this the
+                      address stayed on screen here while isUpwork hid it
+                      everywhere else. */}
+                  {!isUpwork && (
+                    <div className='flex items-center md:justify-start gap-1 -translate-x-1 group'>
+                      <MdOutlineArrowRightAlt className='text-white text-4xl transition-transform duration-1000 group-hover:translate-x-1' />
+                      <a
+                        href='mailto:khalidahammeduzzal@gmail.com'
+                        className='text-lg md:text-2xl text-pp-eiko uppercase text-flicker thick-underline'
+                      >
+                        SEND ME AN EMAIL
+                      </a>
+                    </div>
+                  )}
 
                   <div className='flex w-full flex-col text-secondary-light gap-2 md:gap-3 '>
                     <p className='text-[10px] md:text-xs text-montreal-mono'>

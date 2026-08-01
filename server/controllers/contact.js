@@ -10,14 +10,17 @@ const { parseEmails, parseNumbers, MAXIMUM_RECIPIENTS } = require('../utils/reci
 
 const sendEmailToClient = async (req, res) => {
   const mode = req.params.mode;
-  const { text, subject, email, name } = req.body ?? {};
+  const { text, html, template, subject, email, name, ctaLabel, ctaUrl } = req.body ?? {};
 
-  if (!text) throw new BadRequestError('The message body is empty.');
+  if (!text && !html) throw new BadRequestError('The message body is empty.');
   if (!email) throw new BadRequestError('A recipient address is required.');
 
   try {
     await mailer(
-      { info: { subject, body: text }, client: { fullName: name, email } },
+      {
+        info: { subject, body: text, html, template, cta: { label: ctaLabel, url: ctaUrl } },
+        client: { fullName: name, email },
+      },
       mode || 'custom'
     );
     res.json({ succeed: true, msg: 'Email sent.', text });
@@ -28,9 +31,9 @@ const sendEmailToClient = async (req, res) => {
 
 /** Bad addresses stop the request rather than being skipped silently. */
 const sendBulkEmail = async (req, res) => {
-  const { text, subject, recipients } = req.body ?? {};
+  const { text, html, template, subject, recipients, ctaLabel, ctaUrl } = req.body ?? {};
 
-  if (!text) throw new BadRequestError('The message body is empty.');
+  if (!text && !html) throw new BadRequestError('The message body is empty.');
   if (!subject) throw new BadRequestError('A subject is required.');
 
   const { valid, invalid, duplicates } = parseEmails(recipients);
@@ -55,7 +58,7 @@ const sendBulkEmail = async (req, res) => {
 
   const result = await mailerBulk(
     valid.map((email) => ({ email })),
-    { subject, text }
+    { subject, text, html, template, cta: { label: ctaLabel, url: ctaUrl } }
   );
 
   const parts = [`Sent to ${result.sent} of ${valid.length}.`];

@@ -32,17 +32,20 @@ const Navbar = () => {
   }, [isPageMenu]);
 
   useEffect(() => {
+    const triggers = [];
     if (navBarRef.current) {
       const animatingElements = [
         ...document.querySelectorAll('.blink-animate-nav'),
       ];
 
-      if (animatingElements.length > 0) {
-        animatingElements.forEach((ele) => {
-          wordBlinkAnimation(ele, null, navBarRef.current, false, false);
-        });
-      }
+      animatingElements.forEach((ele) => {
+        triggers.push(
+          wordBlinkAnimation(ele, null, navBarRef.current, false, false)
+        );
+      });
     }
+
+    return () => triggers.forEach((trigger) => trigger?.kill());
   }, []);
 
   return (

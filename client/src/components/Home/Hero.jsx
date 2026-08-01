@@ -17,8 +17,22 @@ import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
  */
 const Scene = lazy(() => import('./bot/Scene'));
 import { isUpwork } from '../../config';
+import HeroGreeting from './HeroGreeting';
 import { textBlinkAnimateByWord } from '../../animations/textBlinkAnimateByWord';
 import { useMichibotInteraction } from '../../hooks/useMichibotInteraction';
+
+const GREETINGS = [
+  'Hi There',
+  'Stay Curious',
+  'Sweat Details',
+  'Think First',
+  'Ship Often',
+  'Keep Learning',
+  'Still Building',
+];
+
+/** How long each phrase holds before the next one scrambles in. */
+const GREETING_INTERVAL_MS = 5000;
 
 const Hero = () => {
   const nameTitleRef = useRef(null);
@@ -27,26 +41,54 @@ const Hero = () => {
   const passionRef = useRef(null);
   const heroRef = useRef(null);
   const botContainerRef = useRef(null);
-  const [showTooltip, setShowTooltip] = useState(false);
+  const [botHovered, setBotHovered] = useState(false);
+  const [greeting, setGreeting] = useState(GREETINGS[0]);
 
   const { isActive, isDesktop, isLoaded, setIsLoaded, handleClick } =
     useMichibotInteraction(botContainerRef, heroRef);
 
   useEffect(() => {
+    if (botHovered) return undefined;
+
+    const id = setInterval(() => {
+      setGreeting((current) => {
+        const others = GREETINGS.filter((phrase) => phrase !== current);
+        return others[Math.floor(Math.random() * others.length)];
+      });
+    }, GREETING_INTERVAL_MS);
+
+    return () => clearInterval(id);
+  }, [botHovered]);
+
+  useEffect(() => {
+    const timelines = [];
     if (nameTitleRef.current) {
-      textBlinkAnimateByWord(nameTitleRef.current);
+      timelines.push(textBlinkAnimateByWord(nameTitleRef.current));
     }
     if (developerTitleRef.current) {
-      textBlinkAnimation(developerTitleRef.current);
+      timelines.push(textBlinkAnimation(developerTitleRef.current));
     }
+
+    const triggers = [];
     if (heroRef.current) {
       if (countryRef.current) {
-        wordBlinkAnimation(countryRef.current, null, heroRef.current, true);
+        triggers.push(
+          wordBlinkAnimation(countryRef.current, null, heroRef.current, true)
+        );
       }
       if (passionRef.current) {
-        wordBlinkAnimation(passionRef.current, null, heroRef.current, true);
+        triggers.push(
+          wordBlinkAnimation(passionRef.current, null, heroRef.current, true)
+        );
       }
     }
+
+    // Killed on unmount, or each visit leaves a ScrollTrigger holding this
+    // element and every per-word span it created.
+    return () => {
+      triggers.forEach((trigger) => trigger?.kill());
+      timelines.forEach((timeline) => timeline?.kill());
+    };
   }, []);
 
   return (
@@ -62,12 +104,12 @@ const Hero = () => {
           Based in Bangladesh
         </p>
         <div
-          className='flex absolute left-1/2 items-center justify-center flex-col gap-5 z-40'
+          className='flex absolute left-1/2 w-[100px] items-center justify-center flex-col gap-5 z-40'
           style={{ transform: 'translate(-50%,-20%) scale(0.7)' }}
         >
-          <div className='flex items-center justify-center flex-row gap-2.5'>
+          <div className='flex items-center justify-center flex-row gap-2.5 whitespace-nowrap'>
             <span className='w-4 h-4 bg-white'></span>
-            <p className='text-lg xl:text-xl capitalize'>Hi There</p>
+            <HeroGreeting text={botHovered ? 'Click Me' : greeting} />
           </div>
           <div className='w-full min-h-[20px] flex mt-12 relative'>
             <div
@@ -77,18 +119,10 @@ const Hero = () => {
               } ${isActive ? 'z-50 michibot-active' : 'z-40'}`}
               onClick={handleClick}
               onMouseEnter={() =>
-                isDesktop && isLoaded && !isActive && setShowTooltip(true)
+                isDesktop && isLoaded && !isActive && setBotHovered(true)
               }
-              onMouseLeave={() => setShowTooltip(false)}
+              onMouseLeave={() => setBotHovered(false)}
             >
-              {isDesktop && isLoaded && !isActive && (
-                <div
-                  className={`michibot-tooltip ${showTooltip ? 'show' : ''}`}
-                >
-                  <span className='highlight-text'>Click</span> me to see magic!
-                  ✨
-                </div>
-              )}
               <Suspense fallback={null}>
                 <Scene onLoad={() => setIsLoaded(true)} isActive={isActive} />
               </Suspense>
@@ -118,7 +152,7 @@ const Hero = () => {
             ref={developerTitleRef}
             className='text-montreal-medium text-[1.6rem] sm:text-[38px] md:text-[40px] lg:text-[58px] 2xl:text-[75px] 3xl:text-[80px] uppercase md:ml-36'
           >
-            {'<FULLSTACK DEVELOPER/>'}
+            {'<SOFTWARE ENGINEER/>'}
           </h2>
         </div>
       </div>

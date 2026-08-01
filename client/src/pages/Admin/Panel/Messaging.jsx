@@ -9,10 +9,13 @@ import {
   MdOutlinePerson,
   MdOutlineGroup,
   MdRefresh,
+  MdOutlineStyle,
+  MdOutlineCode,
 } from 'react-icons/md';
 import { reqs } from '../../../axios/requests';
 import Popup from '../../../components/utils/Popup';
 import DeliveryTable from '../../../components/Admin/DeliveryTable';
+import RichTextEditor from '../../../components/Admin/RichTextEditor';
 import {
   parseEmails,
   parseNumbers,
@@ -28,6 +31,31 @@ const sendButton =
 const TABS = [
   { key: 'email', label: 'Email', icon: MdOutlineMail },
   { key: 'sms', label: 'SMS', icon: MdOutlineSms },
+];
+
+const BLANK_EMAIL = {
+  to: '',
+  name: '',
+  recipients: '',
+  subject: '',
+  html: '',
+  ctaLabel: '',
+  ctaUrl: '',
+};
+
+const TEMPLATES = [
+  {
+    key: 'branded',
+    label: 'With template',
+    icon: MdOutlineStyle,
+    hint: 'Wrapped in your header, greeting, signature and footer',
+  },
+  {
+    key: 'raw',
+    label: 'Raw',
+    icon: MdOutlineCode,
+    hint: 'Just your message, no branding, greeting or signature',
+  },
 ];
 
 const SCOPES = [
@@ -81,20 +109,23 @@ const Messaging = () => {
   const { setPageTitle } = useOutletContext();
   const [tab, setTab] = useState('email');
   const [scope, setScope] = useState('single');
+  const [template, setTemplate] = useState('branded');
   const [busy, setBusy] = useState(false);
-  const [popUp, setPopup] = useState({ text: '', type: 'normal', state: false });
+  const [popUp, setPopup] = useState({
+    text: '',
+    type: 'normal',
+    state: false,
+  });
   const [refreshLogs, setRefreshLogs] = useState(0);
 
-  const [email, setEmail] = useState({
-    to: '',
-    name: '',
-    recipients: '',
-    subject: '',
-    text: '',
-  });
+  const [email, setEmail] = useState(BLANK_EMAIL);
   const [sms, setSms] = useState({ phone: '', numbers: '', message: '' });
   // Starts loading so the first paint reads "Checking...", not "unknown".
-  const [balance, setBalance] = useState({ value: null, loading: true, error: '' });
+  const [balance, setBalance] = useState({
+    value: null,
+    loading: true,
+    error: '',
+  });
   const [balanceToken, setBalanceToken] = useState(0);
 
   useEffect(() => {
@@ -141,7 +172,10 @@ const Messaging = () => {
     setBalanceToken((n) => n + 1);
   };
 
-  const emailList = useMemo(() => parseEmails(email.recipients), [email.recipients]);
+  const emailList = useMemo(
+    () => parseEmails(email.recipients),
+    [email.recipients],
+  );
   const smsList = useMemo(() => parseNumbers(sms.numbers), [sms.numbers]);
   const segments = useMemo(() => smsSegments(sms.message), [sms.message]);
 
@@ -158,18 +192,21 @@ const Messaging = () => {
           email: email.to,
           name: email.name || email.to,
           subject: email.subject,
-          text: email.text,
+          html: email.html,
+          template,
+          ctaLabel: email.ctaLabel,
+          ctaUrl: email.ctaUrl,
         },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       report(data.msg || 'Email sent', 'success');
-      setEmail({ to: '', name: '', recipients: '', subject: '', text: '' });
+      setEmail(BLANK_EMAIL);
       afterSend();
     } catch (error) {
       report(
         error.response?.data?.msg ||
           'Could not send the email. Check the delivery log for the provider error.',
-        'error'
+        'error',
       );
     } finally {
       setBusy(false);
@@ -186,20 +223,21 @@ const Messaging = () => {
         {
           recipients: email.recipients,
           subject: email.subject,
-          text: email.text,
+          html: email.html,
+          template,
+          ctaLabel: email.ctaLabel,
+          ctaUrl: email.ctaUrl,
         },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       // Partly delivered is neither success nor failure.
       report(data.msg, data.failed > 0 ? 'normal' : 'success');
-      if (data.failed === 0) {
-        setEmail({ to: '', name: '', recipients: '', subject: '', text: '' });
-      }
+      if (data.failed === 0) setEmail(BLANK_EMAIL);
       afterSend();
     } catch (error) {
       report(
         error.response?.data?.msg || 'Could not send. Nothing was delivered.',
-        'error'
+        'error',
       );
     } finally {
       setBusy(false);
@@ -214,7 +252,7 @@ const Messaging = () => {
       const { data } = await axios.post(
         `${reqs.SEND_SMS}/custom`,
         { phone: sms.phone, message: sms.message },
-        { withCredentials: true }
+        { withCredentials: true },
       );
       // Failures come back 200 with succeed:false, so trust the flag.
       report(data.msg || 'SMS sent', data.succeed ? 'success' : 'error');
@@ -225,7 +263,7 @@ const Messaging = () => {
       report(
         error.response?.data?.msg ||
           'Could not send the SMS. Check the delivery log for the gateway response.',
-        'error'
+        'error',
       );
     } finally {
       setBusy(false);
@@ -240,9 +278,12 @@ const Messaging = () => {
       const { data } = await axios.post(
         reqs.SEND_BULK_SMS,
         { numbers: sms.numbers, message: sms.message },
-        { withCredentials: true }
+        { withCredentials: true },
       );
-      report(data.msg, data.succeed ? (data.failed > 0 ? 'normal' : 'success') : 'error');
+      report(
+        data.msg,
+        data.succeed ? (data.failed > 0 ? 'normal' : 'success') : 'error',
+      );
       if (data.succeed && data.failed === 0) {
         setSms({ phone: '', numbers: '', message: '' });
       }
@@ -251,7 +292,7 @@ const Messaging = () => {
     } catch (error) {
       report(
         error.response?.data?.msg || 'Could not send. Nothing was delivered.',
-        'error'
+        'error',
       );
     } finally {
       setBusy(false);
@@ -296,6 +337,28 @@ const Messaging = () => {
             ))}
           </div>
 
+          {/* Same slot as the SMS credit chip: whichever tab you are on, the
+              thing you might want to change sits top right. */}
+          {tab === 'email' && (
+            <div className='flex items-center gap-1 p-1 rounded-lg bg-body-main/40 border border-secondary-main/40'>
+              {TEMPLATES.map((item) => (
+                <button
+                  key={item.key}
+                  type='button'
+                  onClick={() => setTemplate(item.key)}
+                  title={item.hint}
+                  className={`flex items-center gap-2 px-3 py-1.5 text-xs rounded-md transition-all duration-300 ${
+                    template === item.key
+                      ? 'bg-onPrimary-main text-body-main'
+                      : 'text-secondary-light hover:text-primary-main'
+                  }`}
+                >
+                  <item.icon /> {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Credit only means anything on the SMS side; email has no meter. */}
           {tab === 'sms' && (
             <button
@@ -324,8 +387,10 @@ const Messaging = () => {
             <div className='grid gap-1'>
               <h1 className='text-md'>Send an email</h1>
               <p className='text-secondary-light text-sm'>
-                Sent over SMTP from the address configured on the server. The
-                recipient sees your site address, not this panel.
+                Sent over SMTP from the address configured on the server.{' '}
+                {template === 'raw'
+                  ? 'Delivered exactly as written, with no header, greeting or signature.'
+                  : 'Wrapped in your branded layout, with a greeting and signature.'}
               </p>
             </div>
             <div className='grid sm:grid-cols-2 gap-3'>
@@ -335,14 +400,18 @@ const Messaging = () => {
                 required
                 placeholder='Recipient email'
                 value={email.to}
-                onChange={(e) => setEmail((v) => ({ ...v, to: e.target.value }))}
+                onChange={(e) =>
+                  setEmail((v) => ({ ...v, to: e.target.value }))
+                }
               />
               <input
                 className={field}
                 type='text'
                 placeholder='Recipient name (optional)'
                 value={email.name}
-                onChange={(e) => setEmail((v) => ({ ...v, name: e.target.value }))}
+                onChange={(e) =>
+                  setEmail((v) => ({ ...v, name: e.target.value }))
+                }
               />
             </div>
             <input
@@ -351,20 +420,44 @@ const Messaging = () => {
               required
               placeholder='Subject'
               value={email.subject}
-              onChange={(e) => setEmail((v) => ({ ...v, subject: e.target.value }))}
+              onChange={(e) =>
+                setEmail((v) => ({ ...v, subject: e.target.value }))
+              }
             />
-            <textarea
-              className={`${field} min-h-[200px] resize-y`}
-              required
+            <RichTextEditor
+              value={email.html}
+              onChange={(html) => setEmail((v) => ({ ...v, html }))}
               placeholder='Message'
-              value={email.text}
-              onChange={(e) => setEmail((v) => ({ ...v, text: e.target.value }))}
             />
+            <div className='grid sm:grid-cols-2 gap-3'>
+              <input
+                className={field}
+                type='text'
+                placeholder='Button label (optional)'
+                value={email.ctaLabel}
+                onChange={(e) =>
+                  setEmail((v) => ({ ...v, ctaLabel: e.target.value }))
+                }
+              />
+              <input
+                className={field}
+                type='url'
+                placeholder='Button link, https://…'
+                value={email.ctaUrl}
+                onChange={(e) =>
+                  setEmail((v) => ({ ...v, ctaUrl: e.target.value }))
+                }
+              />
+            </div>
             <div className='flex items-center justify-between gap-3'>
               <span className='text-xs text-secondary-light'>
                 Every attempt is recorded below, delivered or not
               </span>
-              <button type='submit' disabled={busy} className={sendButton}>
+              <button
+                type='submit'
+                disabled={busy || !email.html}
+                className={sendButton}
+              >
                 <MdSend /> Send email
               </button>
             </div>
@@ -377,8 +470,11 @@ const Messaging = () => {
               <h1 className='text-md'>Send an email to many people</h1>
               <p className='text-secondary-light text-sm'>
                 Each person gets their own copy, so nobody sees who else was
-                written to. The batch is saved as a single report below rather
-                than one entry per recipient.
+                written to.{' '}
+                {template === 'raw'
+                  ? 'Sent with no branding.'
+                  : 'Wrapped in your branded layout.'}{' '}
+                The batch is saved as a single report below.
               </p>
             </div>
             <textarea
@@ -386,7 +482,9 @@ const Messaging = () => {
               required
               placeholder='someone@example.com, another@example.com&#10;a.third@example.com'
               value={email.recipients}
-              onChange={(e) => setEmail((v) => ({ ...v, recipients: e.target.value }))}
+              onChange={(e) =>
+                setEmail((v) => ({ ...v, recipients: e.target.value }))
+              }
             />
             <RecipientSummary list={emailList} noun='addresses' />
             <input
@@ -395,15 +493,35 @@ const Messaging = () => {
               required
               placeholder='Subject'
               value={email.subject}
-              onChange={(e) => setEmail((v) => ({ ...v, subject: e.target.value }))}
+              onChange={(e) =>
+                setEmail((v) => ({ ...v, subject: e.target.value }))
+              }
             />
-            <textarea
-              className={`${field} min-h-[200px] resize-y`}
-              required
+            <RichTextEditor
+              value={email.html}
+              onChange={(html) => setEmail((v) => ({ ...v, html }))}
               placeholder='Message'
-              value={email.text}
-              onChange={(e) => setEmail((v) => ({ ...v, text: e.target.value }))}
             />
+            <div className='grid sm:grid-cols-2 gap-3'>
+              <input
+                className={field}
+                type='text'
+                placeholder='Button label (optional)'
+                value={email.ctaLabel}
+                onChange={(e) =>
+                  setEmail((v) => ({ ...v, ctaLabel: e.target.value }))
+                }
+              />
+              <input
+                className={field}
+                type='url'
+                placeholder='Button link, https://…'
+                value={email.ctaUrl}
+                onChange={(e) =>
+                  setEmail((v) => ({ ...v, ctaUrl: e.target.value }))
+                }
+              />
+            </div>
             <div className='flex items-center justify-between gap-3'>
               <span className='text-xs text-secondary-light'>
                 Addresses that will not work are listed above; fix them first
@@ -412,7 +530,10 @@ const Messaging = () => {
                 type='submit'
                 // The server refuses these anyway; say so before the round trip.
                 disabled={
-                  busy || emailList.valid.length === 0 || emailList.invalid.length > 0
+                  busy ||
+                  !email.html ||
+                  emailList.valid.length === 0 ||
+                  emailList.invalid.length > 0
                 }
                 className={sendButton}
               >
@@ -445,7 +566,9 @@ const Messaging = () => {
               maxLength={800}
               placeholder='Message'
               value={sms.message}
-              onChange={(e) => setSms((v) => ({ ...v, message: e.target.value }))}
+              onChange={(e) =>
+                setSms((v) => ({ ...v, message: e.target.value }))
+              }
             />
             <div className='flex items-center justify-between gap-3'>
               <span className='text-xs text-secondary-light text-montreal-mono'>
@@ -465,8 +588,8 @@ const Messaging = () => {
             <div className='grid gap-1'>
               <h1 className='text-md'>Send an SMS to many numbers</h1>
               <p className='text-secondary-light text-sm'>
-                One call to the gateway covers the whole list, and the batch is
-                saved as a single report below.
+                One call to the gateway covers the whole list. Written as
+                01XXXXXXXXX or 8801XXXXXXXXX; either is accepted.
               </p>
             </div>
             <textarea
@@ -474,7 +597,9 @@ const Messaging = () => {
               required
               placeholder='01712345678, 01812345678&#10;01912345678'
               value={sms.numbers}
-              onChange={(e) => setSms((v) => ({ ...v, numbers: e.target.value }))}
+              onChange={(e) =>
+                setSms((v) => ({ ...v, numbers: e.target.value }))
+              }
             />
             <RecipientSummary list={smsList} noun='numbers' />
             <textarea
@@ -483,7 +608,9 @@ const Messaging = () => {
               maxLength={800}
               placeholder='Message'
               value={sms.message}
-              onChange={(e) => setSms((v) => ({ ...v, message: e.target.value }))}
+              onChange={(e) =>
+                setSms((v) => ({ ...v, message: e.target.value }))
+              }
             />
             <div className='flex items-center justify-between gap-3'>
               <span className='text-xs text-secondary-light text-montreal-mono'>

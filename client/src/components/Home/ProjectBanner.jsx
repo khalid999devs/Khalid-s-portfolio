@@ -12,6 +12,7 @@ const ProjectBanner = () => {
   const documentHeight = useDocumentHeight();
 
   useEffect(() => {
+    const triggers = [];
     if (projecsParentRef.current) {
       const animatingElements = [
         ...document.querySelectorAll('.blink-animate'),
@@ -19,10 +20,14 @@ const ProjectBanner = () => {
 
       if (animatingElements.length > 0) {
         animatingElements.forEach((ele) => {
-          wordBlinkAnimation(ele, null, projecsParentRef.current, true, false);
+          triggers.push(
+            wordBlinkAnimation(ele, null, projecsParentRef.current, true, false)
+          );
         });
       }
     }
+
+    return () => triggers.forEach((trigger) => trigger?.kill());
   }, []);
 
   useEffect(() => {

@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/generate-sitemap.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "expose": "vite --host"
@@ -21,6 +21,9 @@
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@tailwindcss/postcss": "^4.3.3",
+    "@tiptap/extensions": "^3.29.2",
+    "@tiptap/react": "^3.29.2",
+    "@tiptap/starter-kit": "^3.29.2",
     "axios": "^1.7.5",
     "browser-image-compression": "^2.0.2",
     "framer-motion": "^12.4.10",

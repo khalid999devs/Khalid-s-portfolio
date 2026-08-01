@@ -53,8 +53,14 @@ export function wordBlinkAnimation(
     },
   });
 
-  return scrollTriggerInstance;
-  // animateWordSpans(wordSpans);
+  return {
+    kill() {
+      scrollTriggerInstance.kill();
+      // Releases GSAP's per-element cache; without it the spans stay reachable
+      // from GSAP's internals long after the DOM has dropped them.
+      gsap.killTweensOf(wordSpans);
+    },
+  };
 }
 
 export let flickerEase =
