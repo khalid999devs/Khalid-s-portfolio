@@ -1,0 +1,1 @@
+import{o as e}from"./prop-types-B6wxhxzS.js";import{o as t,r as n}from"./animation-ydV3hRMy.js";import{l as r}from"./react-yMtBfZ7c.js";import{t as i}from"./ProjectDetails-yP-zG-dv.js";var a=e(t(),1),o=n(),s=()=>{let{setPageTitle:e}=r();return(0,a.useEffect)(()=>{e(`Add Project`)},[e]),(0,o.jsx)(o.Fragment,{children:(0,o.jsx)(i,{})})};export{s as default};

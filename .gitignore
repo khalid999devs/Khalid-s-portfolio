@@ -6,6 +6,15 @@ dist/
 dist-ssr/
 build/
 
+# deploy/ is the exception and is committed on purpose: cPanel deploys by
+# copying files and its deploy shell has no Node, so the artefacts have to
+# travel through git. scripts/build-deploy.sh writes it; nothing else should.
+#
+# Source maps stay out regardless. Turning on build.sourcemap would otherwise
+# publish the entire source tree into a public directory and into this
+# repository, in one commit, with nothing complaining.
+deploy/**/*.map
+
 # Environment — never commit real credentials
 .env
 .env.*

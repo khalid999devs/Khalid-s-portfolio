@@ -1,0 +1,1 @@
+import{o as e}from"./prop-types-B6wxhxzS.js";import{o as t,r as n}from"./animation-ydV3hRMy.js";import{d as r,l as i}from"./react-yMtBfZ7c.js";import{t as a}from"./ProjectDetails-yP-zG-dv.js";var o=e(t(),1),s=n(),c=()=>{let{setPageTitle:e}=i(),[t]=r(),n=t.get(`id`);return(0,o.useEffect)(()=>{e(`Edit Project`)},[e]),(0,s.jsx)(a,{mode:`edit`,projectId:n})};export{c as default};

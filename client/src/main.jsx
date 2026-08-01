@@ -26,34 +26,38 @@ import SingleProject from './pages/SingleProject.jsx';
 import CodingLab from './pages/CodingLab.jsx';
 
 import Loader from './components/utils/Loader.jsx';
+import { publicRoutes } from './Constants/routes.js';
+
+const PAGES = {
+  home: <Home />,
+  projects: <Projects />,
+  about: <About />,
+  singleProject: <SingleProject />,
+  codingLab: <CodingLab />,
+};
+
+// The same children this used to spell out, built from the manifest the
+// sitemap generator also reads. One list, so a new page cannot exist in the
+// router and be missing from search.
+//
+// A route with no entry in PAGES throws at module load. React Router renders
+// an undefined element as nothing, which is a blank page that looks like a
+// routing bug and takes far longer to find than this.
+const publicChildren = publicRoutes.map(({ id, path }) => {
+  const element = PAGES[id];
+  if (!element) throw new Error(`No page component for route "${id}"`);
+
+  return path === '/'
+    ? { index: true, element }
+    : { path: path.slice(1), element };
+});
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: <App />,
     errorElement: <ErrorPage />,
-    children: [
-      {
-        index: true,
-        element: <Home />,
-      },
-      {
-        path: 'projects',
-        element: <Projects />,
-      },
-      {
-        path: 'about-me',
-        element: <About />,
-      },
-      {
-        path: 'singleProject/:value',
-        element: <SingleProject />,
-      },
-      {
-        path: 'coding-lab',
-        element: <CodingLab />,
-      },
-    ],
+    children: publicChildren,
   },
   {
     path: '/admin-login',

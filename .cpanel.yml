@@ -1,0 +1,29 @@
+---
+# Runs on Deploy HEAD Commit. cPanel joins these tasks into one bash script in
+# the repository checkout, so an export carries forward to the next line.
+#
+# Nothing is built here -- deploy/ holds artefacts produced by
+# scripts/build-deploy.sh and committed. See README for why.
+deployment:
+  tasks:
+    - command -v rsync >/dev/null || { echo "rsync not on PATH"; exit 1; }
+    - export HOME_DIR=/home/yqvubgrbjv
+    - export SYNC="rsync -rlt --chmod=D755,F644"
+
+    - $SYNC deploy/web/ "$HOME_DIR/khalidahammed.com/"
+    - $SYNC deploy/upwork/ "$HOME_DIR/upwork.khalidahammed.com/"
+
+    # No --delete anywhere. On the client it would remove a hashed chunk that
+    # an already-loaded page is about to request; on the server this directory
+    # is not only ours -- node_modules is installed by cPanel, .env is managed
+    # outside the repo, uploads/ and logs/ are live data, and Passenger writes
+    # its own .htaccess here.
+    - $SYNC --exclude 'node_modules/' --exclude '.env' --exclude 'uploads/' --exclude 'logs/' --exclude '.htaccess' --exclude 'tmp/' server/ "$HOME_DIR/api.khalidahammed.com/"
+
+    # Passenger reloads when this mtime changes. Without it the old code keeps
+    # serving until somebody presses Restart in cPanel.
+    - mkdir -p "$HOME_DIR/api.khalidahammed.com/tmp" && touch "$HOME_DIR/api.khalidahammed.com/tmp/restart.txt"
+
+    # Outside the repository on purpose: a file written into the checkout
+    # leaves the tree dirty and the next Update from Remote refuses to run.
+    - git rev-parse HEAD > "$HOME_DIR/last-deploy.txt"

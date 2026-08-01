@@ -13,6 +13,8 @@ import { existsSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { publicRoutes } from '../src/Constants/routes.js';
+
 const projectDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const distDirectory = resolve(projectDirectory, 'dist');
 
@@ -31,11 +33,13 @@ const SITE_ORIGIN = (
 const API_URL = (process.env.SITEMAP_API_URL || '').replace(/\/+$/, '');
 const REQUEST_TIMEOUT_MS = 10_000;
 
-const STATIC_ROUTES = [
-  { path: '/', changefreq: 'monthly', priority: '1.0' },
-  { path: '/projects', changefreq: 'weekly', priority: '0.9' },
-  { path: '/about-me', changefreq: 'monthly', priority: '0.8' },
-];
+// Taken from the router's own manifest rather than repeated here. This list
+// used to be a second copy that nothing kept in step: a page could be added,
+// deployed and linked while staying invisible to search, with no error
+// anywhere. Routes marked `sitemap: false` opt out explicitly.
+const STATIC_ROUTES = publicRoutes
+  .filter((route) => route.sitemap)
+  .map(({ path, sitemap }) => ({ path, ...sitemap }));
 
 const escapeXml = (value) =>
   String(value)
