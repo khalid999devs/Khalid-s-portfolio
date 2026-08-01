@@ -8,19 +8,23 @@ const Footer = () => {
   const timeRef = useRef(null);
 
   useEffect(() => {
-    let iid;
     const timeContainer = timeRef.current;
-    if (timeContainer) {
-      iid = setInterval(() => {
-        timeContainer.innerText = new Date().toLocaleTimeString();
-      }, 1000);
-    }
+    if (!timeContainer) return undefined;
 
-    return () => {
-      if (iid) {
-        clearInterval(iid);
-      }
+    // Writes into the existing text node instead of replacing it. `innerText`
+    // swaps the node out, and that is a childList mutation: once a second it
+    // woke every MutationObserver watching the document, which made the whole
+    // page rescan itself on a timer. Setting the node's data is a characterData
+    // change, which nothing here observes.
+    const tick = () => {
+      const value = new Date().toLocaleTimeString();
+      const node = timeContainer.firstChild;
+      if (node && node.nodeType === Node.TEXT_NODE) node.data = value;
+      else timeContainer.textContent = value;
     };
+
+    const iid = setInterval(tick, 1000);
+    return () => clearInterval(iid);
   }, []);
 
   return (
