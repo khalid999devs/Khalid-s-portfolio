@@ -1,0 +1,17 @@
+{
+  "name": "khalid-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Root task runner. The client and server keep their own package.json and dependencies; nothing is installed here.",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11 <12"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build-deploy.mjs",
+    "install:all": "npm install --prefix client && npm install --prefix server",
+    "lint": "npm run lint --prefix client",
+    "test": "npm test --prefix server"
+  }
+}

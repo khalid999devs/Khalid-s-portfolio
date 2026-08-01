@@ -8,7 +8,7 @@
     "npm": ">=11 <12"
   },
   "scripts": {
-    "dev": "nodemon index.js",
+    "dev": "node --watch index.js",
     "start": "node index.js",
     "admin:bootstrap": "node scripts/admin-account.js bootstrap",
     "admin:rotate": "node scripts/admin-account.js rotate",
