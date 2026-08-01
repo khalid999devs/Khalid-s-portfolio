@@ -84,18 +84,18 @@ const getNotifications = async (req, res) => {
     );
   }
 
-  if (!process.env.SMS_USERNAME || !process.env.SMS_PASS) {
+  if (!process.env.SMS_API_KEY) {
     add(
       'info',
       'SMS gateway is not configured',
-      'SMS_USERNAME and SMS_PASS are not set. Sending an SMS will fail until they are.',
+      'SMS_API_KEY is not set. Sending an SMS will fail until it is. The key is issued under Developers in the provider dashboard.',
       'env'
     );
   } else if ((process.env.SMS_API_BASE || '').startsWith('http://')) {
     add(
       'warning',
       'SMS gateway is on plain HTTP',
-      'Credentials and message text cross the network in the clear, and the provider puts them in the query string where proxies log them. Point SMS_API_BASE at HTTPS as soon as they support it.',
+      'The API key and message text cross the network in the clear. This provider serves HTTPS, so point SMS_API_BASE at https://bulksmsbd.net.',
       'env'
     );
   }

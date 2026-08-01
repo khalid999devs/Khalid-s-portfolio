@@ -70,7 +70,10 @@ export const reqs = {
   DELETE_PROJECT: '/api/projects/delete', //delete
   REORDER_PROJECTS: '/api/projects/reorder', //patch
 
-  //outbound only. The inbound contact form and its message store are gone:
-  //no component ever posted to them, and the delivery log is the history that
-  //was actually wanted.
+  //outbound messaging, admin only
+  SEND_EMAIL: '/api/contact/emailToClient', //post, append /:mode
+  SEND_SMS: '/api/contact/smsToClient', //post, append /:mode
+  SEND_BULK_EMAIL: '/api/contact/bulkEmail', //post
+  SEND_BULK_SMS: '/api/contact/bulkSms', //post
+  SMS_BALANCE: '/api/contact/sms-balance', //get
 };

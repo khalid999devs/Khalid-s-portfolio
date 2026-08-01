@@ -4,17 +4,8 @@ import PropTypes from 'prop-types';
 import { MdDelete, MdDeleteSweep } from 'react-icons/md';
 import { reqs } from '../../axios/requests';
 
-/**
- * The delivery log table: fetching, filtering, paging, selection and deletion.
- *
- * Lives on the Mail & SMS page, under the composer, pinned to the channel of
- * the tab in view.
- *
- * It began as two tables reading the same endpoint, one here and one on a
- * separate logs page, which is how you end up with delete on one and not the
- * other. The page went; the props that made them differ stayed, so an unpinned,
- * fully filtered version is still one prop away if it is ever wanted.
- */
+// The delivery log table. Lives under the composer on the Mail & SMS page,
+// pinned to the channel of the tab in view.
 
 const CHANNELS = [
   { value: '', label: 'All channels' },
@@ -25,8 +16,22 @@ const CHANNELS = [
 const STATUSES = [
   { value: '', label: 'All statuses' },
   { value: 'succeeded', label: 'Succeeded' },
+  { value: 'partial', label: 'Partly delivered' },
   { value: 'failed', label: 'Failed' },
 ];
+
+const KINDS = [
+  { value: '', label: 'Single and bulk' },
+  { value: 'single', label: 'Single only' },
+  { value: 'bulk', label: 'Bulk reports' },
+];
+
+/** Orange for partial: a batch that mostly worked is not a failure. */
+const STATUS_STYLES = {
+  succeeded: { text: 'text-green-500', dot: 'bg-green-500', label: 'Delivered' },
+  partial: { text: 'text-orange-300', dot: 'bg-orange-400', label: 'Partly delivered' },
+  failed: { text: 'text-red-400', dot: 'bg-red-400', label: 'Failed' },
+};
 
 const selectClass =
   'bg-body-main/40 border border-secondary-main/50 rounded-md px-3 py-2 text-sm outline-none focus:border-onPrimary-main transition-all duration-300';
@@ -39,6 +44,7 @@ const DeliveryTable = ({
   lockedChannel = null,
   showFilters = true,
   pageSize = 25,
+  refreshToken = 0,
   onChanged,
   setPopup,
 }) => {
@@ -47,6 +53,7 @@ const DeliveryTable = ({
   const [totals, setTotals] = useState({ all: 0, failed: 0 });
   const [channel, setChannel] = useState(lockedChannel || '');
   const [status, setStatus] = useState('');
+  const [kind, setKind] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState(() => new Set());
@@ -65,6 +72,7 @@ const DeliveryTable = ({
           q: searchTerm || undefined,
           channel: channel || undefined,
           status: status || undefined,
+          kind: kind || undefined,
           page,
           pageSize,
         },
@@ -72,8 +80,7 @@ const DeliveryTable = ({
       setRows(data.result || []);
       setPagination(data.pagination || { page: 1, pages: 1, matched: 0 });
       setTotals(data.totals || { all: 0, failed: 0 });
-      // Selection is per page. Holding ids that are no longer on screen would
-      // mean a delete removing rows the person cannot see.
+      // Per page: holding offscreen ids would delete rows you cannot see.
       setSelected(new Set());
     } catch (error) {
       setPopup?.({
@@ -84,18 +91,18 @@ const DeliveryTable = ({
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, channel, status, page, pageSize, setPopup]);
+    // refreshToken is depended on, not read: the page bumps it after a send.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, channel, status, kind, page, pageSize, refreshToken, setPopup]);
 
   useEffect(() => {
-    // Debounced so typing in the shared search box does not fire a request per
-    // keystroke against a table that will grow.
+    // Debounced: one request per keystroke would not scale.
     const id = setTimeout(load, 250);
     return () => clearTimeout(id);
   }, [load]);
 
-  // A filter change invalidates the page number; staying on page 4 of a result
-  // set that now has one page shows an empty table.
-  useEffect(() => setPage(1), [searchTerm, channel, status]);
+  // A filter change invalidates the page number.
+  useEffect(() => setPage(1), [searchTerm, channel, status, kind]);
 
   const allOnPageSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
 
@@ -151,6 +158,7 @@ const DeliveryTable = ({
     const scope = [
       channel && `channel ${channel}`,
       status && `status ${status}`,
+      kind && `${kind} sends`,
       searchTerm && `matching "${searchTerm}"`,
     ]
       .filter(Boolean)
@@ -170,6 +178,7 @@ const DeliveryTable = ({
         all: true,
         channel: channel || undefined,
         status: status || undefined,
+        kind: kind || undefined,
         q: searchTerm || undefined,
       },
       `Delete all ${pagination.matched} entries with ${scope}? This cannot be undone.`
@@ -177,7 +186,7 @@ const DeliveryTable = ({
   };
 
   const canClearMatching =
-    (channel || status || searchTerm) && pagination.matched > 0;
+    (channel || status || kind || searchTerm) && pagination.matched > 0;
 
   return (
     <div className='box-big-shadow bg-primary-dark rounded-xl p-6 grid gap-4'>
@@ -231,6 +240,17 @@ const DeliveryTable = ({
                   ))}
                 </select>
               )}
+              <select
+                className={selectClass}
+                value={kind}
+                onChange={(e) => setKind(e.target.value)}
+              >
+                {KINDS.map((k) => (
+                  <option key={k.value} value={k.value}>
+                    {k.label}
+                  </option>
+                ))}
+              </select>
               <select
                 className={selectClass}
                 value={status}
@@ -314,21 +334,36 @@ const DeliveryTable = ({
                       {row.channel}
                     </td>
                   )}
-                  <td className={`${cell} break-all`}>{row.recipient || '—'}</td>
+                  <td className={`${cell} break-all`}>
+                    {/* No wrap: the count must stay beside the badge. */}
+                    <span className='flex items-center gap-2 whitespace-nowrap'>
+                      {row.kind === 'bulk' && (
+                        <span className='text-[10px] uppercase text-montreal-mono px-1.5 py-0.5 rounded border border-onPrimary-main/50 text-onPrimary-main'>
+                          Bulk
+                        </span>
+                      )}
+                      {row.recipient || '—'}
+                    </span>
+                  </td>
                   <td className={`${cell} break-all`}>{row.subject || '—'}</td>
                   <td className={cell}>
                     <span
                       className={`inline-flex items-center gap-1.5 ${
-                        row.status === 'succeeded' ? 'text-green-500' : 'text-red-400'
+                        (STATUS_STYLES[row.status] || STATUS_STYLES.failed).text
                       }`}
                     >
                       <span
                         className={`w-1.5 h-1.5 rounded-full ${
-                          row.status === 'succeeded' ? 'bg-green-500' : 'bg-red-400'
+                          (STATUS_STYLES[row.status] || STATUS_STYLES.failed).dot
                         }`}
                       />
-                      {row.status === 'succeeded' ? 'Delivered' : 'Failed'}
+                      {(STATUS_STYLES[row.status] || STATUS_STYLES.failed).label}
                     </span>
+                    {row.kind === 'bulk' && row.recipientCount != null && (
+                      <span className='block text-xs text-secondary-light text-montreal-mono mt-1'>
+                        {row.succeededCount} of {row.recipientCount}
+                      </span>
+                    )}
                   </td>
                   <td className={`${cell} text-secondary-light break-all`}>
                     {row.detail || row.providerCode || '—'}
@@ -389,6 +424,8 @@ DeliveryTable.propTypes = {
   lockedChannel: PropTypes.string,
   showFilters: PropTypes.bool,
   pageSize: PropTypes.number,
+  /** Increment to force a reload, e.g. after a send on the page above. */
+  refreshToken: PropTypes.number,
   onChanged: PropTypes.func,
   setPopup: PropTypes.func,
 };

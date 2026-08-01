@@ -1,13 +1,22 @@
 const router = require('express').Router();
-const { sendEmailToClient, smsToClient } = require('../controllers/contact');
+const {
+  sendEmailToClient,
+  sendBulkEmail,
+  smsToClient,
+  sendBulkSms,
+  smsBalance,
+} = require('../controllers/contact');
 const adminValidate = require('../middlewares/adminTokenVerify');
 
-// The inbound contact form and its message store are gone. There was never a
-// form in the client that posted to them, and the delivery log is the history
-// that was actually wanted: what went out, to whom, and whether it arrived.
-//
-// What remains is outbound only, used by the admin Mail & SMS page.
+// Outbound only. The inbound contact form and its message store are gone;
+// nothing ever posted to them and the delivery log is the wanted history.
 router.post('/emailToClient/:mode', adminValidate, sendEmailToClient);
 router.post('/smsToClient/:mode', adminValidate, smsToClient);
+
+// Separate routes, not a flag: different body, counts instead of one result.
+router.post('/bulkEmail', adminValidate, sendBulkEmail);
+router.post('/bulkSms', adminValidate, sendBulkSms);
+
+router.get('/sms-balance', adminValidate, smsBalance);
 
 module.exports = router;

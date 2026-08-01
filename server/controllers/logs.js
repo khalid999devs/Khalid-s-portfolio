@@ -8,32 +8,14 @@ const MAXIMUM_PAGE_SIZE = 100;
 const DEFAULT_PAGE_SIZE = 25;
 
 const CHANNELS = Object.freeze(['email', 'sms']);
-const STATUSES = Object.freeze(['succeeded', 'failed']);
+const STATUSES = Object.freeze(['succeeded', 'failed', 'partial']);
+const KINDS = Object.freeze(['single', 'bulk']);
 
-/**
- * Escapes the wildcards MySQL's LIKE treats specially.
- *
- * Without this, a search for "%" matches every row and a search for "_" matches
- * anything. Not a security hole here because the value is still parameterised,
- * but it makes the search behave the way someone typing into a box expects.
- */
+/** Escapes LIKE wildcards so "%" searches for a percent sign. */
 const escapeLike = (term) => term.replace(/[\\%_]/g, (char) => `\\${char}`);
 
-const listLogs = async (req, res) => {
-  const {
-    q,
-    channel,
-    status,
-    page: rawPage,
-    pageSize: rawPageSize,
-  } = req.query ?? {};
-
-  const page = Math.max(1, Number(rawPage) || 1);
-  const pageSize = Math.min(
-    MAXIMUM_PAGE_SIZE,
-    Math.max(1, Number(rawPageSize) || DEFAULT_PAGE_SIZE)
-  );
-
+/** Shared by listing and deletion so "clear matching" removes what you see. */
+const buildFilter = ({ q, channel, status, kind }) => {
   const where = {};
 
   if (channel) {
@@ -50,6 +32,13 @@ const listLogs = async (req, res) => {
     where.status = status;
   }
 
+  if (kind) {
+    if (!KINDS.includes(kind)) {
+      throw new BadRequestError(`Kind must be one of: ${KINDS.join(', ')}.`);
+    }
+    where.kind = kind;
+  }
+
   if (typeof q === 'string' && q.trim() !== '') {
     const term = `%${escapeLike(q.trim())}%`;
     where[Op.or] = [
@@ -61,6 +50,20 @@ const listLogs = async (req, res) => {
     ];
   }
 
+  return where;
+};
+
+const listLogs = async (req, res) => {
+  const { page: rawPage, pageSize: rawPageSize } = req.query ?? {};
+
+  const page = Math.max(1, Number(rawPage) || 1);
+  const pageSize = Math.min(
+    MAXIMUM_PAGE_SIZE,
+    Math.max(1, Number(rawPageSize) || DEFAULT_PAGE_SIZE)
+  );
+
+  const where = buildFilter(req.query ?? {});
+
   const { rows, count } = await DeliveryLog.findAndCountAll({
     where,
     order: [['createdAt', 'DESC'], ['id', 'DESC']],
@@ -68,11 +71,11 @@ const listLogs = async (req, res) => {
     offset: (page - 1) * pageSize,
   });
 
-  // Counted separately from the filtered query so the panel can show "3 failed
-  // of 412" without a second round trip.
+  // Unfiltered, for the "3 failed of 412" header. Partial counts as failed:
+  // the number means "needs looking at".
   const [total, failed] = await Promise.all([
     DeliveryLog.count(),
-    DeliveryLog.count({ where: { status: 'failed' } }),
+    DeliveryLog.count({ where: { status: { [Op.in]: ['failed', 'partial'] } } }),
   ]);
 
   res.json({
@@ -90,43 +93,14 @@ const listLogs = async (req, res) => {
 };
 
 /**
- * Deletes specific rows, or everything matching the current filter.
- *
- * Two modes rather than one, because "clear these five" and "clear the 4,000
- * failed SMS from last month" are different jobs and sending four thousand ids
- * over the wire to do the second is silly.
- *
- * `all: true` is deliberately awkward to trigger by accident: it requires the
- * flag AND at least one filter, so a bare request cannot empty the table.
+ * Deletes listed ids, or everything matching the filter.
+ * `all: true` also requires a filter, so a bare request cannot empty the table.
  */
 const deleteLogs = async (req, res) => {
-  const { ids, all, channel, status, q } = req.body ?? {};
+  const { ids, all } = req.body ?? {};
 
   if (all === true) {
-    const where = {};
-
-    if (channel) {
-      if (!CHANNELS.includes(channel)) {
-        throw new BadRequestError(`Channel must be one of: ${CHANNELS.join(', ')}.`);
-      }
-      where.channel = channel;
-    }
-    if (status) {
-      if (!STATUSES.includes(status)) {
-        throw new BadRequestError(`Status must be one of: ${STATUSES.join(', ')}.`);
-      }
-      where.status = status;
-    }
-    if (typeof q === 'string' && q.trim() !== '') {
-      const term = `%${escapeLike(q.trim())}%`;
-      where[Op.or] = [
-        { recipient: { [Op.like]: term } },
-        { subject: { [Op.like]: term } },
-        { mode: { [Op.like]: term } },
-        { detail: { [Op.like]: term } },
-        { providerCode: { [Op.like]: term } },
-      ];
-    }
+    const where = buildFilter(req.body ?? {});
 
     if (Object.keys(where).length === 0 && !where[Op.or]) {
       throw new BadRequestError(

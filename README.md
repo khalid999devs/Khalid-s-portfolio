@@ -87,7 +87,7 @@ Behind a login at `/admin-login`. Every route under `/admin` is gated.
 | **Settings, Personal info** | Employment, education and achievements. Collapsible rows, drag to reorder, new entries appear at the top |
 | **Settings, Resume** | Upload a PDF to replace the published one. The old file is deleted only after the database row updates |
 | **Settings, Accounts** | Change your own password, add an administrator, remove one |
-| **Mail and SMS** | Compose and send either, with delivery history below: search, filter by channel or status, select and delete, batch delete, pagination |
+| **Mail and SMS** | Send to one person or to a pasted list of addresses or numbers, separated however you like. Shows the SMS credit left, the character count and how many message parts it will cost. Delivery history below: search, filter by channel, status or single/bulk, select and delete, batch delete, pagination |
 | **Notifications** | A bell reporting configuration and content problems |
 
 ### Behind the scenes
@@ -281,7 +281,7 @@ stateDiagram-v2
 | `settings` | technology groups, resume path and original filename | One row |
 | `Admin` | username, bcrypt hash | The list endpoint never selects the hash |
 | `AboutEntry` | employment, education and achievements | One shape for all three, split by `section`, ordered by `displayOrder` |
-| `DeliveryLog` | every email and SMS attempt | Channel, recipient, status, and the provider error if there was one |
+| `DeliveryLog` | every email and SMS attempt | Channel, recipient, status, and the provider error if there was one. A bulk send writes one report row with the recipient counts instead of one row per person |
 | `Visit` | page views | Route, timestamp, and a salted hash of the address. Removed on a retention window |
 | `AppSetting` | small key and value pairs | Retention window, cached dependency audit |
 | `schema_migrations` | which migrations have run | Written by the runner under a MySQL advisory lock |

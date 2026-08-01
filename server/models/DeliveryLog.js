@@ -1,26 +1,18 @@
 module.exports = (sequelize, DataTypes) => {
-  /**
-   * One row per outbound email or SMS attempt.
-   *
-   * These used to be appended to `./logs/succeed/sentEmails.txt` and its
-   * siblings, which had three problems: the path is relative to the working
-   * directory so it depended on how the process was started, the directory is
-   * gitignored and lives inside the app directory so every deploy threw the
-   * history away, and a text file of comma separated pseudo-objects cannot be
-   * searched or paginated.
-   *
-   * Message bodies are deliberately not stored. A delivery log needs to answer
-   * "did this reach them, and if not why", which the status and provider
-   * response cover. Keeping the body would turn this table into a copy of every
-   * message the site has ever sent, including whatever a visitor typed into the
-   * contact form.
-   */
+  // One row per outbound email or SMS attempt. Bodies are never stored: the
+  // status and provider response answer "did it arrive, and if not why".
   const DeliveryLog = sequelize.define(
     'DeliveryLog',
     {
       channel: {
         type: DataTypes.ENUM('email', 'sms'),
         allowNull: false,
+      },
+      /** One message, or the report for a batch. */
+      kind: {
+        type: DataTypes.ENUM('single', 'bulk'),
+        allowNull: false,
+        defaultValue: 'single',
       },
       /** Which template or call site produced this, e.g. "custom", "contact". */
       mode: {
@@ -36,8 +28,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(255),
         allowNull: true,
       },
+      /** 'partial' is bulk only: some recipients took it, some did not. */
       status: {
-        type: DataTypes.ENUM('succeeded', 'failed'),
+        type: DataTypes.ENUM('succeeded', 'failed', 'partial'),
         allowNull: false,
       },
       /** Provider status code, e.g. an SMS gateway's numeric result. */
@@ -50,6 +43,19 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(512),
         allowNull: true,
       },
+      /** Batch totals. Null on single sends. */
+      recipientCount: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      succeededCount: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      failedCount: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
       /** Milliseconds spent in the provider call. */
       durationMs: {
         type: DataTypes.INTEGER,
@@ -60,6 +66,7 @@ module.exports = (sequelize, DataTypes) => {
       indexes: [
         { fields: ['status'] },
         { fields: ['channel'] },
+        { fields: ['kind'] },
         { fields: ['createdAt'] },
       ],
     }
