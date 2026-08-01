@@ -39,11 +39,25 @@ deployment:
     # is not only ours -- node_modules is installed by cPanel, .env is managed
     # outside the repo, uploads/ and logs/ are live data, and Passenger writes
     # its own .htaccess here.
+    # What the running app has, recorded before anything overwrites it.
+    - 'LOCK_BEFORE=$(cksum "$API/package-lock.json" 2>/dev/null || echo none)'
+    - 'MIGRATIONS_BEFORE=$(ls -1 "$API/migrations" 2>/dev/null | wc -l)'
+
     - $SYNC --exclude 'node_modules/' --exclude '.env' --exclude 'uploads/' --exclude 'logs/' --exclude '.htaccess' --exclude 'tmp/' server/ "$API/"
 
-    # Passenger reloads when this mtime changes. Without it the old code keeps
-    # serving until somebody presses Restart in cPanel.
-    - mkdir -p "$API/tmp" && touch "$API/tmp/restart.txt"
+    - 'LOCK_AFTER=$(cksum "$API/package-lock.json" 2>/dev/null || echo none)'
+    - 'MIGRATIONS_AFTER=$(ls -1 "$API/migrations" 2>/dev/null | wc -l)'
+
+    # `; true` on both: cPanel aborts the deploy on any non-zero task, and a
+    # failed [ ] test is non-zero.
+    - 'NEEDS_INSTALL=0; [ "$LOCK_BEFORE" != "$LOCK_AFTER" ] && NEEDS_INSTALL=1; true'
+    - 'NEEDS_MIGRATE=0; [ "$MIGRATIONS_AFTER" -gt "$MIGRATIONS_BEFORE" ] && NEEDS_MIGRATE=1; true'
+
+    # LSAPI reloads when restart.txt changes -- but only restart into code the
+    # installed dependencies can actually satisfy. Forcing it once already took
+    # the API down with a 503, because new code met the old node_modules.
+    # Leaving the old process up is the safer failure.
+    - 'if [ "$NEEDS_INSTALL" = 1 ] || [ "$NEEDS_MIGRATE" = 1 ]; then echo "NOT RESTARTED -- lockfile changed=$NEEDS_INSTALL, new migrations=$NEEDS_MIGRATE"; echo "In Setup Node.js App run NPM Install and/or the migrate script, then press Restart."; else mkdir -p "$API/tmp" && touch "$API/tmp/restart.txt"; echo "api restarted"; fi'
 
     # Outside the repository on purpose: a file written into the checkout
     # leaves the tree dirty and the next Update from Remote refuses to run.

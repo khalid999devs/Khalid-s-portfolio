@@ -6,6 +6,7 @@
 // CI passes, the push succeeds, and cPanel says it deployed.
 
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -29,6 +30,19 @@ if (build.error) {
   process.exit(1);
 }
 if (build.status !== 0) process.exit(build.status ?? 1);
+
+// The sitemap is built from the live catalogue, and the generator treats an
+// unreachable API as a warning so a release is not blocked by it. That is the
+// right call, but it means building while the API is down silently drops every
+// project page -- which is easy to commit without noticing.
+const sitemap = readFileSync(resolve(ROOT, 'deploy/web/sitemap.xml'), 'utf8');
+const projectPages = (sitemap.match(/singleProject/g) || []).length;
+if (projectPages === 0) {
+  console.warn('\nWARNING: the sitemap has no project pages.');
+  console.warn('The catalogue API was unreachable. Do not commit this sitemap --');
+  console.warn('restore it with `git checkout deploy/web/sitemap.xml` and rebuild');
+  console.warn('once the API answers.\n');
+}
 
 const status = spawnSync('git', ['status', '--porcelain', 'deploy'], {
   cwd: ROOT,

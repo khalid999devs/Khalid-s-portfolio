@@ -23,6 +23,22 @@ const integer = (name, fallback, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+const host = process.env.DB_HOST || 'localhost';
+
+/**
+ * A database on this machine is reached over the loopback interface, so the
+ * traffic never touches a network and there is no certificate to verify
+ * against. Requiring TLS there is not a stronger position, it is an
+ * unsatisfiable one: shared hosting puts MySQL on localhost with no CA, so the
+ * rule below refused every value of DB_SSL and the server could not start in
+ * production at all.
+ */
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
+const isLoopback = LOOPBACK_HOSTS.has(host.trim().toLowerCase());
+
+/** TLS is mandatory for a database reached across a network. */
+const tlsRequired = isProduction && !isLoopback;
+
 const pool = {
   max: integer('DB_POOL_MAX', 10, { min: 1, max: 100 }),
   min: integer('DB_POOL_MIN', 0, { min: 0, max: 50 }),
@@ -31,17 +47,18 @@ const pool = {
 };
 
 /**
- * TLS is mandatory in production. `DB_SSL=false` is honoured only outside
- * production, so a deployment cannot quietly fall back to plaintext.
+ * TLS is mandatory for a production database across a network. `DB_SSL=false`
+ * is honoured only where that does not apply, so a remote deployment cannot
+ * quietly fall back to plaintext. DB_SSL=true still opts in anywhere.
  */
 const ssl = (() => {
   const requested = process.env.DB_SSL;
-  const enabled = isProduction ? requested !== 'false' : requested === 'true';
+  const enabled = tlsRequired ? requested !== 'false' : requested === 'true';
 
   if (!enabled) {
-    if (isProduction) {
+    if (tlsRequired) {
       throw new Error(
-        'Refusing to connect to a production database without TLS. Set DB_SSL and DB_SSL_CA.'
+        `Refusing to connect to the database at ${host} without TLS. Set DB_SSL and DB_SSL_CA.`
       );
     }
     return undefined;
@@ -59,7 +76,7 @@ const base = {
   username: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
-  host: process.env.DB_HOST || 'localhost',
+  host,
   port: integer('DB_PORT', 3306, { min: 1, max: 65535 }),
   dialect: 'mysql',
   logging: false,
