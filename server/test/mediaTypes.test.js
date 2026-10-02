@@ -70,7 +70,9 @@ test('HTML is not identified as media whatever it is named or claimed to be', ()
 
 test('other executable-ish content is not identified as media', () => {
   assert.equal(detectFileType(fileWith('a.svg', Buffer.from('<svg onload=alert(1)>'.padEnd(64)))), null);
-  assert.equal(detectFileType(fileWith('a.php', Buffer.from('<?php system($_GET[0]); ?>'.padEnd(64)))), null);
+  // Harmless PHP on purpose. A real webshell line here was stripped by the
+  // host's malware scanner, which left the checkout dirty and blocked deploys.
+  assert.equal(detectFileType(fileWith('a.php', Buffer.from('<?php echo 1; ?>'.padEnd(64)))), null);
   assert.equal(detectFileType(fileWith('a.sh', Buffer.from('#!/bin/sh\nrm -rf /'.padEnd(64)))), null);
   assert.equal(detectFileType(fileWith('a.empty', Buffer.alloc(0))), null);
 });
