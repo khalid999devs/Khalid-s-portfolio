@@ -40,7 +40,7 @@ const Navbar = () => {
 
       animatingElements.forEach((ele) => {
         triggers.push(
-          wordBlinkAnimation(ele, null, navBarRef.current, false, false)
+          wordBlinkAnimation(ele, null, navBarRef.current, false, false),
         );
       });
     }
@@ -98,9 +98,9 @@ const Navbar = () => {
                 // document.body.style.overflowY = 'hidden';
               }}
             >
-              <span className='w-full h-[1px] bg-onPrimary-dark'></span>
-              <span className='w-full h-[1px] bg-onPrimary-dark'></span>
-              <span className='w-full h-[1px] bg-onPrimary-dark'></span>
+              <span className='w-full h-px bg-onPrimary-dark'></span>
+              <span className='w-full h-px bg-onPrimary-dark'></span>
+              <span className='w-full h-px bg-onPrimary-dark'></span>
             </div>
           </div>
         </div>
