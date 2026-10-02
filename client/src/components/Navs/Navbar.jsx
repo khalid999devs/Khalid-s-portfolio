@@ -55,7 +55,7 @@ const Navbar = () => {
           <div>
             <NavLogo />
           </div>
-          {resumeHref && (
+          {!isUpwork && resumeHref && (
             <div className='hidden sm:inline-block'>
               <OutlinedSmallButton
                 text={'My Resume'}
