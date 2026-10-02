@@ -60,5 +60,5 @@ echo
 echo "web    $(du -sh "$DEPLOY/web" | cut -f1)"
 echo "upwork $(du -sh "$DEPLOY/upwork" | cut -f1)"
 echo
-echo "Next: git add deploy && git commit && git push"
-echo "Then: cPanel -> Git Version Control -> Update from Remote -> Deploy HEAD Commit"
+echo "Next: commit deploy/ with the source, then: npm run deploy"
+echo "  or: git push, then cPanel -> Git Version Control -> Update from Remote -> Deploy HEAD Commit"
