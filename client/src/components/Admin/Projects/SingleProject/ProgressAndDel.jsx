@@ -45,7 +45,7 @@ const ProgressAndDel = ({
         <PrimaryButton
           onClick={() => handleDelete(projectId, projectName)}
           Icon={MdOutlineDelete}
-          classes={`!rounded-full`}
+          classes={`rounded-full!`}
           btnState={'error'}
           text={'DELETE'}
           state='small'

@@ -1,8 +1,11 @@
-/* eslint-disable react-refresh/only-export-components */
-import axios from 'axios';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { reqFileWrapper, reqs } from '../axios/requests';
+import { reqFileWrapper } from '../axios/requests';
+import {
+  prefetchProject,
+  prefetchProjectOnHover,
+  takeProject,
+} from '../api/public';
 import { loadingGif, projectPlaceholder } from '../assets';
 import { BsFillCaretRightFill } from 'react-icons/bs';
 import { FaGithub } from 'react-icons/fa';
@@ -14,7 +17,7 @@ import {
   OutlinedSmallButton,
 } from '../components/Buttons/OutlinedButton';
 import ProjectVideos from './Project/ProjectVideos';
-import { useAppContext } from '../App';
+import { useAppContext } from '../hooks/useAppContext';
 import HRLine from '../components/utils/HRLine';
 import useTextRevealAnimation from '../animations/useTextRevealAnimation';
 import Loader from '../components/utils/Loader';
@@ -32,30 +35,17 @@ const SingleProject = () => {
   } = useAppContext();
   const { value } = useParams();
   const [project, setProject] = useState({});
-  const [projLoading, setProjLoading] = useState(false);
-  const [nextProject, setNextProject] = useState({});
+  const [projLoading, setProjLoading] = useState(true);
   useTextRevealAnimation('project-text-reveal');
   const projectDescParent = useRef(null);
   const projectDesc = useRef(null);
 
-  const findProjectAndgetNext = () => {
-    const numberOfProjects = projects?.length;
-    if (numberOfProjects && numberOfProjects > 1 && project?.value) {
-      const currKey = projects.findIndex(
-        (item) => item.value === project.value
-      );
+  const nextProject = useMemo(() => {
+    const count = projects?.length;
+    if (!count || count < 2 || !project?.value) return {};
 
-      if (currKey + 1 >= numberOfProjects) {
-        setNextProject(projects[0]);
-      } else {
-        setNextProject(projects[currKey + 1]);
-      }
-    }
-  };
-
-  useEffect(() => {
-    findProjectAndgetNext();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const next = projects.findIndex((item) => item.value === project.value) + 1;
+    return projects[next >= count ? 0 : next];
   }, [project, projects]);
 
   useEffect(() => {
@@ -66,25 +56,18 @@ const SingleProject = () => {
   }, [loc.pathname, project]);
 
   useEffect(() => {
-    const spArr = value.split('@');
-    const projectId = spArr[spArr.length - 1];
-    setProjLoading(true);
-    axios
-      .post(reqs.GET_PROJECT, { mode: 'single', projectId })
+    takeProject(value.split('@').pop())
       .then((res) => {
-        if (res.data.succeed) {
-          setProject(res.data.result);
+        if (res?.succeed) {
+          setProject(res.result);
         }
         setProjLoading(false);
       })
       .catch(() => {
-        // console.log(err);
         setProjLoading(false);
         navigate('/error');
       });
-    // navigate is stable from useNavigate
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }, [value, navigate]);
 
   useEffect(() => {
     let trigger;
@@ -104,11 +87,12 @@ const SingleProject = () => {
   }, [project]);
 
   if (projLoading) {
-    return <Loader classes={'min-h-[250px]'} />;
+    // Full height, so the footer does not rise into view and drop again.
+    return <Loader classes={'min-h-screen'} />;
   }
 
   return (
-    <div className='w-full pb-28 flex flex-col gap-20 lg:gap-24 min-h-screen screen-max-width pt-[160px]'>
+    <div className='w-full pb-28 flex flex-col gap-20 lg:gap-24 min-h-screen screen-max-width pt-40'>
       <MetaCard
         title={project?.title}
         description={project?.overview}
@@ -120,11 +104,11 @@ const SingleProject = () => {
       />
 
       {projLoading && (
-        <div className='w-full min-h-[400px] flex items-center justify-center'>
+        <div className='w-full min-h-100 flex items-center justify-center'>
           <img
             src={loadingGif}
             alt='Loading...'
-            className='max-w-[90px] h-auto'
+            className='max-w-22.5 h-auto'
           />
         </div>
       )}
@@ -143,7 +127,7 @@ const SingleProject = () => {
           </h4>
 
           {project.title && (
-            <h1 className='text-[2.5rem] sm:text-[3rem] md:text-[4rem] uppercase break-words text-left text-letter-reveal pointer-all'>
+            <h1 className='text-[2.5rem] sm:text-[3rem] md:text-[4rem] uppercase wrap-break-word text-left text-letter-reveal pointer-all'>
               {project.title}
             </h1>
           )}
@@ -182,15 +166,22 @@ const SingleProject = () => {
 
       <div className='w-full h-auto sec-x-padding relative'>
         {project.siteLink && <LiveProjectButton link={project.siteLink} />}
-        <img
-          src={
-            project.bannerImg
-              ? reqFileWrapper(project.bannerImg)
-              : projectPlaceholder
-          }
-          className='w-full min-h-[200px] max-h-[300px] md:max-h-[400px] object-cover h-auto pointer-all'
-          alt='BannerImg'
-        />
+        {/* Not before the project is known: the placeholder is for a project
+            without a banner. The size holds the banner's space while it loads. */}
+        {project.id && (
+          <img
+            src={
+              project.bannerImg
+                ? reqFileWrapper(project.bannerImg)
+                : projectPlaceholder
+            }
+            width={project.bannerImgSize?.width}
+            height={project.bannerImgSize?.height}
+            className='w-full min-h-50 max-h-75 md:max-h-100 object-cover h-auto pointer-all'
+            alt='BannerImg'
+            fetchPriority='high'
+          />
+        )}
       </div>
 
       <div
@@ -253,8 +244,10 @@ const SingleProject = () => {
             */}
             <div className='w-full overflow-hidden h-auto border-b border-secondary-main/40'>
               <div
-                className='bg-primary-dark mt-4 rounded-t-md max-h-[90px] max-w-[200px] w-full p-3 pb-0 overflow-hidden m-auto translate-y-2 transition-transform duration-300 cursor-pointer pointer-all hover:translate-y-0'
+                className='bg-primary-dark mt-4 rounded-t-md max-h-22.5 max-w-50 w-full p-3 pb-0 overflow-hidden m-auto translate-y-2 transition-transform duration-300 cursor-pointer pointer-all hover:translate-y-0'
+                onPointerEnter={prefetchProjectOnHover(nextProject?.id)}
                 onClick={() => {
+                  prefetchProject(nextProject?.id);
                   navigate(
                     `/singleProject/${
                       nextProject?.value + '@' + nextProject?.id
@@ -265,8 +258,9 @@ const SingleProject = () => {
                 <div className='rounded-t-lg '>
                   <img
                     loading='lazy'
+                    decoding='async'
                     src={reqFileWrapper(
-                      nextProject?.thumbnailContents[0]?.url ||
+                      nextProject?.thumbnailContents?.[0]?.url ||
                         nextProject?.bannerImg
                     )}
                     alt='next project image'
@@ -274,7 +268,7 @@ const SingleProject = () => {
                   />
                 </div>
               </div>
-              {/* <HRLine classes={`!my-0`} /> */}
+              {/* <HRLine classes={`my-0!`} /> */}
             </div>
 
             <div className='mt-10'>

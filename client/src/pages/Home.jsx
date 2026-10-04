@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import Hero from '../components/Home/Hero';
 import About from '../components/Home/About';
 import ProjectsShows from '../components/Home/Projects';

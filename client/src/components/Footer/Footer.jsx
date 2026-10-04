@@ -30,11 +30,11 @@ const Footer = () => {
   return (
     <div className='w-full  mt-8 mb-10'>
       <div className='w-full screen-max-width sec-x-padding'>
-        <div className='w-full border-[1px] border-secondary-light rounded-2xl pt-14 pb-10 px-10 xl:px-14'>
+        <div className='w-full border border-secondary-light rounded-2xl pt-14 pb-10 px-10 xl:px-14'>
           <div className='w-full pb-12 border-b-[0.7px] border-secondary-main/40'>
             <div className='flex w-full flex-col gap-8 md:gap-3 md:flex-row md:justify-between md:items-end'>
               <h1
-                className='text-white text-[1.5rem] md:text-[3rem] max-w-[350px] w-full'
+                className='text-white text-[1.5rem] md:text-[3rem] max-w-87.5 w-full'
                 style={{ lineHeight: '125%' }}
               >
                 Let&apos;s create something great together

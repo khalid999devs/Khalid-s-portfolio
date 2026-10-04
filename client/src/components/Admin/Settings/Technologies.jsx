@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
 import FormIconLists from '../FormIconLists';
 import PrimaryButton from '../../Buttons/PrimaryButton';
 import { MdDone } from 'react-icons/md';
 import PropTypes from 'prop-types';
+import useSyncedState from '../../../hooks/useSyncedState';
 
 const Technologies = ({
   mode,
@@ -10,16 +10,15 @@ const Technologies = ({
   handleCreateSettings,
   handleEditSettings,
 }) => {
-  const [technologies, setTechnologies] = useState({
-    Languages: [],
-    Frontend: [],
-    Backend: [],
-  });
-  useEffect(() => {
-    if (settings?.technologies) {
-      setTechnologies(settings?.technologies);
-    }
-  }, [settings]);
+  const [technologies, setTechnologies] = useSyncedState(
+    {
+      Languages: [],
+      Frontend: [],
+      Backend: [],
+    },
+    () => settings?.technologies || undefined,
+    [settings]
+  );
 
   const handleInputSubmit = (e, name, value) => {
     setTechnologies((technologies) => ({
@@ -35,7 +34,7 @@ const Technologies = ({
   };
 
   return (
-    <div className='col-span-9 box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8'>
+    <div className='col-span-9 box-big-shadow bg-primary-dark rounded-xl min-h-56.25 p-8'>
       <div className='grid gap-8'>
         <h1 className='text-md'>Please enter following information</h1>
         <div className='grid gap-10'>
@@ -66,7 +65,7 @@ const Technologies = ({
           state='small'
           text={mode === 'create' ? 'DONE' : 'SAVE'}
           Icon={MdDone}
-          classes={`!rounded-full`}
+          classes={`rounded-full!`}
           onClick={() =>
             mode === 'create'
               ? handleCreateSettings({ technologies })

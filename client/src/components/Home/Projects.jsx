@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-import { useAppContext } from '../../App';
-import { reqFileWrapper } from '../../axios/requests';
+import { useAppContext } from '../../hooks/useAppContext';
+import { prefetchProject, prefetchProjectOnHover } from '../../api/public';
+import { projectCover } from '../../utils/projectMedia';
 import { Link, useNavigate } from 'react-router-dom';
 import useIsGreaterOrEqualMd from '../../hooks/useIsGreaterOrEqualMd';
 import { FaArrowRightLong } from 'react-icons/fa6';
@@ -71,7 +72,7 @@ const ProjectsShows = () => {
   } = useAppContext();
   const sliderRef = useRef(null);
   const progressBarRef = useRef(null);
-  const [activeSlide, setActiveSlide] = useState({});
+  const [activeSlide, setActiveSlide] = useState(null);
   const isMidScreen = useIsGreaterOrEqualMd();
   const documentHeight = useDocumentHeight();
   const maxShowed = 5;
@@ -135,9 +136,8 @@ const ProjectsShows = () => {
     [projects, setActiveSlide]
   );
 
-  useEffect(() => {
-    if (projects && projects.length) setActiveSlide(projects[0]);
-  }, [projects]);
+  // Until scrolling picks a slide, the first project is the active one.
+  const active = activeSlide ?? projects?.[0] ?? {};
 
   useEffect(() => {
     if (!projects.length) return;
@@ -249,7 +249,7 @@ const ProjectsShows = () => {
           {/* Info Section */}
           <div className='absolute top-1/2 left-1/2 w-full flex justify-between items-center px-4 pl-0 text-white transform -translate-y-1/2 -translate-x-1/2 text-montreal-mono z-10 mix-blend-difference info '>
             <div className='flex-1 uppercase text-sm pointer-all'>
-              <p className='md:w-[75%]'>{activeSlide?.title || 'TITLE'}</p>
+              <p className='md:w-[75%]'>{active.title || 'TITLE'}</p>
             </div>
             <div
               className='flex-1 uppercase text-sm'
@@ -259,19 +259,19 @@ const ProjectsShows = () => {
                 }
               }
             >
-              <p>{activeSlide?.subtitle || 'SUBTITLE'}</p>
+              <p>{active.subtitle || 'SUBTITLE'}</p>
             </div>
             <div className='flex-1 text-center uppercase text-sm'>
-              <p>{activeSlide?.date || 'DATE'}</p>
+              <p>{active.date || 'DATE'}</p>
             </div>
             {/* <div className='flex-1 uppercase text-sm'>TAG</div> */}
             <div className='flex-1 flex justify-end link'>
               <Link
-                to={`/singleProject/${
-                  activeSlide.value + '@' + activeSlide.id
-                }`}
-                key={Date.now()}
+                to={`/singleProject/${active.value + '@' + active.id}`}
+                key={active.id}
                 className='relative uppercase text-sm text-white border border-white/25 rounded-md px-2 py-1 hover:bg-white text-pp-eiko hover:text-black transition duration-300 pointer-all'
+                onPointerEnter={prefetchProjectOnHover(active.id)}
+                onClick={() => prefetchProject(active.id)}
               >
                 Explore
               </Link>
@@ -279,7 +279,7 @@ const ProjectsShows = () => {
           </div>
 
           {/* Progress Bar */}
-          <div className='absolute top-1/2 left-[75%] w-[2px] h-[120px] bg-primary-dark -translate-x-1/2 -translate-y-1/2 progress-bar z-10'>
+          <div className='absolute top-1/2 left-[75%] w-0.5 h-30 bg-primary-dark -translate-x-1/2 -translate-y-1/2 progress-bar z-10'>
             <div
               className='absolute top-0 left-0 w-full h-[10%] bg-white z-10 progress'
               ref={progressBarRef}
@@ -290,25 +290,24 @@ const ProjectsShows = () => {
           {projects?.slice(0, maxShowed).map((item, index) => (
             <div
               key={index}
-              className='absolute top-1/2 left-1/2 w-[40%] h-[50%] max-h-[350px] transform -translate-x-1/2 -translate-y-1/2 scale-125 -z-[1] overflow-hidden clip-path-polygon-[0%_100%,100%_100%,100%_100%,0%_100%] opacity-0 img'
+              className='absolute top-1/2 left-1/2 w-[40%] h-[50%] max-h-87.5 transform -translate-x-1/2 -translate-y-1/2 scale-125 z-[-1] overflow-hidden clip-path-polygon-[0%_100%,100%_100%,100%_100%,0%_100%] opacity-0 img'
             >
               <img
-                src={
-                  item.thumbnailContents && item.thumbnailContents.length
-                    ? reqFileWrapper(item.thumbnailContents[0].url)
-                    : reqFileWrapper(item?.bannerImg)
-                }
+                src={projectCover(item).src}
                 className='w-full h-full object-cover duration-1000 cursor-pointer hover:scale-[103%] filter contrast-100 brightness-100'
                 alt={`Image ${index + 1}`}
                 onClick={() => {
+                  prefetchProject(item.id);
                   navigate(`/singleProject/${item.value + '@' + item.id}`);
                 }}
+                onPointerEnter={prefetchProjectOnHover(item.id)}
                 loading='lazy'
+                decoding='async'
               />
             </div>
           ))}
 
-          {activeSlide?.id ===
+          {active.id ===
             projects[Math.min(projects.length, maxShowed) - 1]?.id && (
             <div className='absolute left-1/2 bottom-3 -translate-x-1/2'>
               <OutlinedBigIcon
@@ -328,20 +327,19 @@ const ProjectsShows = () => {
               <div
                 className='w-full grid border-b-[0.05px] border-secondary-light/30 pb-3 gap-4 md:gap-6 group cursor-pointer pointer-all'
                 onClick={() => {
+                  prefetchProject(item.id);
                   navigate(`/singleProject/${item.value + '@' + item.id}`);
                 }}
+                onPointerEnter={prefetchProjectOnHover(item.id)}
                 key={key}
               >
                 <div className='w-full h-full rounded-lg overflow-hidden '>
                   <img
-                    src={
-                      item.thumbnailContents && item.thumbnailContents.length
-                        ? reqFileWrapper(item.thumbnailContents[0].url)
-                        : reqFileWrapper(item?.bannerImg)
-                    }
+                    {...projectCover(item)}
                     alt={item.title}
-                    className='w-full max-h-[300px] lg:max-h-[350px] 2xl:max-h-[300px] h-auto object-cover rounded-lg transition-all duration-1000 group-hover:scale-[102%]'
+                    className='w-full max-h-75 lg:max-h-87.5 2xl:max-h-75 h-auto object-cover rounded-lg transition-all duration-1000 group-hover:scale-[102%]'
                     loading='lazy'
+                    decoding='async'
                   />
                 </div>
 
@@ -360,7 +358,7 @@ const ProjectsShows = () => {
                       {item.title}
                     </h2>
 
-                    <button className=''>
+                    <button className='' aria-label={`Open ${item.title}`}>
                       <FaArrowRightLong className='text-white text-2xl transition-all duration-500 group-hover:-translate-x-1' />
                     </button>
                   </div>

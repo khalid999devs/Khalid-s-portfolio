@@ -1,5 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import HRLine from '../components/utils/HRLine';
 import SectionLabel from '../components/utils/SectionLabel';
 import {
@@ -7,7 +6,7 @@ import {
   OutlinedSmallButton,
 } from '../components/Buttons/OutlinedButton';
 import { GravityField, myPic } from '../assets';
-import { useAppContext } from '../App';
+import { useAppContext } from '../hooks/useAppContext';
 import { workingFields } from '../Constants';
 import { useAboutEntries } from '../hooks/useAboutEntries';
 import { textBlinkAnimation } from '../animations/textBlinkAnimation';
@@ -16,11 +15,13 @@ import { wordBlinkAnimation } from '../animations/wordBlinkAnimation';
 import PageTransition from '../animations/PageTransition';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useLocation } from 'react-router-dom';
-import { downloadResume } from '../axios';
 import MetaCard from '../components/utils/MetaCard';
 
+// Loaded on the click: axios is otherwise only needed by the admin panel.
+const downloadResume = () =>
+  import('../axios').then((module) => module.downloadResume());
+
 const About = () => {
-  const [technologies, setTechnologies] = useState([]);
   // Employment, education and achievements come from the API now. Same shape
   // the markup below already expects, so nothing here changes.
   const { experience, achievements, education } = useAboutEntries();
@@ -34,12 +35,9 @@ const About = () => {
   const isGreaterOrEqualMd = useIsGreaterOrEqualMd();
   const loc = useLocation();
 
-  useEffect(() => {
-    let techs = settings?.technologies;
-
-    if (techs) {
-      setTechnologies([techs.Languages, techs.Frontend, techs.Backend]);
-    }
+  const technologies = useMemo(() => {
+    const techs = settings?.technologies;
+    return techs ? [techs.Languages, techs.Frontend, techs.Backend] : [];
   }, [settings]);
 
   useEffect(() => {
@@ -93,7 +91,7 @@ const About = () => {
   }, []);
 
   return (
-    <div className='w-full pb-28 flex flex-col gap-20 lg:gap-24 min-h-screen screen-max-width pt-[160px] sec-project-x-padding'>
+    <div className='w-full pb-28 flex flex-col gap-20 lg:gap-24 min-h-screen screen-max-width pt-40 sec-project-x-padding'>
       <MetaCard title={'About Myself'} />
       <div className='flex flex-col gap-8 w-full md:justify-start '>
         <h1
@@ -112,7 +110,7 @@ const About = () => {
             <SectionLabel text={'TALKS'} noAnime={true} />
             <div
               ref={aboutPageParentRef}
-              className='flex mt-8 gap-12 md:gap-[130px] lg:gap-[130px] xl:gap-[140px] flex-col w-full md:min-w-[120px] h-full md:max-w-[350px] lg:max-w-[540px] 3xl:pt-12 3xl:gap-32'
+              className='flex mt-8 gap-12 md:gap-32.5 lg:gap-32.5 xl:gap-35 flex-col w-full md:min-w-30 h-full md:max-w-87.5 lg:max-w-135 3xl:pt-12 3xl:gap-32'
             >
               <p
                 ref={aboutPageTextRef}
@@ -135,17 +133,21 @@ const About = () => {
             </div>
           </div>
 
-          <div className='max-w-[400px] m-auto md:m-0 w-full relative'>
+          <div className='max-w-100 m-auto md:m-0 w-full relative'>
             <img
               src={GravityField}
+              width={551}
+              height={633}
               alt='gravity-field'
               className='w-full h-auto z-0'
               loading='lazy'
             />
             <img
               src={myPic}
+              width={338}
+              height={410}
               alt='my pic'
-              className='w-[70%] md:w-[73%] xl:w-[65%] absolute top-[47%] left-[46%] h-auto z-10 object-cover saturate-[20%] transition-all duration-1000 hover:saturate-[100%] pointer-all'
+              className='w-[70%] md:w-[73%] xl:w-[65%] absolute top-[47%] left-[46%] h-auto z-10 object-cover saturate-20 transition-all duration-1000 hover:saturate-100 pointer-all'
               style={{ transform: 'translate(-50%,-50%)' }}
               loading='eager'
             />
@@ -158,7 +160,7 @@ const About = () => {
         <div className='flex flex-col-reverse md:flex-row gap-20 justify-between w-full'>
           <div className=''>
             <SectionLabel text={'TALKS'} />
-            <div className='flex mt-8 gap-12 md:gap-[130px] lg:gap-[140px] flex-col w-full md:min-w-[120px] h-full md:max-w-[350px] lg:max-w-[540px] 3xl:pt-12 3xl:gap-32'>
+            <div className='flex mt-8 gap-12 md:gap-32.5 lg:gap-35 flex-col w-full md:min-w-30 h-full md:max-w-87.5 lg:max-w-135 3xl:pt-12 3xl:gap-32'>
               <p
                 className='text-secondary-main md:text-md xl:text-lg uppercase indent-14'
                 style={{
@@ -178,17 +180,17 @@ const About = () => {
 
           
           <div className='relative flex justify-center w-fit items-center overflow-visible'>
-            <div className='relative max-w-[280px] w-full'>
+            <div className='relative max-w-70 w-full'>
               <img
                 src={myPic}
                 alt='profile-pic'
-                className='w-full h-auto z-10 object-cover saturate-[20%]'
+                className='w-full h-auto z-10 object-cover saturate-20'
               />
             </div>
             <img
               src={GravityField}
               alt='gravity-field'
-              className='absolute w-[80%] md:w-[450px] h-auto top-0 left-1/2 transform -translate-x-1/2 z-40'
+              className='absolute w-[80%] md:w-112.5 h-auto top-0 left-1/2 transform -translate-x-1/2 z-40'
               loading='lazy'
             />
           </div>

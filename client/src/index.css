@@ -205,10 +205,10 @@
 
 @layer utilities {
   .sec-x-padding {
-    @apply px-[5px] sm:px-[10px] md:px-[20px] lg:px-[30px];
+    @apply px-1.25 sm:px-2.5 md:px-5 lg:px-7.5;
   }
   .sec-inner-x-padding {
-    @apply px-[10px] sm:px-[15px] md:px-[35px] lg:px-[60px];
+    @apply px-2.5 sm:px-3.75 md:px-8.75 lg:px-15;
   }
   .sec-project-x-padding {
     @apply px-2 sm:px-6 md:px-14 lg:px-20;
@@ -237,7 +237,7 @@
   }
 
   .page-blocks-container {
-    @apply fixed top-0 left-0 w-[100vw] h-screen flex flex-col pointer-events-none z-50;
+    @apply fixed top-0 left-0 w-screen h-screen flex flex-col pointer-events-none z-50;
   }
 
   .row {
@@ -245,7 +245,7 @@
   }
 
   .block-motion {
-    @apply relative flex-1 bg-onPrimary-main -m-[0.25px];
+    @apply relative flex-1 bg-onPrimary-main m-[-0.25px];
   }
 
   .transition-in .block-motion {
@@ -324,6 +324,18 @@
   will-change: transform;
   backface-visibility: hidden;
   transform: translateZ(0);
+}
+
+/* While the bot flies, the page beneath stays usable, and its movement is not
+   eased a second time by the element's own transition. */
+[data-flying] {
+  will-change: transform;
+  transition-property: filter;
+}
+
+[data-flying],
+[data-flying] * {
+  pointer-events: none !important;
 }
 
 @keyframes pulse-glow {

@@ -1,17 +1,26 @@
 /* eslint-disable react/no-unknown-property */
-import { Suspense, useState, useEffect } from 'react';
+import {
+  Suspense,
+  useState,
+  useEffect,
+  useRef,
+  useSyncExternalStore,
+} from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Html, useProgress } from '@react-three/drei';
+import { Html } from '@react-three/drei';
 import Model from './Model';
+import { getProgress, subscribeProgress } from './modelSource';
 import PropTypes from 'prop-types';
 
 function Loader() {
-  const { progress } = useProgress();
+  const progress = useSyncExternalStore(subscribeProgress, getProgress);
   return <Html center>{progress.toFixed(1)}%</Html>;
 }
 
 const Scene = ({ onLoad, isActive }) => {
   const [showCanvas, setShowCanvas] = useState(false);
+  const [onScreen, setOnScreen] = useState(true);
+  const wrapperRef = useRef(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -24,8 +33,22 @@ const Scene = ({ onLoad, isActive }) => {
     return () => clearTimeout(timer);
   }, [onLoad]);
 
+  // Nothing to draw for a bot nobody can see.
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper || typeof IntersectionObserver === 'undefined') return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setOnScreen(entry.isIntersecting),
+      { rootMargin: '200px' }
+    );
+    observer.observe(wrapper);
+    return () => observer.disconnect();
+  }, [showCanvas]);
+
   return showCanvas ? (
     <div
+      ref={wrapperRef}
       className={`w-full h-full transition-all duration-300 ${
         isActive ? 'scale-110' : 'scale-100'
       }`}
@@ -34,6 +57,7 @@ const Scene = ({ onLoad, isActive }) => {
         gl={{ antialias: true }}
         camera={{ position: [0, 0, 5] }}
         className='w-full h-full'
+        frameloop={onScreen ? 'always' : 'never'}
       >
         <ambientLight intensity={0.5} />
         <directionalLight position={[5, 5, 5]} intensity={1} />

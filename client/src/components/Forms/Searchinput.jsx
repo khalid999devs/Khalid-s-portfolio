@@ -28,7 +28,7 @@ const Searchinput = ({ value = '', onChange, onSubmit, placeholder }) => {
           name='search'
           value={value}
           onChange={(e) => onChange && onChange(e.target.value)}
-          className='text-lg min-w-[100px] px-2 placeholder:text-secondary-light bg-transparent text-primary-main outline-none'
+          className='text-lg min-w-25 px-2 placeholder:text-secondary-light bg-transparent text-primary-main outline-none'
           placeholder={placeholder || 'Search here...'}
         />
       </form>

@@ -1,31 +1,36 @@
-import { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import PropTypes from 'prop-types';
-import axios from 'axios';
 import gsap from 'gsap';
 import CustomEase from 'gsap/CustomEase';
 import Navbar from './components/Navs/Navbar';
 import Footer from './components/Footer/Footer';
-import { reqs } from './axios/requests';
+import { fetchProjects, fetchSettings } from './api/public';
+import { warmUp } from './utils/warmUp';
 import MouseMoveEffect from './animations/MouseMoveEffect';
 import { useVisitTracking } from './hooks/useVisitTracking';
 import AnimatedOutlet from './animations/AnimatedOutlet';
 import { LenisGSAP } from './animations/LenisGSAP';
+import { AppContext } from './hooks/useAppContext';
 
 gsap.registerPlugin(CustomEase);
 const customEase = CustomEase.create('custom', '.87,0,.13,1');
 
-const AppContext = createContext({});
-
 const PageLoader = ({ progress, onComplete }) => {
+  const barRef = useRef(null);
+  const counterRef = useRef(null);
+
   useEffect(() => {
-    gsap.to('.progress-bar', {
+    // Its own elements, never a selector: these tweens can outlive the loader,
+    // and the home page has a `.progress-bar` that a late one used to fade out.
+    const bar = barRef.current;
+    gsap.to(bar, {
       width: `${progress}vw`,
       duration: 2,
       ease: customEase,
       onComplete: () => {
         if (progress >= 100) {
           setTimeout(() => {
-            gsap.to('.progress-bar', {
+            gsap.to(bar, {
               opacity: 0,
               duration: 0.5,
               onComplete: onComplete,
@@ -34,7 +39,7 @@ const PageLoader = ({ progress, onComplete }) => {
         }
       },
     });
-    gsap.to('#counter', {
+    gsap.to(counterRef.current, {
       innerHTML: progress,
       duration: 2,
       ease: customEase,
@@ -44,12 +49,17 @@ const PageLoader = ({ progress, onComplete }) => {
 
   return (
     <div className='loader-container bg-onPrimary-main relative w-screen h-screen z-50'>
-      <div className='progress-bar absolute top-1/2 left-0 -tanslate-y-1/2 w-[25vw] p-[2em] flex justify-end md:justify-between items-center text-primary-main bg-body-main'>
+      <div
+        ref={barRef}
+        className='progress-bar absolute top-1/2 left-0 -tanslate-y-1/2 w-[25vw] p-[2em] flex justify-end md:justify-between items-center text-primary-main bg-body-main'
+      >
         <p className='relative uppercase antialiased grayscale hidden md:inline '>
           loading
         </p>
         <p className='relative uppercase antialiased grayscale'>
-          <span id='counter'>0</span>
+          <span id='counter' ref={counterRef}>
+            0
+          </span>
         </p>
       </div>
     </div>
@@ -82,40 +92,23 @@ const App = () => {
     const onResourceLoad = async () => {
       await document.fonts.ready;
       updateProgress(100);
+      // After the step above, so the intro's own progress keeps its timing.
+      warmUp(window.location.pathname);
     };
 
     const fetchData = async () => {
       try {
-        const settingsReq = axios.get(reqs.GET_SETTINGS, {
-          onDownloadProgress: (progressEvent) => {
-            const percentage = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
-            updateProgress(Math.min(percentage, 99));
-          },
-        });
-
-        const projectsReq = axios.post(
-          reqs.GET_PROJECT,
-          { mode: 'all' },
-          {
-            onDownloadProgress: (progressEvent) => {
-              const percentage = Math.round(
-                (progressEvent.loaded * 100) / progressEvent.total
-              );
-              updateProgress(Math.min(percentage, 99));
-            },
-          }
-        );
+        // Both responses are small enough to arrive whole, which is when the
+        // download-progress events these replace used to report 99.
+        const onResponse = () => updateProgress(99);
 
         const [settingsRes, projectsRes] = await Promise.all([
-          settingsReq,
-          projectsReq,
+          fetchSettings({ onResponse }),
+          fetchProjects({ onResponse }),
         ]);
 
-        if (settingsRes.data.succeed) setSettings(settingsRes.data.result);
-        if (projectsRes.data.succeed)
-          setAppData({ projects: projectsRes.data.result });
+        if (settingsRes?.succeed) setSettings(settingsRes.result);
+        if (projectsRes?.succeed) setAppData({ projects: projectsRes.result });
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -175,6 +168,3 @@ const App = () => {
 };
 
 export default App;
-// Exporting context hook alongside component is acceptable
-// eslint-disable-next-line react-refresh/only-export-components
-export const useAppContext = () => useContext(AppContext);

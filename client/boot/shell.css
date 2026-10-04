@@ -1,0 +1,9 @@
+body{margin:0}
+#boot{position:relative;z-index:50;box-sizing:border-box;width:100vw;height:100vh;background-color:#d5d5d5;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+#boot-bar{position:absolute;top:50%;left:0;box-sizing:border-box;display:flex;align-items:center;justify-content:flex-end;width:25vw;padding:2em;color:#fff;background-color:#161616;font-family:PP Neue Montreal,sans-serif;line-height:1.5}
+#boot-bar p{position:relative;margin:0;text-transform:uppercase;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;filter:grayscale(100%)}
+#boot-bar p:first-child{display:none}
+@media (min-width:768px){#boot-bar{justify-content:space-between}#boot-bar p:first-child{display:inline}}
+#boot .note{display:none;position:absolute;right:0;bottom:2em;left:0;margin:0;padding:0 1em;color:#161616;font-family:PP Neue Montreal,sans-serif;font-size:14px;line-height:1.5;text-align:center}
+#boot .note a{color:inherit;text-decoration:underline}
+html[data-boot-off] #boot{display:none}

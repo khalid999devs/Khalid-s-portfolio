@@ -478,7 +478,7 @@ const Messaging = () => {
               </p>
             </div>
             <textarea
-              className={`${field} min-h-[90px] resize-y`}
+              className={`${field} min-h-22.5 resize-y`}
               required
               placeholder='someone@example.com, another@example.com&#10;a.third@example.com'
               value={email.recipients}
@@ -561,7 +561,7 @@ const Messaging = () => {
               onChange={(e) => setSms((v) => ({ ...v, phone: e.target.value }))}
             />
             <textarea
-              className={`${field} min-h-[160px] resize-y`}
+              className={`${field} min-h-40 resize-y`}
               required
               maxLength={800}
               placeholder='Message'
@@ -593,7 +593,7 @@ const Messaging = () => {
               </p>
             </div>
             <textarea
-              className={`${field} min-h-[90px] resize-y`}
+              className={`${field} min-h-22.5 resize-y`}
               required
               placeholder='01712345678, 01812345678&#10;01912345678'
               value={sms.numbers}
@@ -603,7 +603,7 @@ const Messaging = () => {
             />
             <RecipientSummary list={smsList} noun='numbers' />
             <textarea
-              className={`${field} min-h-[160px] resize-y`}
+              className={`${field} min-h-40 resize-y`}
               required
               maxLength={800}
               placeholder='Message'

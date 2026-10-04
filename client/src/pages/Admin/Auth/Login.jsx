@@ -4,6 +4,7 @@ import AdminBar from '../../../components/Navs/Admin/AdminBar';
 import { handleInputValChange } from '../../../utils/FormValidations/handleValueChange';
 import PrimaryButton from '../../../components/Buttons/PrimaryButton';
 import axios from 'axios';
+import '../../../axios/global.js';
 import { reqs } from '../../../axios/requests';
 import { useNavigate } from 'react-router-dom';
 
@@ -55,7 +56,7 @@ const Login = () => {
   return (
     <div className='min-h-screen'>
       <AdminBar title={'Admin Login'} loginState={true} />
-      <div className='max-w-[480px] w-full pt-16 2xl:pt-[150px] m-auto'>
+      <div className='max-w-120 w-full pt-16 2xl:pt-37.5 m-auto'>
         <form className='grid gap-8' onSubmit={handleSubmit}>
           <div className='bg-primary-dark px-12 py-14 rounded-2xl grid gap-8'>
             <Input

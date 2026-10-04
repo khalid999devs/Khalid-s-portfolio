@@ -11,7 +11,7 @@ const NumberedText = ({ number, text, onClick, state = 'active' }) => {
       }}
     >
       <div
-        className={`h-6 transition-all duration-300 w-6 rounded-full text-sm border flex items-center justify-center border-1 ${
+        className={`h-6 transition-all duration-300 w-6 rounded-full text-sm border flex items-center justify-center ${
           state === 'active'
             ? 'bg-primary-main text-black border-primary-main'
             : 'bg-transparent border-secondary-main text-secondary-main'

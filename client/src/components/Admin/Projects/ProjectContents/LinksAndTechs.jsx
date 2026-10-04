@@ -1,29 +1,30 @@
-import { useEffect, useState } from 'react';
 import PrimaryButton from '../../../Buttons/PrimaryButton';
 import { MdDone } from 'react-icons/md';
 import Input from '../../../Forms/Input';
 import { handleInputValChange } from '../../../../utils/FormValidations/handleValueChange';
 import FormIconLists from '../../FormIconLists';
 import PropTypes from 'prop-types';
+import useSyncedState from '../../../../hooks/useSyncedState';
 
 const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
-  const [data, setData] = useState({
-    siteLink: '',
-    designLink: '',
-    codeLink: '',
-    techStack: [],
-  });
-
-  useEffect(() => {
-    if (projectData?.id) {
-      setData({
-        siteLink: projectData?.siteLink,
-        designLink: projectData?.designLink,
-        codeLink: projectData?.codeLink,
-        techStack: projectData?.techStack,
-      });
-    }
-  }, [mode, projectData]);
+  const [data, setData] = useSyncedState(
+    {
+      siteLink: '',
+      designLink: '',
+      codeLink: '',
+      techStack: [],
+    },
+    () =>
+      projectData?.id
+        ? {
+            siteLink: projectData.siteLink,
+            designLink: projectData.designLink,
+            codeLink: projectData.codeLink,
+            techStack: projectData.techStack,
+          }
+        : undefined,
+    [mode, projectData]
+  );
 
   const handleInputSubmit = (e, name, value) => {
     setData((data) => ({
@@ -39,7 +40,7 @@ const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
   };
 
   return (
-    <div className='box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8 col-span-10 lg:col-span-6'>
+    <div className='box-big-shadow bg-primary-dark rounded-xl min-h-56.25 p-8 col-span-10 lg:col-span-6'>
       <div className='grid gap-8'>
         <div className='grid gap-8 w-full md:grid-cols-2'>
           <Input
@@ -88,7 +89,7 @@ const LinksAndTechs = ({ mode, projectData, handleSubmitData }) => {
           state='small'
           text={mode === 'create' ? 'DONE' : 'SAVE'}
           Icon={MdDone}
-          classes={`!rounded-full`}
+          classes={`rounded-full!`}
           onClick={() => handleSubmitData(data)}
         />
       </div>

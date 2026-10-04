@@ -77,15 +77,24 @@ const PersonalInfo = ({ setPopup, searchTerm = '' }) => {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const load = useCallback(async () => {
-    try {
-      const { data } = await axios.get(reqs.GET_ABOUT, { withCredentials: true });
-      setGrouped(data.result || { experience: [], education: [], achievement: [] });
-    } catch (error) {
-      report(error.response?.data?.msg || 'Could not load the about content', 'error');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const load = useCallback(
+    () =>
+      axios
+        .get(reqs.GET_ABOUT, { withCredentials: true })
+        .then(({ data }) =>
+          setGrouped(
+            data.result || { experience: [], education: [], achievement: [] }
+          )
+        )
+        .catch((error) =>
+          setPopup({
+            text: error.response?.data?.msg || 'Could not load the about content',
+            type: 'error',
+            state: true,
+          })
+        ),
+    [setPopup]
+  );
 
   useEffect(() => {
     load();

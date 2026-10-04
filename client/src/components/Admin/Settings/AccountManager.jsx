@@ -23,20 +23,21 @@ const AccountManager = ({ setPopup }) => {
 
   const report = (text, type) => setPopup({ text, type, state: true });
 
-  const refresh = useCallback(async () => {
-    try {
-      const data = await listAdmins();
-      setAccounts(data.result || []);
-    } catch (error) {
-      report(
-        error.response?.data?.msg || 'Could not load administrator accounts',
-        'error'
-      );
-    }
-    // setPopup is stable for the lifetime of the page; listing it would
-    // re-create this callback on every render of the parent.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const refresh = useCallback(
+    () =>
+      listAdmins()
+        .then((data) => setAccounts(data.result || []))
+        .catch((error) =>
+          setPopup({
+            text:
+              error.response?.data?.msg ||
+              'Could not load administrator accounts',
+            type: 'error',
+            state: true,
+          })
+        ),
+    [setPopup]
+  );
 
   useEffect(() => {
     refresh();

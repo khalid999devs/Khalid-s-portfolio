@@ -75,9 +75,7 @@ const ProjectDetails = ({ mode = 'create', projectId }) => {
           state: true,
         });
       });
-    // navigate is stable from useNavigate and doesn't need to be in deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     if (mode === 'edit') {

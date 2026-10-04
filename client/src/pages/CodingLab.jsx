@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import { useNavigate } from 'react-router-dom';
 import { OutlinedBigIcon } from '../components/Buttons/OutlinedButton';
 import SectionLabel from '../components/utils/SectionLabel';
@@ -12,7 +11,7 @@ const CodingLab = () => {
   const navigate = useNavigate();
 
   return (
-    <div className='w-full pb-28 min-h-screen screen-max-width pt-[160px] sec-x-padding'>
+    <div className='w-full pb-28 min-h-screen screen-max-width pt-40 sec-x-padding'>
       {/* Every route owns its metadata -- see the note in App.jsx. */}
       <MetaCard
         title={'Coding Lab'}
@@ -37,7 +36,7 @@ const CodingLab = () => {
           </h1>
         </div>
 
-        <p className='max-w-[560px] text-sm sm:text-base text-secondary-light leading-relaxed'>
+        <p className='max-w-140 text-sm sm:text-base text-secondary-light leading-relaxed'>
           A place for the experiments, the half-built ideas and the things I
           take apart to see how they work — the ones that never turn into a case
           study. It is still being put together.
@@ -49,12 +48,12 @@ const CodingLab = () => {
 
         <div className='flex flex-row flex-wrap gap-3 items-center justify-center md:justify-start'>
           <OutlinedBigIcon
-            classes='!border-[0.2px] border-onPrimary-main/50 !rounded-[3px]'
+            classes='border-[0.2px]! border-onPrimary-main/50 rounded-[3px]!'
             text='Selected works'
             onClick={() => navigate('/projects')}
           />
           <OutlinedBigIcon
-            classes='!border-[0.2px] border-onPrimary-main/50 !rounded-[3px]'
+            classes='border-[0.2px]! border-onPrimary-main/50 rounded-[3px]!'
             text='Back home'
             onClick={() => navigate('/')}
           />

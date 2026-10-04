@@ -24,7 +24,7 @@ const NavLogo = ({ onClick }) => {
       <span className='w-5 h-[0.5px] bg-onPrimary-main'></span>
       <h1
         ref={logoRef}
-        className='text-onPrimary-main !text-pp-eiko uppercase text-md'
+        className='text-onPrimary-main text-pp-eiko! uppercase text-md'
         style={{
           fontFamily: 'PP Eiko',
         }}

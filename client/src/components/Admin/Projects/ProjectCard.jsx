@@ -39,9 +39,9 @@ const ProjectCard = ({
     <div
       ref={setNodeRef}
       style={style}
-      className='min-h-[300px] max-w-[312px] w-full bg-primary-dark rounded-xl box-big-shadow px-2 pt-3 pb-3.5 flex flex-col'
+      className='min-h-75 max-w-78 w-full bg-primary-dark rounded-xl box-big-shadow px-2 pt-3 pb-3.5 flex flex-col'
     >
-      <div className='relative rounded-lg overflow-hidden w-full h-[190px] bg-white flex-shrink-0'>
+      <div className='relative rounded-lg overflow-hidden w-full h-47.5 bg-white shrink-0'>
         <img
           src={img || projectPlaceholder}
           className='w-full h-full object-cover'
@@ -50,12 +50,12 @@ const ProjectCard = ({
         <div className='absolute right-3 top-3 flex gap-2 items-center'>
           <RoundedIconBtn
             onClick={() => navigate(`/admin/edit-project/${value}?id=${id}`)}
-            classes={`hover:!bg-green-800`}
+            classes={`hover:bg-green-800!`}
           />
           <RoundedIconBtn
             onClick={() => handleDeleteProject(id, title)}
             Icon={MdOutlineDelete}
-            classes={`hover:!bg-red-700`}
+            classes={`hover:bg-red-700!`}
           />
         </div>
         <div
@@ -78,7 +78,7 @@ const ProjectCard = ({
         </div>
 
         <PrimaryButton
-          classes={`!text-sm w-full !rounded-full mt-5 mb-1/2`}
+          classes={`text-sm! w-full rounded-full! mt-5 mb-1/2`}
           text={'Details'}
           onClick={() => navigate(`/admin/edit-project/${value}?id=${id}`)}
         />

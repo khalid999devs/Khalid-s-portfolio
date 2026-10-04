@@ -9,33 +9,30 @@ const FloatingActionBtn = ({ siteLink, designLink }) => {
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
 
+  const openIfClosed = useCallback(() => {
+    setOpen((prevOpen) => {
+      if (!prevOpen) {
+        setCount((prevCount) => prevCount + 1);
+        return true;
+      }
+      return prevOpen;
+    });
+  }, []);
+
   const setScrollOpen = useCallback(() => {
-    if (window.scrollY > 200 && count < 1) {
-      setOpen((prevOpen) => {
-        if (!prevOpen) {
-          setCount((prevCount) => prevCount + 1);
-          return true;
-        }
-        return prevOpen;
-      });
-    }
-  }, [count]);
+    if (window.scrollY > 200 && count < 1) openIfClosed();
+  }, [count, openIfClosed]);
 
   useEffect(() => {
-    if (window.innerWidth < 768) {
-      setOpen((prevOpen) => {
-        if (!prevOpen) {
-          setCount((prevCount) => prevCount + 1);
-          return true;
-        }
-        return prevOpen;
-      });
-    }
+    // On a phone it opens by itself, a frame after mounting so it slides in.
+    const frame =
+      window.innerWidth < 768 ? requestAnimationFrame(openIfClosed) : 0;
     window.addEventListener('scroll', setScrollOpen);
     return () => {
+      cancelAnimationFrame(frame);
       window.removeEventListener('scroll', setScrollOpen);
     };
-  }, [setScrollOpen]);
+  }, [setScrollOpen, openIfClosed]);
 
   // `bg-opacity-40` was removed from the wrapper below. It set
   // --tw-bg-opacity, which only affects a Tailwind bg-* colour utility, and
@@ -52,7 +49,7 @@ const FloatingActionBtn = ({ siteLink, designLink }) => {
           <PrimaryButton
             text={'Visit Site'}
             Icon={MdOutlineArrowOutward}
-            classes={'bg-onPrimary-main !rounded-xl'}
+            classes={'bg-onPrimary-main rounded-xl!'}
             textClasses={'text-primary-main'}
             onClick={() => {
               window.open(siteLink, '_blank');
@@ -63,7 +60,7 @@ const FloatingActionBtn = ({ siteLink, designLink }) => {
           <PrimaryButton
             text={'Design'}
             Icon={FaFigma}
-            classes={'bg-onPrimary-main !rounded-xl'}
+            classes={'bg-onPrimary-main rounded-xl!'}
             textClasses={'text-primary-main'}
             onClick={() => {
               window.open(designLink, '_blank');
@@ -71,12 +68,14 @@ const FloatingActionBtn = ({ siteLink, designLink }) => {
           />
         )}
         <button
-          className={`absolute left-[100%] p-1 opacity-70 duration-500 transition-all hover:opacity-100 glass rounded-md bg-primary-dark ${
-            !open ? 'bottom-[100%]' : 'bottom-[45%]'
+          className={`absolute left-full p-1 opacity-70 duration-500 transition-all hover:opacity-100 glass rounded-md bg-primary-dark ${
+            !open ? 'bottom-full' : 'bottom-[45%]'
           }`}
           onClick={() => {
             setOpen((prev) => !prev);
           }}
+          aria-label={open ? 'Hide project links' : 'Show project links'}
+          aria-expanded={open}
         >
           <p className='text-primary-main text-xl'>
             {open ? <FaAngleDown /> : <FaAngleUp />}

@@ -19,7 +19,7 @@ const AdminNav = () => {
   };
 
   return (
-    <div className='fixed flex flex-col min-h-screen justify-between gap-12 max-w-[185px] w-full pb-28'>
+    <div className='fixed flex flex-col min-h-screen justify-between gap-12 max-w-46.25 w-full pb-28'>
       <div className='grid gap-3'>
         {adminNavLinks.map((item, key) => (
           <NavLink
@@ -29,7 +29,7 @@ const AdminNav = () => {
               `py-2.5 px-4 flex items-center gap-3 group duration-300 transition-all text-lg text-secondary-light w-full group hover:bg-primary-dark hover:text-onPrimary-main rounded-lg ${
                 isActive &&
                 !(window.location.pathname !== '/admin' && item.path === '') &&
-                'bg-primary-dark !text-onPrimary-main'
+                'bg-primary-dark text-onPrimary-main!'
               }`
             }
           >

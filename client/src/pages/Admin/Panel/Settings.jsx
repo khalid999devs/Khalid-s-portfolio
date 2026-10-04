@@ -8,6 +8,26 @@ import PersonalInfo from '../../../components/Admin/Settings/PersonalInfo';
 import Popup from '../../../components/utils/Popup';
 import { useOutletContext } from 'react-router-dom';
 
+/**
+ * Settings grew from one card to three, and a single scrolling column made
+ * the resume and account sections easy to miss below the fold. Tabs keep each
+ * concern on its own screen.
+ *
+ * The active tab lives in the URL hash, so a reload or a bookmark returns to
+ * the same place rather than always snapping back to the first tab.
+ */
+const TABS = [
+  { key: 'technologies', label: 'Technologies' },
+  { key: 'personal', label: 'Personal info' },
+  { key: 'resume', label: 'Resume' },
+  { key: 'accounts', label: 'Accounts' },
+];
+
+const tabFromHash = () => {
+  const key = window.location.hash.replace('#', '');
+  return TABS.some((t) => t.key === key) ? key : 'technologies';
+};
+
 const Settings = () => {
   const { setPageTitle, searchTerm } = useOutletContext();
   const [mode, setMode] = useState('edit'); //create|edit
@@ -110,26 +130,6 @@ const Settings = () => {
     }
   };
 
-  /**
-   * Settings grew from one card to three, and a single scrolling column made
-   * the resume and account sections easy to miss below the fold. Tabs keep each
-   * concern on its own screen.
-   *
-   * The active tab lives in the URL hash, so a reload or a bookmark returns to
-   * the same place rather than always snapping back to the first tab.
-   */
-  const TABS = [
-    { key: 'technologies', label: 'Technologies' },
-    { key: 'personal', label: 'Personal info' },
-    { key: 'resume', label: 'Resume' },
-    { key: 'accounts', label: 'Accounts' },
-  ];
-
-  const tabFromHash = () => {
-    const key = window.location.hash.replace('#', '');
-    return TABS.some((t) => t.key === key) ? key : 'technologies';
-  };
-
   const [tab, setTab] = useState(tabFromHash);
 
   // Keeps the tab in step with the address bar when the hash changes without a
@@ -139,7 +139,6 @@ const Settings = () => {
     const sync = () => setTab(tabFromHash());
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectTab = (key) => {

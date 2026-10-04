@@ -7,21 +7,21 @@ import { reqFileWrapper } from '../../../../axios/requests';
 import { FaPlay, FaPause } from 'react-icons/fa';
 import { IoClose } from 'react-icons/io5';
 import PropTypes from 'prop-types';
+import useSyncedState from '../../../../hooks/useSyncedState';
+import useObjectUrls from '../../../../hooks/useObjectUrls';
 
 const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
-  const [videos, setVideos] = useState([]);
+  const [videos, setVideos] = useSyncedState(
+    [],
+    () => (projectData?.id && projectData?.videos) || undefined,
+    [projectData, mode]
+  );
   const [uploadedVideos, setUploadedVideos] = useState([]);
   const [videoThumbnail, setVideoThumbnail] = useState(null);
   const [playingVideo, setPlayingVideo] = useState(null);
 
   const canvasRef = useRef(null);
-  const videoURLsRef = useRef(new Map()); // Track created Object URLs
-
-  useEffect(() => {
-    if (projectData?.id && projectData?.videos) {
-      setVideos(projectData.videos);
-    }
-  }, [projectData, mode]);
+  const previews = useObjectUrls(videos);
 
   const getVideoThumbnail = (file) => {
     return new Promise((resolve, reject) => {
@@ -125,26 +125,15 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
     }
   };
 
-  // Cleanup all Object URLs on unmount
-  useEffect(() => {
-    const urlMap = videoURLsRef.current;
-    return () => {
-      urlMap.forEach((url) => {
-        URL.revokeObjectURL(url);
-      });
-      urlMap.clear();
-    };
-  }, []);
-
   return (
-    <div className='box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8 col-span-10 lg:col-span-5'>
+    <div className='box-big-shadow bg-primary-dark rounded-xl min-h-56.25 p-8 col-span-10 lg:col-span-5'>
       <div className='grid gap-9'>
         <div className='grid grid-cols-[1fr_auto] gap-7'>
           <div className='flex w-full gap-3 h-full justify-start items-start'>
             <h3 className='text-primary-main font-medium opacity-90 text-sm h-min'>
               Videos
             </h3>
-            <div className='h-[170px] w-full'>
+            <div className='h-42.5 w-full'>
               <ImgFileUploader
                 dataURL={true}
                 dragActiveText={'Drop Videos here!'}
@@ -160,7 +149,7 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
                 PlaceholderImgIcon={MdOutlineOndemandVideo}
                 video={true}
                 fileNumber={uploadedVideos?.length}
-                plaecholderIconCls={`!text-4xl`}
+                plaecholderIconCls={`text-4xl!`}
               />
             </div>
           </div>
@@ -170,7 +159,7 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
               state='small'
               text={mode === 'create' ? 'ADD' : 'SAVE'}
               Icon={IoMdAdd}
-              classes={`!rounded-full`}
+              classes={`rounded-full!`}
               onClick={handleAddVideos}
             />
           </div>
@@ -181,23 +170,12 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
             {videos.map((item, key) => (
               <div
                 key={key}
-                className='w-[128px] h-[100px] bg-black rounded-lg relative overflow-hidden group'
+                className='w-32 h-25 bg-black rounded-lg relative overflow-hidden group'
                 onClick={() => togglePlayPause(key)}
               >
                 <video
                   id={`video-${key}`}
-                  src={
-                    !item.url
-                      ? (() => {
-                          const videoKey = `video-${key}`;
-                          if (!videoURLsRef.current.has(videoKey)) {
-                            const url = URL.createObjectURL(item);
-                            videoURLsRef.current.set(videoKey, url);
-                          }
-                          return videoURLsRef.current.get(videoKey);
-                        })()
-                      : reqFileWrapper(item.url)
-                  }
+                  src={item.url ? reqFileWrapper(item.url) : previews.get(item)}
                   playsInline
                   preload='metadata'
                   muted={playingVideo !== key}
@@ -210,7 +188,7 @@ const Videos = ({ projectData, handleSubmit, mode, handleDelete }) => {
                   {playingVideo === key ? <FaPause /> : <FaPlay />}
                 </div>
                 <div
-                  className='absolute right-[3%] top-[3%] bg-body-main/70 text-sm duration-500 group-hover:bg-body-main w-[22px] h-[22px] rounded-full flex items-center justify-center cursor-pointer'
+                  className='absolute right-[3%] top-[3%] bg-body-main/70 text-sm duration-500 group-hover:bg-body-main w-5.5 h-5.5 rounded-full flex items-center justify-center cursor-pointer'
                   onClick={(e) => {
                     e.preventDefault();
                     item.id && handleRemoveVideo(item.id);

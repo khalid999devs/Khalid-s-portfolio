@@ -88,44 +88,50 @@ const NotificationBell = () => {
   const [items, setItems] = useState([]);
   const [seen, setSeen] = useState(readSeen);
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  // The first check starts with the component.
+  const [loading, setLoading] = useState(true);
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data } = await axios.get(reqs.GET_NOTIFICATIONS, {
-        withCredentials: true,
-      });
-      const fresh = data.result || [];
-      setItems(fresh);
+  const fetchItems = useCallback(
+    () =>
+      axios
+        .get(reqs.GET_NOTIFICATIONS, { withCredentials: true })
+        .then(({ data }) => {
+          const fresh = data.result || [];
+          setItems(fresh);
 
-      // Forget acknowledgements for conditions that no longer exist, so the
-      // stored set cannot grow without bound and a returning problem is
-      // genuinely unread again.
-      setSeen((current) => {
-        const live = new Set(fresh.map((i) => i.id));
-        const pruned = new Set([...current].filter((id) => live.has(id)));
-        if (pruned.size !== current.size) writeSeen(pruned);
-        return pruned;
-      });
-    } catch {
-      // Signed out, or the API is down. The panel simply has nothing to show;
-      // an error toast from a background poll would be noise.
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+          // Forget acknowledgements for conditions that no longer exist, so the
+          // stored set cannot grow without bound and a returning problem is
+          // genuinely unread again.
+          setSeen((current) => {
+            const live = new Set(fresh.map((i) => i.id));
+            const pruned = new Set([...current].filter((id) => live.has(id)));
+            if (pruned.size !== current.size) writeSeen(pruned);
+            return pruned;
+          });
+        })
+        .catch(() => {
+          // Signed out, or the API is down. The panel simply has nothing to
+          // show; an error toast from a background poll would be noise.
+        })
+        .finally(() => setLoading(false)),
+    []
+  );
+
+  const load = useCallback(() => {
+    setLoading(true);
+    return fetchItems();
+  }, [fetchItems]);
 
   useEffect(() => {
-    load();
+    fetchItems();
     // Slow poll. These conditions change on the scale of deploys and config
     // edits, not seconds, and a tight interval would mean a database round trip
     // every few seconds for the life of the tab.
     const id = setInterval(load, 5 * 60 * 1000);
     return () => clearInterval(id);
-  }, [load]);
+  }, [fetchItems, load]);
 
   // Close on an outside click or Escape, the two things people expect from a
   // popover and notice immediately when missing.
@@ -190,7 +196,7 @@ const NotificationBell = () => {
         />
         {unread > 0 && (
           <span
-            className={`absolute -top-1.5 -right-1.5 min-w-[17px] h-[17px] px-1 rounded-full text-[10px] font-medium grid place-items-center text-body-main pointer-events-none ${SEVERITY[worst]?.dot ?? 'bg-secondary-light'}`}
+            className={`absolute -top-1.5 -right-1.5 min-w-4.25 h-4.25 px-1 rounded-full text-[10px] font-medium grid place-items-center text-body-main pointer-events-none ${SEVERITY[worst]?.dot ?? 'bg-secondary-light'}`}
           >
             {unread > 9 ? '9+' : unread}
           </span>

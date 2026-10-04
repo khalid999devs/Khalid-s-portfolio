@@ -34,7 +34,7 @@ const IconedInput = ({
         {...inputProps}
         className={
           `outline-none w-full placeholder:text-secondary-main placeholder:opacity-100 bg-transparent text-primary-main text-base ${
-            size === 'small' && '!text-sm'
+            size === 'small' && 'text-sm!'
           }  ` + inputClasses
         }
         placeholder='Name'

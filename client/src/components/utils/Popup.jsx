@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import PrimaryButton from '../Buttons/PrimaryButton';
 import { loadingGif } from '../../assets';
@@ -18,14 +18,12 @@ const Popup = ({
 }) => {
   const alertRef = useRef();
   const timeline = useRef();
-  const [popOn, setPopOn] = useState(false);
 
   useEffect(() => {
     const el = alertRef.current;
 
     // Show or hide the alert based on the state prop
-    if (popOn !== state) setPopOn(state);
-    if (popOn) {
+    if (state) {
       timeline.current = gsap.timeline();
       timeline.current
         .to(el, {
@@ -58,11 +56,10 @@ const Popup = ({
       timeline?.current?.kill();
       gsap.killTweensOf(el);
     };
-  }, [state, popOn]);
+  }, [state]);
 
   // Close the alert manually
   const closePop = () => {
-    setPopOn(false);
     setPopup((prev) => ({ ...prev, state: false }));
     if (onClose) onClose();
   };
@@ -71,7 +68,7 @@ const Popup = ({
     // <div className='fixed '>
     <div
       ref={alertRef}
-      className={`p-4 px-5 hidden flex-col items-center justify-between gap-4 min-h-[200px] max-w-[400px] w-full ${
+      className={`p-4 px-5 hidden flex-col items-center justify-between gap-4 min-h-50 max-w-100 w-full ${
         type === 'success'
           ? 'bg-green-600'
           : type === 'error'
@@ -97,10 +94,10 @@ const Popup = ({
       </p>
 
       {loading ? (
-        <div className='w-full flex-grow flex items-start justify-center'>
+        <div className='w-full grow flex items-start justify-center'>
           <img
             src={loadingGif}
-            className='w-[100px] h-[100px]'
+            className='w-25 h-25'
             alt='loading img'
           />
         </div>
@@ -110,9 +107,9 @@ const Popup = ({
             onClick={closePop}
             text={closeText || 'Ok'}
             classes={
-              'bg-onPrimary-main text-body-main !py-2 !border-secondary-main'
+              'bg-onPrimary-main text-body-main py-2! border-secondary-main!'
             }
-            textClasses={'!text-xs'}
+            textClasses={'text-xs!'}
           />
           {customButtons}
         </div>

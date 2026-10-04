@@ -104,7 +104,7 @@ const MouseMoveEffect = () => {
   }, [isSizeChanged]);
 
   return (
-    <div className='blocks-container fixed top-0 left-0 w-[100vw] h-screen overflow-hidden'>
+    <div className='blocks-container fixed top-0 left-0 w-screen h-screen overflow-hidden'>
       <div
         ref={blocksContainerRef}
         id='blocks'

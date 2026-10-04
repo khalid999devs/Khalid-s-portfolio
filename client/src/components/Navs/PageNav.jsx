@@ -128,8 +128,8 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
                 className='w-8 min-h-8 h-fit relative cursor-pointer opacity-80 duration-500 hover:opacity-100'
                 onClick={handleHamburgerClick}
               >
-                <span className='w-full h-[1px] bg-onPrimary-dark absolute top-1/2 left-0 -translate-y-1/2 -rotate-45'></span>
-                <span className='w-full h-[1px] bg-onPrimary-dark absolute top-1/2 left-0 -translate-y-1/2 rotate-45'></span>
+                <span className='w-full h-px bg-onPrimary-dark absolute top-1/2 left-0 -translate-y-1/2 -rotate-45'></span>
+                <span className='w-full h-px bg-onPrimary-dark absolute top-1/2 left-0 -translate-y-1/2 rotate-45'></span>
               </div>
             </div>
           </div>
@@ -153,7 +153,7 @@ const PageNav = ({ isPageMenu, setIsPageMenu, classes }) => {
               ))}
             </div>
 
-            <div className='md:border-l-[1px] border-secondary-light overflow-hidden relative md:pl-28 flex flex-col justify-end items-start'>
+            <div className='md:border-l border-secondary-light overflow-hidden relative md:pl-28 flex flex-col justify-end items-start'>
               <h1
                 className='text-7xl uppercase text-primary-main opacity-90 tracking-wide absolute left-0 hidden md:inline-block select-none'
                 id={'contact-title'}

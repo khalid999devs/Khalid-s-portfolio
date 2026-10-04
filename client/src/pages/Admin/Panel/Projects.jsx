@@ -183,7 +183,7 @@ const Projects = () => {
             {!isSearching && projects.length === 0 && (
               <Link
                 to='/admin/add-project'
-                className='w-[280px] min-h-[300px] rounded-xl border border-dashed border-secondary-main/50 grid place-items-center gap-2 text-secondary-light transition-all duration-300 hover:border-onPrimary-main hover:text-primary-main'
+                className='w-70 min-h-75 rounded-xl border border-dashed border-secondary-main/50 grid place-items-center gap-2 text-secondary-light transition-all duration-300 hover:border-onPrimary-main hover:text-primary-main'
               >
                 <div className='grid place-items-center gap-2'>
                   <MdAddCircleOutline className='text-3xl' />

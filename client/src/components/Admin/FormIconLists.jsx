@@ -18,7 +18,7 @@ const FormIconLists = ({
         } ` + containerClasses
       }
     >
-      <div className='max-w-[180px] w-full'>
+      <div className='max-w-45 w-full'>
         <IconedInput name={name} handleSubmit={handleInputSubmit} />
       </div>
       <div className='flex items-center gap-x-1.5 gap-y-2.5 flex-wrap'>

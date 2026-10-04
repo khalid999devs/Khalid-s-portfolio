@@ -116,7 +116,7 @@ const ImgFileUploader = ({
           className='w-full h-full rounded-lg object-cover'
         />
         <div
-          className='absolute right-[3%] top-[3%] bg-body-main/60 text-lg duration-500 group-hover:bg-body-main/80 w-[25px] h-[25px] rounded-full flex items-center justify-center cursor-pointer'
+          className='absolute right-[3%] top-[3%] bg-body-main/60 text-lg duration-500 group-hover:bg-body-main/80 w-6.25 h-6.25 rounded-full flex items-center justify-center cursor-pointer'
           onClick={clearFileImg}
         >
           <IoClose className='text-primary-main' />
@@ -139,7 +139,7 @@ const ImgFileUploader = ({
             type={'small'}
             text={video ? 'Add video' : 'Add Image'}
             Icon={RiImageAddLine}
-            classes={'!py-1 !px-1.5 rounded-none text-xs text-body-main'}
+            classes={'py-1! px-1.5! rounded-none text-xs text-body-main'}
             onClick={openFileSelector}
           />
           <input
@@ -179,7 +179,7 @@ const ImgFileUploader = ({
             />
           )}
 
-          {/* <p className={'w-full opacity-80 !break-keep ' + textClasses}>
+          {/* <p className={'w-full opacity-80 break-keep! ' + textClasses}>
             {placeholderText ||
               `Drop your ${type === 'multiple' ? 'Images' : 'Image'}`}{' '}
             <br /> or{' '}
@@ -208,10 +208,10 @@ const ImgFileUploader = ({
           >
             <img
               src='/Images/loading.gif'
-              className='w-[25px] h-[25px]'
+              className='w-6.25 h-6.25'
               alt='Loading...'
             />
-            <p className='text-xs text-tertiary-main font-medium break-words'>
+            <p className='text-xs text-tertiary-main font-medium wrap-break-word'>
               {processText || 'Processing Image'}
             </p>
           </div>

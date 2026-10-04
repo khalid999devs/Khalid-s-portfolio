@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import AdminBar from '../../../components/Navs/Admin/AdminBar';
 import AdminNav from '../../../components/Navs/Admin/AdminNav';
 import axios from 'axios';
+import '../../../axios/global.js';
 import { reqs } from '../../../axios/requests';
 
 const Admin = () => {
@@ -28,9 +29,7 @@ const Admin = () => {
       .catch(() => {
         navigate('/admin-login');
       });
-    // navigate is stable from useNavigate, pageTitle shouldn't trigger auth check
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageTitle]);
+  }, [pageTitle, navigate]);
 
   return (
     <div className='bg-body-main min-h-screen w-full'>
@@ -40,11 +39,11 @@ const Admin = () => {
         onSearch={setSearchTerm}
       />
       <div className='mt-7 sec-x-padding screen-max-width flex gap-x-10 h-full w-full'>
-        <div className='max-w-[185px] w-full min-h-[400px]'>
+        <div className='max-w-46.25 w-full min-h-100'>
           <AdminNav />
         </div>
 
-        <div className='w-full min-h-[400px]'>
+        <div className='w-full min-h-100'>
           {/*
             `searchTerm` is passed down rather than each page owning its own
             box, so the one in the top bar filters whatever is on screen.

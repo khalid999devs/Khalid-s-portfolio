@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { IoArrowUp } from 'react-icons/io5';
 import Input from '../../../Forms/Input';
 import { handleInputValChange } from '../../../../utils/FormValidations/handleValueChange';
@@ -6,6 +6,7 @@ import PrimaryButton from '../../../Buttons/PrimaryButton';
 import { MdDone } from 'react-icons/md';
 import FormIconLists from '../../FormIconLists';
 import PropTypes from 'prop-types';
+import useSyncedState from '../../../../hooks/useSyncedState';
 
 const ProjectTitles = ({
   mode,
@@ -15,46 +16,40 @@ const ProjectTitles = ({
   handleCreateProject,
   handleUpdateProjectInfos,
 }) => {
-  const [titlesData, setTitlesData] = useState({
-    title: '',
-    subtitle: '',
-    overview: '',
-    role: [],
-    category: '',
-    date: '',
-    locationYear: '',
-  });
-  const [filteredCategories, setFilteredCategories] = useState([]);
+  const [titlesData, setTitlesData] = useSyncedState(
+    {
+      title: '',
+      subtitle: '',
+      overview: '',
+      role: [],
+      category: '',
+      date: '',
+      locationYear: '',
+    },
+    () =>
+      projectData?.id
+        ? {
+            title: projectData.title,
+            subtitle: projectData.subtitle,
+            overview: projectData.overview,
+            role: projectData.role,
+            category: projectData.category,
+            date: projectData.date,
+            locationYear: projectData.locationYear,
+          }
+        : undefined,
+    [mode, projectData]
+  );
   const [isSuggestion, setIsSuggestion] = useState(false);
   const formRef = useRef(null);
 
-  useEffect(() => {
-    if (projectData?.id) {
-      setTitlesData({
-        title: projectData?.title,
-        subtitle: projectData?.subtitle,
-        overview: projectData?.overview,
-        role: projectData?.role,
-        category: projectData?.category,
-        date: projectData?.date,
-        locationYear: projectData?.locationYear,
-      });
-    }
-  }, [mode, projectData]);
-
-  useEffect(() => {
-    if (categories?.length > 0) setFilteredCategories(categories);
-  }, [categories]);
-
-  useEffect(() => {
-    if (titlesData.category) {
-      setFilteredCategories(
-        categories.filter((item) =>
-          item.toLowerCase().includes(titlesData.category.toLowerCase())
-        )
-      );
-    }
-  }, [titlesData.category, categories]);
+  const filteredCategories = useMemo(() => {
+    if (!categories?.length) return [];
+    const typed = titlesData.category?.toLowerCase();
+    return typed
+      ? categories.filter((item) => item.toLowerCase().includes(typed))
+      : categories;
+  }, [categories, titlesData.category]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -85,7 +80,7 @@ const ProjectTitles = ({
 
   return (
     <div className='grid gap-8 col-span-10 lg:col-span-7'>
-      <div className='box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8 pb-11'>
+      <div className='box-big-shadow bg-primary-dark rounded-xl min-h-56.25 p-8 pb-11'>
         <div className='grid gap-8'>
           <h1 className='text-md'>Please enter following information</h1>
           <div className='grid gap-6'>
@@ -183,7 +178,7 @@ const ProjectTitles = ({
                 {isSuggestion && (
                   <div
                     id='tooltip'
-                    className='absolute top-[102%] left-0 w-full bg-secondary-main rounded-lg grid max-h-[150px] h-auto overflow-auto z-20'
+                    className='absolute top-[102%] left-0 w-full bg-secondary-main rounded-lg grid max-h-37.5 h-auto overflow-auto z-20'
                   >
                     {filteredCategories.map((item, key) => {
                       return (
@@ -191,7 +186,7 @@ const ProjectTitles = ({
                           key={key}
                           className={`w-full py-3 px-3 ${
                             key + 1 != filteredCategories.length
-                              ? 'border-b border-b-1 border-b-primary-main/30'
+                              ? 'border-b border-b-primary-main/30'
                               : ''
                           } capitalize cursor-pointer transition-all duration-300 hover:bg-neutral-700 text-sm`}
                           onClick={() =>

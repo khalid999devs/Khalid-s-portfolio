@@ -1,8 +1,8 @@
-/* eslint-disable react-refresh/only-export-components */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { OutlinedBigIcon } from '../components/Buttons/OutlinedButton';
-import { useAppContext } from '../App';
-import { reqFileWrapper } from '../axios/requests';
+import { useAppContext } from '../hooks/useAppContext';
+import { prefetchProject, prefetchProjectOnHover } from '../api/public';
+import { projectCover } from '../utils/projectMedia';
 import { FaArrowRightLong } from 'react-icons/fa6';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PageTransition from '../animations/PageTransition';
@@ -14,7 +14,6 @@ const Projects = () => {
   const {
     appData: { projects },
   } = useAppContext();
-  const [categories, setCategories] = useState([]);
   const [targetCat, setTargetCat] = useState('all');
 
   useEffect(() => {
@@ -24,13 +23,16 @@ const Projects = () => {
     });
   }, [projects, loc.pathname]);
 
-  useEffect(() => {
-    if (projects?.length > 0)
-      setCategories(['all', ...new Set(projects.map((item) => item.category))]);
-  }, [projects]);
+  const categories = useMemo(
+    () =>
+      projects?.length > 0
+        ? ['all', ...new Set(projects.map((item) => item.category))]
+        : [],
+    [projects]
+  );
 
   return (
-    <div className='w-full pb-28 min-h-screen screen-max-width pt-[160px] sec-x-padding'>
+    <div className='w-full pb-28 min-h-screen screen-max-width pt-40 sec-x-padding'>
       <MetaCard title={'Projects'} />
 
       <div className='flex flex-col gap-8 w-full md:pl-28'>
@@ -48,8 +50,8 @@ const Projects = () => {
           <div className='flex flex-row flex-wrap gap-3 items-center justify-center md:justify-start'>
             {categories?.map((item, key) => (
               <OutlinedBigIcon
-                classes={`!border-[0.2px] border-onPrimary-main/50 !rounded-[3px] capitalize ${
-                  item === targetCat ? '!bg-white !text-black' : ''
+                classes={`border-[0.2px]! border-onPrimary-main/50 rounded-[3px]! capitalize ${
+                  item === targetCat ? 'bg-white! text-black!' : ''
                 }`}
                 text={item}
                 key={key}
@@ -76,20 +78,19 @@ const Projects = () => {
                 <div
                   className='w-full grid border-b-[0.05px] border-secondary-light/30 pb-3 gap-6 group cursor-pointer pointer-all'
                   onClick={() => {
+                    prefetchProject(item.id);
                     navigate(`/singleProject/${item.value + '@' + item.id}`);
                   }}
+                  onPointerEnter={prefetchProjectOnHover(item.id)}
                   key={key}
                 >
                   <div className='w-full h-full rounded-lg overflow-hidden '>
                     <img
-                      src={
-                        item.thumbnailContents && item.thumbnailContents.length
-                          ? reqFileWrapper(item.thumbnailContents[0].url)
-                          : reqFileWrapper(item?.bannerImg)
-                      }
+                      {...projectCover(item)}
                       alt={item.title}
-                      className='w-full max-h-[300px] lg:max-h-[350px] 2xl:max-h-[300px] h-auto object-cover rounded-lg transition-all duration-1000 group-hover:scale-[102%]'
+                      className='w-full max-h-75 lg:max-h-87.5 2xl:max-h-75 h-auto object-cover rounded-lg transition-all duration-1000 group-hover:scale-[102%]'
                       loading='lazy'
+                      decoding='async'
                     />
                   </div>
 
@@ -108,7 +109,7 @@ const Projects = () => {
                         {item.title}
                       </h2>
 
-                      <button className=''>
+                      <button className='' aria-label={`Open ${item.title}`}>
                         <FaArrowRightLong className='text-white text-2xl transition-all duration-500 group-hover:-translate-x-1' />
                       </button>
                     </div>

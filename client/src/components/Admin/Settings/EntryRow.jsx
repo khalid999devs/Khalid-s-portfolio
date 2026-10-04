@@ -74,14 +74,22 @@ const EntryRow = ({
     isDragging,
   } = useSortable({ id: entry.id, disabled: expanded });
 
-  useEffect(() => {
+  // A saved or reordered entry arrives as a new object: start again from it.
+  const [seenEntry, setSeenEntry] = useState(entry);
+  if (entry !== seenEntry) {
+    setSeenEntry(entry);
     setDraft(entry);
     setDirty(false);
-  }, [entry]);
+  }
+
+  const [seenNew, setSeenNew] = useState(isNew);
+  if (isNew !== seenNew) {
+    setSeenNew(isNew);
+    if (isNew) setExpanded(true);
+  }
 
   useEffect(() => {
     if (!isNew) return;
-    setExpanded(true);
     // Scroll and focus after the expand has painted, otherwise the browser
     // measures the collapsed height and scrolls to the wrong place.
     const id = setTimeout(() => {

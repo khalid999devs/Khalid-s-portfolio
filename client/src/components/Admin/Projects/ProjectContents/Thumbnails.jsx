@@ -1,21 +1,21 @@
-import { useEffect, useState, useRef } from 'react';
+import { useState } from 'react';
 import ImgFileUploader from '../../../utils/ImgFileUploader';
 import PrimaryButton from '../../../Buttons/PrimaryButton';
 import { IoClose } from 'react-icons/io5';
 import { reqFileWrapper } from '../../../../axios/requests';
 import { MdDone } from 'react-icons/md';
 import PropTypes from 'prop-types';
+import useSyncedState from '../../../../hooks/useSyncedState';
+import useObjectUrls from '../../../../hooks/useObjectUrls';
 
 const Thumbnails = ({ projectData, mode, handleSubmit, handleDelete }) => {
-  const [thumbnails, setThumbnails] = useState([]);
+  const [thumbnails, setThumbnails] = useSyncedState(
+    [],
+    () => (projectData?.id && projectData?.thumbnailContents) || undefined,
+    [mode, projectData]
+  );
   const [uploadedThumbnails, setUploadedThumbnails] = useState([]);
-  const imageURLsRef = useRef(new Map()); // Track created Object URLs
-
-  useEffect(() => {
-    if (projectData?.id && projectData?.thumbnailContents) {
-      setThumbnails(projectData.thumbnailContents);
-    }
-  }, [mode, projectData]);
+  const previews = useObjectUrls(thumbnails);
 
   const handleAddThumbnails = () => {
     if (uploadedThumbnails.length < 1) {
@@ -39,26 +39,15 @@ const Thumbnails = ({ projectData, mode, handleSubmit, handleDelete }) => {
     }
   };
 
-  // Cleanup all Object URLs on unmount
-  useEffect(() => {
-    const urlMap = imageURLsRef.current;
-    return () => {
-      urlMap.forEach((url) => {
-        URL.revokeObjectURL(url);
-      });
-      urlMap.clear();
-    };
-  }, []);
-
   return (
-    <div className='box-big-shadow bg-primary-dark rounded-xl min-h-[225px] p-8 pt-7 col-span-10 lg:col-span-5'>
+    <div className='box-big-shadow bg-primary-dark rounded-xl min-h-56.25 p-8 pt-7 col-span-10 lg:col-span-5'>
       <div className='grid w-full h-full gap-8'>
         <div className='grid w-full gap-3 h-full'>
           <h3 className='text-primary-main font-medium opacity-90 text-sm'>
             Thumbnail Contents
           </h3>
           <div className='flex flex-col md:flex-row w-full gap-5'>
-            <div className='h-[160px] md:max-w-[185px] w-full'>
+            <div className='h-40 md:max-w-46.25 w-full'>
               <ImgFileUploader
                 dragActiveText={'Drop Thumbnail Image here!'}
                 fileImg={
@@ -70,7 +59,7 @@ const Thumbnails = ({ projectData, mode, handleSubmit, handleDelete }) => {
                 mode={mode}
                 clearFileImg={() => setUploadedThumbnails([])}
                 fileNumber={uploadedThumbnails?.length}
-                plaecholderIconCls={`!text-4xl`}
+                plaecholderIconCls={`text-4xl!`}
               />
             </div>
 
@@ -79,26 +68,17 @@ const Thumbnails = ({ projectData, mode, handleSubmit, handleDelete }) => {
                 return (
                   <div
                     key={key}
-                    className='w-[112px] h-[90px] md:w-[100px] md:h-[75px] rounded-md overflow-hidden bg-secondary-light relative'
+                    className='w-28 h-22.5 md:w-25 md:h-18.75 rounded-md overflow-hidden bg-secondary-light relative'
                   >
                     <img
                       src={
-                        !item.url
-                          ? (() => {
-                              const imgKey = `thumbnail-${key}`;
-                              if (!imageURLsRef.current.has(imgKey)) {
-                                const url = URL.createObjectURL(item);
-                                imageURLsRef.current.set(imgKey, url);
-                              }
-                              return imageURLsRef.current.get(imgKey);
-                            })()
-                          : reqFileWrapper(item.url)
+                        item.url ? reqFileWrapper(item.url) : previews.get(item)
                       }
                       className='w-full h-full object-cover'
                       alt={'thumbnail ' + item.id}
                     />
                     <div
-                      className='absolute right-[3%] top-[3%] bg-body-main/70 text-sm duration-500 group-hover:bg-body-main w-[22px] h-[22px] rounded-full flex items-center justify-center cursor-pointer'
+                      className='absolute right-[3%] top-[3%] bg-body-main/70 text-sm duration-500 group-hover:bg-body-main w-5.5 h-5.5 rounded-full flex items-center justify-center cursor-pointer'
                       onClick={(e) => {
                         e.preventDefault();
                         item.id && removeThumbnail(item.id);
@@ -119,7 +99,7 @@ const Thumbnails = ({ projectData, mode, handleSubmit, handleDelete }) => {
             state='small'
             text={mode === 'create' ? 'DONE' : 'SAVE'}
             Icon={MdDone}
-            classes={`!rounded-full`}
+            classes={`rounded-full!`}
             onClick={handleAddThumbnails}
           />
         </div>

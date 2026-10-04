@@ -7,7 +7,7 @@ import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 import { isUpwork } from '../../config';
 import { upworkedSocialLinks } from '../../Constants';
 import { resumeUrl } from '../../assets';
-import { useAppContext } from '../../App';
+import { useAppContext } from '../../hooks/useAppContext';
 
 const Navbar = () => {
   const [isPageMenu, setIsPageMenu] = useState(false);
@@ -68,14 +68,14 @@ const Navbar = () => {
           <div className='flex items-center justify-between gap-6 text-sm'>
             <Link
               to={'/projects'}
-              className='blink-animate-nav text-flicker !hidden sm:!inline '
+              className='blink-animate-nav text-flicker hidden! sm:inline! '
             >
               Projects
             </Link>
             {!isUpwork ? (
               <Link
                 to={'mailto:khalidahammeduzzal@gmail.com'}
-                className=' blink-animate-nav text-flicker !hidden sm:!inline'
+                className=' blink-animate-nav text-flicker hidden! sm:inline!'
               >
                 Email Me
               </Link>

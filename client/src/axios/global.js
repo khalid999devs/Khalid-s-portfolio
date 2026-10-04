@@ -1,6 +1,9 @@
 import axios from 'axios';
 import { serverOrigin } from './requests';
 
+// Imported by the admin entry pages and by axios/index.js rather than by
+// main.jsx: the public pages use src/api/http.js, so axios stays out of the
+// bundle every visitor downloads.
 axios.defaults.baseURL = serverOrigin;
 
 /**

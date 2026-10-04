@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 
 const TextDividerHeading = ({ role = 'ROLE/SERVICES', text }) => {
   return (
-    <div className='w-full sm:max-w-[250px] sm:w-full grid gap-6'>
+    <div className='w-full sm:max-w-62.5 sm:w-full grid gap-6'>
       <div className='flex items-center gap-1'>
         <span className='text-[12px] sm:text-xs text-secondary-main opacity-80 uppercase'>
           # {role}

@@ -59,9 +59,19 @@ const DeliveryTable = ({
   const [selected, setSelected] = useState(() => new Set());
 
   // The Mail & SMS page switches tabs, which changes the pinned channel.
-  useEffect(() => {
+  const [seenLocked, setSeenLocked] = useState(lockedChannel);
+  if (lockedChannel !== seenLocked) {
+    setSeenLocked(lockedChannel);
     if (lockedChannel !== null) setChannel(lockedChannel);
-  }, [lockedChannel]);
+  }
+
+  // A filter change invalidates the page number.
+  const filters = JSON.stringify([searchTerm, channel, status, kind]);
+  const [seenFilters, setSeenFilters] = useState(filters);
+  if (filters !== seenFilters) {
+    setSeenFilters(filters);
+    setPage(1);
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -100,9 +110,6 @@ const DeliveryTable = ({
     const id = setTimeout(load, 250);
     return () => clearTimeout(id);
   }, [load]);
-
-  // A filter change invalidates the page number.
-  useEffect(() => setPage(1), [searchTerm, channel, status, kind]);
 
   const allOnPageSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
 

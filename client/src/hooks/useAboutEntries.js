@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { reqs } from '../axios/requests';
+import { takeAbout } from '../api/public';
 import {
   achievements as fallbackAchievements,
   education as fallbackEducation,
@@ -34,11 +33,10 @@ export const useAboutEntries = () => {
   useEffect(() => {
     let cancelled = false;
 
-    axios
-      .get(reqs.GET_ABOUT)
+    takeAbout()
       .then((res) => {
-        if (cancelled || !res.data?.succeed) return;
-        const { experience = [], education = [], achievement = [] } = res.data.result ?? {};
+        if (cancelled || !res?.succeed) return;
+        const { experience = [], education = [], achievement = [] } = res.result ?? {};
 
         // An empty table would blank the page. Falling back per section means a
         // half-populated database still shows whatever it does have.

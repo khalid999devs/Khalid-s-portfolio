@@ -176,7 +176,7 @@ const Dashboard = () => {
             key={i}
             className={`${
               i === 3 ? 'col-span-4' : 'col-span-2'
-            } box-big-shadow bg-primary-dark rounded-xl min-h-[150px] animate-pulse`}
+            } box-big-shadow bg-primary-dark rounded-xl min-h-37.5 animate-pulse`}
           />
         ))}
       </div>

@@ -1,6 +1,5 @@
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
-import './axios/global.js';
 import App from './App.jsx';
 import './index.css';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
@@ -8,16 +7,16 @@ import ErrorPage from './pages/ErrorPage.jsx';
 import Home from './pages/Home.jsx';
 
 //admin
-const Login = lazy(() => import('./pages/Admin/Auth/Login.jsx'));
-const Admin = lazy(() => import('./pages/Admin/Panel/Admin.jsx'));
-const Dashboard = lazy(() => import('./pages/Admin/Panel/Dashboard.jsx'));
-const AdminProjects = lazy(() => import('./pages/Admin/Panel/Projects.jsx'));
-const EditProject = lazy(() => import('./pages/Admin/Panel/EditProject.jsx'));
-const CreateProject = lazy(() =>
-  import('./pages/Admin/Panel/CreateProject.jsx')
-);
-const Settings = lazy(() => import('./pages/Admin/Panel/Settings.jsx'));
-const Messaging = lazy(() => import('./pages/Admin/Panel/Messaging.jsx'));
+import {
+  Login,
+  Admin,
+  Dashboard,
+  AdminProjects,
+  EditProject,
+  CreateProject,
+  Settings,
+  Messaging,
+} from './pages/Admin/lazy.js';
 
 //client
 import Projects from './pages/Projects.jsx';
@@ -26,7 +25,13 @@ import SingleProject from './pages/SingleProject.jsx';
 import CodingLab from './pages/CodingLab.jsx';
 
 import Loader from './components/utils/Loader.jsx';
+import Started from './components/utils/Started.jsx';
 import { publicRoutes } from './Constants/routes.js';
+import { installChunkRecovery } from './utils/chunkRecovery.js';
+import { installErrorReporting, reportError } from './utils/reportError.js';
+
+installErrorReporting();
+installChunkRecovery();
 
 const PAGES = {
   home: <Home />,
@@ -62,7 +67,7 @@ const router = createBrowserRouter([
   {
     path: '/admin-login',
     element: (
-      <Suspense fallback={<Loader classes={'z-40 !w-screen !h-screen'} />}>
+      <Suspense fallback={<Loader classes={'z-40 w-screen! h-screen!'} />}>
         <Login />
       </Suspense>
     ),
@@ -71,7 +76,7 @@ const router = createBrowserRouter([
   {
     path: '/admin',
     element: (
-      <Suspense fallback={<Loader classes={'z-40 !w-screen !h-screen'} />}>
+      <Suspense fallback={<Loader classes={'z-40 w-screen! h-screen!'} />}>
         <Admin />
       </Suspense>
     ),
@@ -111,6 +116,33 @@ const router = createBrowserRouter([
 
 // No HelmetProvider: MetaCard renders <title>/<meta> directly and React 19
 // hoists them into <head>. See the note in MetaCard.jsx.
-createRoot(document.getElementById('root')).render(
-  <RouterProvider router={router} />
-);
+const mount = () =>
+  createRoot(document.getElementById('root'), {
+    // Errors an error boundary caught: logged as before, and reported.
+    onCaughtError: (error, info) => {
+      console.error(error, info?.componentStack);
+      reportError('react', error);
+    },
+  }).render(
+    <Started>
+      <RouterProvider router={router} />
+    </Started>
+  );
+
+// The build loads the stylesheet without blocking the first paint (see
+// vite.config.js), so the app waits for it here and never renders unstyled.
+const stylesheet = document.querySelector('link[data-app-css]');
+
+// The link's own handlers switch it on as well; done here too so the app
+// never depends on an inline handler having run.
+const start = () => {
+  if (stylesheet) stylesheet.media = 'all';
+  mount();
+};
+
+if (!stylesheet || stylesheet.sheet || stylesheet.media !== 'print') {
+  start();
+} else {
+  stylesheet.addEventListener('load', start, { once: true });
+  stylesheet.addEventListener('error', start, { once: true });
+}

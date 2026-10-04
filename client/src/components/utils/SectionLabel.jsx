@@ -11,10 +11,10 @@ const SectionLabel = ({ text, noAnime = false }) => {
 
   return (
     <div className='flex items-center flex-row gap-1 text-secondary-light text-md text-montreal-mono pointer-all'>
-      <div className='flex gap-[2px] items-center'>
+      <div className='flex gap-0.5 items-center'>
         <span className='opacity-60'>#</span>
         <span
-          className={`!uppercase ${!noAnime && 'text-letter-reveal'} w-max`}
+          className={`uppercase! ${!noAnime && 'text-letter-reveal'} w-max`}
         >
           {text || 'About'}
         </span>

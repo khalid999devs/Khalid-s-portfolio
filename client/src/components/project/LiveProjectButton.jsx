@@ -18,7 +18,7 @@ const LiveProjectButton = ({ link }) => {
 
   return (
     <div
-      className='hidden md:flex pointer-all w-[150px] h-[150px] rounded-full bg-secondary-main shadow-md shadow-primary-dark items-center justify-center gap-2 group cursor-pointer absolute right-[8%] -top-[17%]'
+      className='hidden md:flex pointer-all w-37.5 h-37.5 rounded-full bg-secondary-main shadow-md shadow-primary-dark items-center justify-center gap-2 group cursor-pointer absolute right-[8%] top-[-17%]'
       style={{
         transform: `translate(${position.x}px, ${position.y}px)`,
         transition: 'transform 0.2s cubic-bezier(0.23, 1, 0.32, 1)',

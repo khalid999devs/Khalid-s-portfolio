@@ -3,23 +3,22 @@ import { socialLinks, upworkedSocialLinks } from '../../Constants';
 import { textBlinkAnimation } from '../../animations/textBlinkAnimation';
 import { wordBlinkAnimation } from '../../animations/wordBlinkAnimation';
 
-/**
- * Three.js, @react-three/fiber and drei are ~60% of the site's JavaScript and
- * were pulled into the critical bundle by an eager import here -- every visitor
- * downloaded the entire 3D stack before anything could render.
- *
- * `Scene` already waits 1200ms before mounting its canvas, so the module now
- * loads during a delay that existed anyway. The bot appears at the same moment,
- * with the same appearance; only the download moves off the critical path.
- *
- * The fallback is null, matching what `Scene` itself renders before its timer
- * fires, so nothing new is drawn and no layout shifts.
- */
-const Scene = lazy(() => import('./bot/Scene'));
+import BotBoundary from './bot/BotBoundary';
+import { loadModel } from './bot/modelSource';
+import { optionalImport } from '../../utils/chunkRecovery';
 import { isUpwork } from '../../config';
 import HeroGreeting from './HeroGreeting';
 import { textBlinkAnimateByWord } from '../../animations/textBlinkAnimateByWord';
 import { useMichibotInteraction } from '../../hooks/useMichibotInteraction';
+
+// Lazy: three.js and its React bindings are most of the site's JavaScript.
+// One retry; BotBoundary takes the failure after that.
+const loadScene = () => optionalImport(() => import('./bot/Scene'));
+const Scene = lazy(() =>
+  loadScene().catch(
+    () => new Promise((resolve) => setTimeout(resolve, 1500)).then(loadScene)
+  )
+);
 
 const GREETINGS = [
   'Hi There',
@@ -46,6 +45,11 @@ const Hero = () => {
 
   const { isActive, isDesktop, isLoaded, setIsLoaded, handleClick } =
     useMichibotInteraction(botContainerRef, heroRef);
+
+  // The model downloads alongside the bot's code rather than after it.
+  useEffect(() => {
+    loadModel().catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (botHovered) return undefined;
@@ -94,7 +98,7 @@ const Hero = () => {
   return (
     <div
       ref={heroRef}
-      className='min-h-screen body-max-width sec-inner-x-padding grid items-stretch gap-4 w-full pt-[160px] pb-2'
+      className='min-h-screen body-max-width sec-inner-x-padding grid items-stretch gap-4 w-full pt-40 pb-2'
     >
       <div className='flex relative items-center justify-between mt- w-full'>
         <p
@@ -104,17 +108,17 @@ const Hero = () => {
           Based in Bangladesh
         </p>
         <div
-          className='flex absolute left-1/2 w-[100px] items-center justify-center flex-col gap-5 z-40'
+          className='flex absolute left-1/2 w-25 items-center justify-center flex-col gap-5 z-40'
           style={{ transform: 'translate(-50%,-20%) scale(0.7)' }}
         >
           <div className='flex items-center justify-center flex-row gap-2.5 whitespace-nowrap'>
             <span className='w-4 h-4 bg-white'></span>
             <HeroGreeting text={botHovered ? 'Click Me' : greeting} />
           </div>
-          <div className='w-full min-h-[20px] flex mt-12 relative'>
+          <div className='w-full min-h-5 flex mt-12 relative'>
             <div
               ref={botContainerRef}
-              className={`absolute w-[350px] h-[300px] left-[100%] -translate-x-1/2 transition-all duration-300 ${
+              className={`absolute w-87.5 h-75 left-full -translate-x-1/2 transition-all duration-300 ${
                 isDesktop && isLoaded ? 'cursor-pointer' : ''
               } ${isActive ? 'z-50 michibot-active' : 'z-40'}`}
               onClick={handleClick}
@@ -123,9 +127,11 @@ const Hero = () => {
               }
               onMouseLeave={() => setBotHovered(false)}
             >
-              <Suspense fallback={null}>
-                <Scene onLoad={() => setIsLoaded(true)} isActive={isActive} />
-              </Suspense>
+              <BotBoundary>
+                <Suspense fallback={null}>
+                  <Scene onLoad={() => setIsLoaded(true)} isActive={isActive} />
+                </Suspense>
+              </BotBoundary>
             </div>
           </div>
         </div>
