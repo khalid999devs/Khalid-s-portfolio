@@ -102,10 +102,14 @@ Behind a login at `/admin-login`. Every route under `/admin` is gated.
   their status and any provider error.
 - **Notifications from live state.** Pending migrations, a resume row pointing at
   a missing file, uploads configured somewhere a deploy will erase, delivery
-  failures in the last week, a single administrator account, an SMS gateway on
-  plain HTTP. Each is checked when the panel asks, so an empty list means there
-  is nothing outstanding. Clicking an item clears it; if the cause returns, so
-  does the item.
+  failures in the last week, browser errors reported in the last week, a single
+  administrator account, an SMS gateway on plain HTTP. Each is checked when the
+  panel asks, so an empty list means there is nothing outstanding. Clicking an
+  item clears it; if the cause returns, so does the item.
+- **Browser error reports.** The public site reports uncaught errors and failed
+  script loads to the API. A repeat is counted against the first report, at
+  most 100 distinct errors are kept, and neither an address nor a cookie is
+  recorded. They live in memory and one private file, not in the database.
 - **Scheduled dependency audit.** `npm audit` runs in the background every three
   days and the result is cached, so the panel reads a stored value.
 
@@ -342,13 +346,20 @@ The application used to ship as a single JavaScript file.
 
 | | Before | Now |
 | --- | --- | --- |
-| Render blocking JS, gzip | 439.2 KiB | 221.4 KiB |
+| Render blocking JS, gzip | 439.2 KiB | 211.2 KiB |
 | Chunks | 1 | Vendors split by library, admin panel and 3D on demand |
 | Production build | about 12s | under 1s |
 
 The 3D stack is around 60 percent of the site's JavaScript. It downloads during
 the 1.2 second delay before the bot mounts, so it appears at the same moment it
 did before.
+
+The intro loader is plain HTML and CSS inside `index.html`, so it paints as soon
+as the page arrives, and the stylesheet no longer blocks that paint.
+
+Project responses carry the width and height of every image and video, read from
+the file headers. The project page holds each one's space from those numbers, so
+nothing moves when the media arrives.
 
 Generated filenames carry 32 random hex characters and are never reused, so they
 get a one year immutable cache. Older title based filenames revalidate with an
@@ -358,9 +369,10 @@ ETag.
 
 ## Testing and verification
 
-**Server tests.** 46 tests on the Node test runner, covering upload type
-detection, path confinement, field allowlists, auth behaviour, and that every
-model has a migration creating its table.
+**Server tests.** 152 tests on the Node test runner, covering upload type
+detection, path confinement, field allowlists, auth behaviour, image and video
+size parsing, project reads, browser error reports, and that every model has a
+migration creating its table.
 
 **CI.** Lint, build and the server suite on every push, on Linux. This is worth
 having on a codebase developed on macOS: a `./Project/projectVideos` import of a
@@ -463,10 +475,7 @@ server/          Express API
 - Email and SMS are logged, but not tested against provider sandboxes.
 - Rate limits are in process, so they reset on restart and are not shared
   between instances. This belongs at the proxy.
-- The React Compiler lint plugin reports 37 warnings about effects that set
-  state. Each is a behaviour change, so they are on hold while the rendering has
-  to stay identical.
-- The 3D model is 1.4 MB and CC BY-NC licensed.
+- The 3D model is 1.1 MB and CC BY-NC licensed.
 
 ---
 
