@@ -1,0 +1,1 @@
+import{r as e}from"./requests-CUReAHha.js";import{t}from"./axios-C0bYvdnr.js";t.defaults.baseURL=e,t.defaults.withCredentials=!0;

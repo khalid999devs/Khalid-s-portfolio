@@ -1,0 +1,1 @@
+import{a as e}from"./rolldown-runtime-CNC7AqOf.js";import{o as t,r as n}from"./animation-CFaXTe8c.js";import{l as r}from"./react-B3pgm5yO.js";import{t as i}from"./ProjectDetails-DP7NG7ae.js";var a=e(t(),1),o=n(),s=()=>{let{setPageTitle:e}=r();return(0,a.useEffect)(()=>{e(`Add Project`)},[e]),(0,o.jsx)(o.Fragment,{children:(0,o.jsx)(i,{})})};export{s as default};

@@ -1,0 +1,1 @@
+import{r as e}from"./requests-CUReAHha.js";var t=t=>{let n=t?.resume;return typeof n!=`string`||n.trim()===``?null:`${e}/${n.replace(/^\/+/,``)}`};export{t};
