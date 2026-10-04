@@ -91,6 +91,8 @@ app.use(
       // production -- so without this the filename silently degrades to a
       // generic fallback there while working perfectly in local development.
       exposedHeaders: ['Content-Disposition'],
+      // Lets a browser reuse a preflight rather than repeat it before each write.
+      maxAge: 86400,
       // Cached responses must not be shared between origins.
       preflightContinue: false,
     });

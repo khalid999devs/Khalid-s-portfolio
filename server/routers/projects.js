@@ -1,5 +1,7 @@
 const {
   getProjects,
+  getAllProjects,
+  getProjectById,
   createProject,
   updateProjectContents,
   editProjectInfos,
@@ -24,7 +26,14 @@ const mediaFields = upload.fields([
   { name: 'sliderContents', maxCount: 10 },
 ]);
 
+// Digits only, so the id route can never swallow a named one added later.
+const numericId = (req, res, next) =>
+  /^\d+$/.test(req.params.id) ? next() : next('route');
+
 router.post('/', getProjects);
+// The same reads as POST with mode 'all' and 'single', minus the CORS preflight.
+router.get('/', getAllProjects);
+router.get('/:id', numericId, getProjectById);
 router.post('/create', adminValidate, createProject);
 
 router.put(

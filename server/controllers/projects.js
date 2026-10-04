@@ -8,6 +8,8 @@ const {
   pickProjectFields,
 } = require('../utils/projectFields');
 const { UPLOAD_FIELDS } = require('../utils/mediaTypes');
+const { storedImageSize } = require('../utils/imageSize');
+const { storedVideoSize } = require('../utils/videoSize');
 
 /**
  * Restores the array fields to arrays for the response body.
@@ -412,8 +414,32 @@ const deleteProject = async (req, res) => {
   });
 };
 
-const getProjects = async (req, res) => {
-  const { mode, projectId } = req.body;
+const IMAGE_LIST_FIELDS = ['thumbnailContents', 'sliderContents'];
+
+const measure = (items, sizeOf) =>
+  items.map(async (item) => {
+    const size = await sizeOf(item?.url);
+    if (size) Object.assign(item, size);
+  });
+
+// Read from the files for each response, never stored. Lets a page hold each item's space.
+const addMediaSizes = async (project) => {
+  const data = project.dataValues;
+  const images = IMAGE_LIST_FIELDS.flatMap((field) =>
+    Array.isArray(data[field]) ? data[field] : []
+  );
+  const videos = Array.isArray(data.videos) ? data.videos : [];
+
+  const [banner] = await Promise.all([
+    storedImageSize(data.bannerImg),
+    ...measure(images, storedImageSize),
+    ...measure(videos, storedVideoSize),
+  ]);
+  data.bannerImgSize = banner;
+};
+
+// Every project read goes through here: the POST route and the plain GETs.
+const readProjects = async ({ mode, projectId }) => {
   let result;
 
   if (mode === 'all') {
@@ -441,6 +467,7 @@ const getProjects = async (req, res) => {
       );
       item.dataValues.role = JSON.parse(item.dataValues.role);
     });
+    await Promise.all(result.map(addMediaSizes));
   } else if (mode === 'single') {
     if (!projectId) throw new BadRequestError('Project Id must be provided!');
     result = await projects.findOne({ where: { id: projectId } });
@@ -462,6 +489,7 @@ const getProjects = async (req, res) => {
     result.dataValues.sliderContents = JSON.parse(
       result.dataValues.sliderContents
     );
+    await addMediaSizes(result);
   } else if (mode === 'cat') {
     result = await projects.findAll({
       attributes: ['id', 'title', 'category'],
@@ -469,11 +497,30 @@ const getProjects = async (req, res) => {
     result = [...new Set(result.map((item) => item.dataValues.category))];
   }
 
+  return result;
+};
+
+const sendProjects = (res, result) => {
   res.json({
     succeed: true,
     msg: 'Successfully fetched project data!',
     result: result,
   });
+};
+
+const getProjects = async (req, res) => {
+  sendProjects(res, await readProjects(req.body));
+};
+
+const getAllProjects = async (req, res) => {
+  sendProjects(res, await readProjects({ mode: 'all' }));
+};
+
+const getProjectById = async (req, res) => {
+  sendProjects(
+    res,
+    await readProjects({ mode: 'single', projectId: req.params.id })
+  );
 };
 
 const reorderProjects = async (req, res) => {
@@ -522,5 +569,7 @@ module.exports = {
   deleteProjectContents,
   deleteProject,
   getProjects,
+  getAllProjects,
+  getProjectById,
   reorderProjects,
 };
