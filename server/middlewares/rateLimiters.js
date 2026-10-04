@@ -68,4 +68,16 @@ const adminAccountLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
-module.exports = { apiLimiter, adminLoginLimiter, adminAccountLimiter };
+// Browser error reports. A page stuck in an error loop reports a few, not thousands.
+const clientErrorLimiter = rateLimit({
+  ...shared,
+  windowMs: WINDOW_MS,
+  limit: 30,
+});
+
+module.exports = {
+  apiLimiter,
+  adminLoginLimiter,
+  adminAccountLimiter,
+  clientErrorLimiter,
+};

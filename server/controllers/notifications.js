@@ -7,6 +7,7 @@ const { DeliveryLog, settings, Admin, projects } = require('../models');
 const { resolveStoredUploadPath } = require('../utils/uploadPaths');
 const { getRetentionDays } = require('../utils/visitTracker');
 const { readLast, INTERVAL_DAYS } = require('../utils/scheduledAudit');
+const clientErrors = require('../utils/clientErrorStore');
 
 /**
  * Things that actually want the administrator's attention.
@@ -26,6 +27,11 @@ const FAILURE_WINDOW_DAYS = 7;
 const MIGRATIONS_DIR = join(__dirname, '..', 'migrations');
 
 const isProduction = () => process.env.NODE_ENV === 'production';
+
+const clip = (value, max) => {
+  const text = String(value ?? '');
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+};
 
 const appliedMigrations = async (sequelize) => {
   try {
@@ -148,6 +154,19 @@ const getNotifications = async (req, res) => {
       `${recentFailures} delivery failure${recentFailures === 1 ? '' : 's'} this week`,
       'Messages did not reach their recipient. The provider error is recorded against each one.',
       'messaging'
+    );
+  }
+
+  // --- browser errors ------------------------------------------------------
+  const { distinct, reports, worst } = clientErrors.summary(since.getTime());
+  if (distinct > 0 && worst) {
+    const times = (n) => `${n} time${n === 1 ? '' : 's'}`;
+    add(
+      'warning',
+      `${distinct} distinct browser error${distinct === 1 ? '' : 's'} this week`,
+      `Reported ${times(reports)} in total. Most frequent, ${times(worst.count)}: "${clip(worst.message, 160)}" ` +
+        `Last seen in ${clip(worst.userAgent, 120) || 'an unknown browser'}.`,
+      'errors'
     );
   }
 

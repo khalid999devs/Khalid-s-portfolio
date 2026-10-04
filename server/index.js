@@ -160,6 +160,7 @@ const logsRouter = require('./routers/logs');
 const statsRouter = require('./routers/stats');
 const visitsRouter = require('./routers/visits');
 const notificationsRouter = require('./routers/notifications');
+const clientErrorsRouter = require('./routers/clientErrors');
 
 app.use('/api/admin/login', adminLoginLimiter);
 app.use('/api/admin', adminRouter);
@@ -171,6 +172,7 @@ app.use('/api/logs', logsRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/visits', visitsRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/client-errors', clientErrorsRouter);
 
 //notfound and errors
 const errorHandlerMiddleWare = require('./middlewares/errorHandler');
