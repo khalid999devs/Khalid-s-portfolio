@@ -54,7 +54,9 @@ const ProjectSlider = ({ sliderContents }) => {
     const mm = gsap.matchMedia();
 
     mm.add('(min-width: 768px)', () => {
-      const distance = () => slider.scrollWidth - container.offsetWidth;
+      // Measured against the row, not the padded container, so the last slide
+      // stops as far from the right edge as the first starts from the left.
+      const distance = () => slider.scrollWidth - slider.clientWidth;
 
       const tween = gsap.to(slider, {
         x: () => -distance(),
