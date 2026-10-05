@@ -74,6 +74,9 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
+  // Browsers send a file's name as UTF-8. Read as Latin-1, the default, a name
+  // in any other script was stored as mojibake.
+  defParamCharset: 'utf8',
   limits: {
     fileSize: MAXIMUM_FILE_BYTES,
     files: MAXIMUM_FILES_PER_REQUEST,

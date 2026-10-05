@@ -54,6 +54,8 @@ const storage = multer.diskStorage({
 
 const uploadResume = multer({
   storage,
+  // As in uploadFile: the name is UTF-8, and this one becomes the download name.
+  defParamCharset: 'utf8',
   limits: {
     fileSize: MAXIMUM_RESUME_BYTES,
     files: 1,

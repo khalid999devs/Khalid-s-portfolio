@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { reqs } from './requests';
+import { fileNameFrom } from '../utils/contentDisposition';
 
 /**
  * The server answers errors as JSON, but this request asks for a blob, so axios
@@ -29,9 +30,8 @@ export const downloadResume = async () => {
 
     // The filename the server chose, taken from Content-Disposition when it is
     // exposed. Falls back to a sensible name rather than the random stored one.
-    const disposition = response.headers?.['content-disposition'] || '';
-    const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
-    const filename = match ? decodeURIComponent(match[1]) : 'Resume.pdf';
+    const filename =
+      fileNameFrom(response.headers?.['content-disposition']) || 'Resume.pdf';
 
     const blob = new Blob([response.data], { type: 'application/pdf' });
     const href = window.URL.createObjectURL(blob);
