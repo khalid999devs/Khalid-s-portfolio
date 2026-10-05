@@ -1,1 +1,0 @@
-import"./global-DYAV6lI6.js";import"./projects-CIB4GBOS.js";import{n as e}from"./settings-DTQZegBV.js";export{e as downloadResume};
