@@ -147,6 +147,16 @@ const get = async (url) => {
   }
 };
 
+// One failed request is the network, not the site, so it is asked again.
+const getLive = async (url) => {
+  let live = await get(url);
+  for (let attempt = 1; attempt < 3 && live.status !== 200; attempt += 1) {
+    await sleep(1500);
+    live = await get(url);
+  }
+  return live;
+};
+
 async function verify(sha) {
   const problems = [];
 
@@ -181,7 +191,7 @@ async function verify(sha) {
       const file = resolve(dir, path === '/' ? 'index.html' : `.${path}`);
       if (!existsSync(file)) continue;
 
-      const live = await get(`${site.origin}${path}`);
+      const live = await getLive(`${site.origin}${path}`);
       if (live.status !== 200) {
         problems.push(`${site.origin}${path} answered ${live.status || live.error}`);
       } else if (!live.body.equals(readFileSync(file))) {
