@@ -13,6 +13,8 @@ const {
 const adminValidate = require('../middlewares/adminTokenVerify');
 const upload = require('../middlewares/uploadFile');
 const validateUploads = require('../middlewares/validateUploads');
+const { BadRequestError } = require('../errors');
+const parseProjectId = require('../utils/projectId');
 
 const router = require('express').Router();
 
@@ -30,6 +32,15 @@ const mediaFields = upload.fields([
 const numericId = (req, res, next) =>
   /^\d+$/.test(req.params.id) ? next() : next('route');
 
+// On every write, ahead of the upload: a malformed id is refused before a
+// byte is stored or a query is made.
+const wellFormedId = (req, res, next) => {
+  if (parseProjectId(req.params.id) === null) {
+    throw new BadRequestError('Please Enter the correct project Id!');
+  }
+  next();
+};
+
 router.post('/', getProjects);
 // The same reads as POST with mode 'all' and 'single', minus the CORS preflight.
 router.get('/', getAllProjects);
@@ -39,22 +50,29 @@ router.post('/create', adminValidate, createProject);
 router.put(
   '/update-content/:id',
   adminValidate,
+  wellFormedId,
   mediaFields,
   validateUploads,
   updateProjectContents
 );
 
-router.patch('/edit-infos/:id', adminValidate, editProjectInfos);
+router.patch('/edit-infos/:id', adminValidate, wellFormedId, editProjectInfos);
 router.patch('/reorder', adminValidate, reorderProjects);
 router.patch(
   '/edit-contents/:id',
   adminValidate,
+  wellFormedId,
   mediaFields,
   validateUploads,
   editProjectContents
 );
-router.patch('/delete-contents/:id', adminValidate, deleteProjectContents);
+router.patch(
+  '/delete-contents/:id',
+  adminValidate,
+  wellFormedId,
+  deleteProjectContents
+);
 
-router.delete('/delete/:id', adminValidate, deleteProject);
+router.delete('/delete/:id', adminValidate, wellFormedId, deleteProject);
 
 module.exports = router;

@@ -51,6 +51,35 @@ const decodeArrayFields = (data) => {
   return decoded;
 };
 
+const MEDIA_LIST_FIELDS = ['videos', 'sliderContents', 'thumbnailContents'];
+
+// The stored paths one media column holds: the banner's own, or one per item.
+const mediaPaths = (project, field) => {
+  if (field === 'bannerImg') return [project.bannerImg];
+
+  try {
+    const items = JSON.parse(project[field]);
+    return Array.isArray(items) ? items.map((item) => item?.url) : [];
+  } catch {
+    return [];
+  }
+};
+
+// Called once the row is saved, and never throws: an error here would have the
+// error handler discard the uploads the row now points at.
+const removeReplaced = (paths) => {
+  for (const path of paths) {
+    try {
+      deleteFile(path);
+    } catch (error) {
+      console.error(
+        `[${new Date().toISOString()}] replaced media not removed: ${path} ->`,
+        error.message
+      );
+    }
+  }
+};
+
 const createProject = async (req, res) => {
   const { title, subtitle, overview, role, date, category, locationYear } =
     req.body;
@@ -154,13 +183,19 @@ const updateProjectContents = async (req, res) => {
     }
   }
 
+  // An uploaded field replaces what the row held, so those files go with it.
+  const replaced = UPLOAD_FIELDS.filter((field) => field in data).flatMap(
+    (field) => mediaPaths(project, field)
+  );
+
   // `techStack` is already JSON-encoded by the allowlist.
   await projects.update({ ...data }, { where: { id: projectId } });
+  removeReplaced(replaced);
 
   const responseData = decodeArrayFields(data);
-  if (responseData.videos) responseData.videos = JSON.parse(responseData.videos);
-  if (responseData.sliderContents)
-    responseData.sliderContents = JSON.parse(responseData.sliderContents);
+  for (const field of MEDIA_LIST_FIELDS) {
+    if (responseData[field]) responseData[field] = JSON.parse(responseData[field]);
+  }
 
   res.json({
     succeed: true,

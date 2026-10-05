@@ -4,8 +4,10 @@ const multer = require('multer');
 const { mkdirSync } = require('fs');
 const { randomBytes } = require('crypto');
 const { resolve, join } = require('path');
+const { BadRequestError } = require('../errors');
 const { UPLOADS_ROOT } = require('../utils/uploadPaths');
 const { UPLOAD_FIELDS } = require('../utils/mediaTypes');
+const parseProjectId = require('../utils/projectId');
 
 /**
  * Writes uploads to a location derived entirely from server-side values.
@@ -36,9 +38,8 @@ const MAXIMUM_FILES_PER_REQUEST = 12;
  * steer the write path.
  */
 const projectDirectoryFor = (req) => {
-  const id = Number(req.params?.id);
-  if (!Number.isSafeInteger(id) || id < 1) return null;
-  return join(UPLOADS_ROOT, 'projects', String(id));
+  const id = parseProjectId(req.params?.id);
+  return id === null ? null : join(UPLOADS_ROOT, 'projects', String(id));
 };
 
 const storage = multer.diskStorage({
@@ -50,7 +51,8 @@ const storage = multer.diskStorage({
 
     const projectDirectory = projectDirectoryFor(req);
     if (!projectDirectory) {
-      cb(new Error('A valid numeric project id is required to upload media.'));
+      // The caller's mistake, so a 400. A plain Error is answered as a 500.
+      cb(new BadRequestError('A valid numeric project id is required to upload media.'));
       return;
     }
 
