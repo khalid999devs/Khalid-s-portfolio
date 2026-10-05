@@ -9,6 +9,7 @@
 // port, user and key belong in ~/.ssh/config, not in this repository.
 
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -92,7 +93,7 @@ if ! grep -q '^Build completed with exit code 0' "$log" 2>/dev/null; then
   exit 1
 fi
 
-grep -E '^(deployed |api restarted|NOT RESTARTED|In Setup Node)' "$log"
+grep -E '^(deployed |api restarted|NOT RESTARTED|In Setup Node|WARNING)' "$log"
 grep -q '^NOT RESTARTED' "$log" && exit ${NOT_RESTARTED}
 exit 0
 `;
@@ -163,12 +164,18 @@ async function verify(sha) {
   step('host state');
   const state = remote(
     'cd "$HOME/repositories/my_portfolio" && git rev-parse HEAD && ' +
-      'cat "$HOME/last-deploy.txt" && git status --porcelain | wc -l',
+      'cat "$HOME/last-deploy.txt" && git status --porcelain | wc -l && ' +
+      // The lockfile NPM Install reads: one per Node environment, not the app's.
+      'for v in "$HOME"/nodevenv/api.khalidahammed.com/*; do [ -d "$v/bin" ] || continue; ' +
+      'f="$v/lib/package-lock.json"; [ -f "$f" ] && sha256sum "$f" || echo "missing $f"; done',
     { capture: true }
   );
   if (state.status !== 0) fail(`could not read the host over SSH as "${HOST}".`);
 
-  const [checkout, deployed, dirtyCount] = state.stdout.trim().split('\n').map((s) => s.trim());
+  const [checkout, deployed, dirtyCount, ...lockfiles] = state.stdout
+    .trim()
+    .split('\n')
+    .map((s) => s.trim());
   console.log(`checkout ${checkout.slice(0, 7)}, last deployed ${deployed.slice(0, 7)}`);
   if (deployed !== sha) {
     problems.push(`the host last deployed ${deployed.slice(0, 7)}, not ${sha.slice(0, 7)}`);
@@ -176,6 +183,17 @@ async function verify(sha) {
   if (dirtyCount !== '0') {
     problems.push('the checkout on the host has local changes; the next deploy will be refused');
   }
+
+  const lockfile = createHash('sha256')
+    .update(readFileSync(resolve(ROOT, 'server/package-lock.json')))
+    .digest('hex');
+  for (const line of lockfiles) {
+    const [hash, path] = line.split(/\s+/);
+    if (hash !== lockfile) {
+      problems.push(`NPM Install on the host would not install server/package-lock.json (${path})`);
+    }
+  }
+  console.log(`lockfile for NPM Install checked in ${lockfiles.length} Node environment(s)`);
 
   step('live sites');
   for (const site of SITES) {

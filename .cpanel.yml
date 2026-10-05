@@ -20,6 +20,8 @@ deployment:
     - export WEB="$HOME_DIR/khalidahammed.com"
     - export UPWORK="$HOME_DIR/upwork.khalidahammed.com"
     - export API="$HOME_DIR/api.khalidahammed.com"
+    # Where cPanel keeps the API's packages, in one folder per Node version.
+    - export NODE_ENVS="$HOME_DIR/nodevenv/api.khalidahammed.com"
 
     # Fail loudly on a missing target rather than half-deploying. A wrong path
     # here is the difference between a broken site and an unchanged one, and
@@ -47,6 +49,12 @@ deployment:
 
     - 'LOCK_AFTER=$(cksum "$API/package-lock.json" 2>/dev/null || echo none)'
     - 'MIGRATIONS_AFTER=$(ls -1 "$API/migrations" 2>/dev/null | wc -l)'
+
+    # NPM Install runs inside the Node environment and reads the lockfile there,
+    # never the one above. Kept equal on every deploy, so the button installs
+    # exactly what was tested. `; true` because a failed copy must not stop the
+    # deploy halfway; `npm run deploy` compares the two files afterwards.
+    - 'for v in "$NODE_ENVS"/*; do [ -d "$v/bin" ] || continue; mkdir -p "$v/lib" && $SYNC "$API/package-lock.json" "$v/lib/package-lock.json" || echo "WARNING -- lockfile for NPM Install not updated in $v/lib"; done; true'
 
     # `; true` on both: cPanel aborts the deploy on any non-zero task, and a
     # failed [ ] test is non-zero.
