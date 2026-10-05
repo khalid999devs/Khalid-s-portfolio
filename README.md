@@ -369,10 +369,10 @@ ETag.
 
 ## Testing and verification
 
-**Server tests.** 152 tests on the Node test runner, covering upload type
-detection, path confinement, field allowlists, auth behaviour, image and video
-size parsing, project reads, browser error reports, and that every model has a
-migration creating its table.
+**Server tests.** 156 tests on the Node test runner, covering upload type
+detection, file names from upload to download, path confinement, field
+allowlists, auth behaviour, image and video size parsing, project reads, browser
+error reports, and that every model has a migration creating its table.
 
 **CI.** Lint, build and the server suite on every push, on Linux. This is worth
 having on a codebase developed on macOS: a `./Project/projectVideos` import of a
