@@ -369,9 +369,10 @@ ETag.
 
 ## Testing and verification
 
-**Server tests.** 156 tests on the Node test runner, covering upload type
+**Server tests.** 167 tests on the Node test runner, covering upload type
 detection, file names from upload to download, path confinement, field
-allowlists, auth behaviour, image and video size parsing, project reads, browser
+allowlists, the admin's project writes (malformed ids, and the media an update
+replaces), auth behaviour, image and video size parsing, project reads, browser
 error reports, and that every model has a migration creating its table.
 
 **CI.** Lint, build and the server suite on every push, on Linux. This is worth
@@ -397,6 +398,12 @@ and normalised body, so a change in response shape shows up as a diff.
 
 The visual harness is not in this repository. It carries a copy of production
 media as fixtures.
+
+**Backup and restore.** Rehearsed end to end. A dump of the live database was
+restored into a scratch database on the host and into MySQL 8 on another
+machine, and compared with live row for row. The API was then started on the
+restored copy and answered the same as the live site on every public read and
+every media file.
 
 ---
 
@@ -437,6 +444,10 @@ describes a specific host. The general points:
 - Point `UPLOADS_DIR` at a mounted volume, or the next deploy removes every
   uploaded file.
 - `TRUST_PROXY_HOPS` has to match the number of proxies in front of the app.
+- Check where the host installs packages. cPanel runs npm in a folder of its
+  own with its own lockfile, so its install button ignored the committed one.
+  The deploy now copies the lockfile there, and the release script compares the
+  two.
 
 The environment file is short by design. It previously held 37 keys, 19 of which
 no code read. Values that did not vary between machines are now constants in the
@@ -471,7 +482,7 @@ server/          Express API
 ## Known gaps
 
 - No staging environment.
-- Backup and restore is written but has not been rehearsed end to end.
+- Backups are taken before each deploy, not on a schedule.
 - Email and SMS are logged, but not tested against provider sandboxes.
 - Rate limits are in process, so they reset on restart and are not shared
   between instances. This belongs at the proxy.
